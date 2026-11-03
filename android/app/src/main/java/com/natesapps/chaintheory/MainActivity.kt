@@ -47,7 +47,7 @@ class Nav(start: String) {
     fun link(href: String) {
         val h = href.removePrefix("#").substringBefore('?')
         go(when {
-            h in listOf("l1", "l2", "l3") -> "article/$h"
+            h in listOf("l1", "l2", "l3", "primer") -> "article/$h"
             h == "l4" -> "map"
             h.startsWith("read/") -> "reader/" + h.removePrefix("read/")
             h.isEmpty() || h == "home" -> "home"

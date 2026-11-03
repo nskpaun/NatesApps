@@ -37,7 +37,7 @@ fun PlayScreen(store: Store, content: Content, nav: Nav) {
                     PressCard({ nav.go("quiz/$i") }, border = if (done) C.thm.copy(alpha = .6f) else C.line) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Box(Modifier.size(52.dp).clip(CircleShape).background(Brush.linearGradient(listOf(C.accent, Color(0xFF9A4B16)))), contentAlignment = Alignment.Center) {
-                                Text(listOf("⚡", "🔭", "∑")[i % 3], fontSize = 24.sp, color = Color.White)
+                                Text(listOf("⚡", "🔭", "∑", "🧠")[i % 4], fontSize = 24.sp, color = Color.White)
                             }
                             Spacer(Modifier.width(14.dp))
                             Column(Modifier.weight(1f)) {

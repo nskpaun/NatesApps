@@ -161,7 +161,7 @@ def section(route):
     return c.blocks
 
 content = {}
-for r in ("l1", "l2", "l3", "l4", "calc"):
+for r in ("l1", "l2", "primer", "l3", "l4", "calc"):
     content[r] = section(r)
 gl = section("glossary")
 content["glossary"] = []

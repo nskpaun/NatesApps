@@ -129,6 +129,7 @@ data class Level(val n: String, val title: String, val desc: String, val route: 
 val LEVELS = listOf(
     Level("1", "The 60-second version", "What it says, why it matters, and whether it's settled. No physics needed.", "article/l1", "⚡", "2 min"),
     Level("2", "The big picture", "The 50-year drought, three clues, one axiom, chains vs strings, six kinds of link, proved vs conjectured.", "article/l2", "🔭", "20 min"),
+    Level("R", "Kets & cross products", "A refresher: ket notation, entanglement, the transpose trick, and the cross product as an antisymmetric pair. Read before Level 3.", "article/primer", "⟨ψ|", "15 min"),
     Level("3", "The math of α", "Qudits, the read cap at d₁d₂ ≤ 6, the gauge group, and the 172-record count step by step.", "article/l3", "∑", "45 min"),
     Level("4", "Compendium map", "All sixteen Parts: what each claims and how its results are graded.", "map", "🗺", "browse"),
     Level("5", "The primary sources", "The talk, the alpha Letter, and the full 754-page compendium, plus the original PDFs.", "library", "📚", "the flight"),
@@ -136,7 +137,7 @@ val LEVELS = listOf(
 
 @Composable
 fun LevelCard(lv: Level, store: Store, nav: Nav, modifier: Modifier = Modifier) {
-    val done = when (lv.route) { "article/l1" -> "l1"; "article/l2" -> "l2"; "article/l3" -> "l3"; "map" -> "l4"; else -> "comp" }.let { store.earned.containsKey(it) }
+    val done = when (lv.route) { "article/l1" -> "l1"; "article/l2" -> "l2"; "article/l3" -> "l3"; "map" -> "l4"; "article/primer" -> "primer"; else -> "comp" }.let { store.earned.containsKey(it) }
     PressCard({ if (lv.route == "library") nav.tab("library") else nav.go(lv.route) }, modifier) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(48.dp).clip(RoundedCornerShape(14.dp)).background(C.accentSoft), contentAlignment = Alignment.Center) {
@@ -144,7 +145,7 @@ fun LevelCard(lv: Level, store: Store, nav: Nav, modifier: Modifier = Modifier) 
             }
             Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f)) {
-                Text("LEVEL ${lv.n} · ${lv.time.uppercase()}", color = C.accent, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                Text((if (lv.n == "R") "REFRESHER" else "LEVEL ${lv.n}") + " · ${lv.time.uppercase()}", color = C.accent, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                 Text(lv.title, fontWeight = FontWeight.Bold, fontSize = 18.sp, color = C.ink)
                 Text(lv.desc, color = C.muted, fontSize = 14.sp, lineHeight = 19.sp)
             }
@@ -239,7 +240,8 @@ fun FontButton(store: Store) {
 fun NextUp(key: String, nav: Nav) {
     val (label, route) = when (key) {
         "l1" -> "Level 2 · The big picture" to "article/l2"
-        "l2" -> "Level 3 · The math" to "article/l3"
+        "l2" -> "Refresher · Kets & cross products" to "article/primer"
+        "primer" -> "Level 3 · The math" to "article/l3"
         "l3" -> "Test yourself: the Math quiz" to "quiz/2"
         else -> "The full compendium" to "reader/comp/2"
     }
@@ -250,6 +252,10 @@ fun NextUp(key: String, nav: Nav) {
             Text(label, fontWeight = FontWeight.Bold, fontSize = 17.sp, color = C.ink, modifier = Modifier.weight(1f))
             Icon(Icons.AutoMirrored.Rounded.ArrowForward, null, tint = C.accent)
         }
+    }
+    if (key == "primer") {
+        Spacer(Modifier.height(10.dp))
+        PressCard({ nav.go("quiz/3") }) { Text("🧠  Quiz yourself: the Refresher deck", fontWeight = FontWeight.SemiBold, color = C.ink) }
     }
     if (key in listOf("l1", "l2")) {
         Spacer(Modifier.height(10.dp))

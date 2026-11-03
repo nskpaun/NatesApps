@@ -65,7 +65,7 @@ object Repo {
     fun content(ctx: Context): Content = content ?: synchronized(this) {
         content ?: run {
             val o = JSONObject(ctx.assets.open("content.json").bufferedReader().readText())
-            val arts = listOf("l1", "l2", "l3", "l4", "calc").associateWith { blocks(o.getJSONArray(it)) }
+            val arts = listOf("l1", "l2", "primer", "l3", "l4", "calc").associateWith { blocks(o.getJSONArray(it)) }
             val gl = o.getJSONArray("glossary").let { a -> (0 until a.length()).map { val t = a.getJSONObject(it); Term(t.getString("t"), t.getString("d")) } }
             val parts = o.getJSONArray("parts").let { a ->
                 (0 until a.length()).map {
@@ -136,7 +136,7 @@ class Store(ctx: Context) {
     }
 
     fun earn(id: String) {
-        if (earned.containsKey(id)) return
+        if (LINKS.none { it.id == id } || earned.containsKey(id)) return
         earned[id] = System.currentTimeMillis()
         sp.edit().putString("earned", JSONObject(earned.toMap() as Map<*, *>).toString()).apply()
         val n = earned.size

@@ -35,6 +35,8 @@ class SmokeTest {
     @Test fun learn() = show("learn") { click("Compendium map"); scrollTo("Part VII"); click("Part VII"); click("Read from p.") }
     @Test fun l1() = show("article/l1") { rule.onAllNodesWithText("Chain Theory in a minute")[0].assertExists() }
     @Test fun l2() = show("article/l2") { rule.onNodeWithContentDescription("Sections").performClick(); tick() }
+    @Test fun primer() = show("article/primer") { rule.onAllNodesWithText("Kets and cross products")[0].assertExists() }
+    @Test fun quizRefresher() = show("quiz/3") { rule.onAllNodesWithText("REFRESHER", substring = true)[0].assertExists() }
     @Test fun l3() = show("article/l3") { rule.onAllNodesWithText("How the count works")[0].assertExists() }
     @Test fun map() = show("map") { scrollTo("Part IX"); click("Part IX"); click("Read from p."); Thread.sleep(2000); tick(2000) }
     @Test fun calc() = show("calc") { rule.onAllNodesWithContentDescription("plus")[0].performClick(); tick(); click("k not √k"); click("Reset") }

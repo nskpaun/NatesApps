@@ -365,7 +365,7 @@ fun FlowChips(items: List<String>, onPick: (String) -> Unit) {
     }
 }
 
-fun guideName(k: String) = mapOf("l1" to "Level 1", "l2" to "Level 2", "l3" to "Level 3", "l4" to "Compendium map", "calc" to "α calculator")[k] ?: k
+fun guideName(k: String) = mapOf("primer" to "Refresher", "l1" to "Level 1", "l2" to "Level 2", "l3" to "Level 3", "l4" to "Compendium map", "calc" to "α calculator")[k] ?: k
 
 fun snippet(t: String, i: Int, q: String): AnnotatedString {
     val s = (i - 80).coerceAtLeast(0); val e = (i + q.length + 130).coerceAtMost(t.length)

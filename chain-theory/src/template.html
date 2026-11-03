@@ -164,6 +164,7 @@ footer.note{font-family:var(--sans);font-size:12.5px;color:var(--muted);text-ali
   <a href="#home" data-r="home">Start</a>
   <a href="#l1" data-r="l1">1 · 60 sec</a>
   <a href="#l2" data-r="l2">2 · Big picture</a>
+  <a href="#primer" data-r="primer">Refresher</a>
   <a href="#l3" data-r="l3">3 · The math</a>
   <a href="#l4" data-r="l4">4 · Compendium map</a>
   <a href="#play" data-r="play">🎮 Play</a>
@@ -196,6 +197,7 @@ footer.note{font-family:var(--sans);font-size:12.5px;color:var(--muted);text-ali
   <div class="levels">
     <a class="card" href="#l1"><div class="lv">Level 1 · 2 min</div><div class="t">The 60-second version</div><div class="d">What it says, why people care, and whether it's settled. No physics background needed.</div></a>
     <a class="card" href="#l2"><div class="lv">Level 2 · 20 min</div><div class="t">The big picture</div><div class="d">The 50-year "drought" in physics, AWG's three clues, the one axiom, chains vs. strings, the six kinds of link, and what's proved vs. conjectured.</div></a>
+    <a class="card" href="#primer"><div class="lv">Refresher · 15 min</div><div class="t">Kets &amp; cross products</div><div class="d">Ket notation (|ψ⟩, ⟨φ|ψ⟩, |ω⟩, the transpose trick) and the cross product as the antisymmetric part of a pair. Read this before Level 3.</div></a>
     <a class="card" href="#l3"><div class="lv">Level 3 · 45 min</div><div class="t">The math of the α number</div><div class="d">Qudits, distillation, the read cap at d₁d₂ ≤ 6, the gauge group from a qutrit–qubit pair, and the count of 172 records step by step.</div></a>
     <a class="card" href="#l4"><div class="lv">Level 4 · hours</div><div class="t">Map of the 754-page compendium</div><div class="d">A guide to all sixteen Parts: what each one claims, how many results are theorems, conditional, or open, and links into the full text.</div></a>
     <a class="card" href="#library"><div class="lv">Level 5 · the whole flight</div><div class="t">The primary sources, in full</div><div class="d">The intro talk (slides), the 24-page alpha Letter, and the complete 754-page compendium, searchable and bookmarked. Original PDFs included.</div></a>
@@ -392,6 +394,122 @@ footer.note{font-family:var(--sans);font-size:12.5px;color:var(--muted);text-ali
     <li><strong>The decisive test is coming.</strong> If next-generation α(0) measurements converge on 137.035 999 189 6…, that's very hard to dismiss. If they converge elsewhere, the conjecture fails cleanly. That's a strength.</li>
   </ul>
   <div class="next"><a href="#l1"><span>Back</span>← Level 1</a><a class="r" href="#l3"><span>Next</span>Level 3 · The math →</a></div>
+</section>
+
+<!-- ======================= PRIMER ======================= -->
+<section data-route="primer" class="hide">
+  <div class="kicker">Refresher · before Level 3</div>
+  <h1>Kets and cross products</h1>
+  <p>Two pieces of math do most of the work in Chain Theory's α count: <strong>ket notation</strong> (how quantum states are written) and <strong>antisymmetric combinations</strong>, which in 3D you know as the <strong>cross product</strong>. This page rebuilds both from scratch and shows where each one appears in the theory.</p>
+
+  <h2 id="pr-kets">Part 1 · Ket notation</h2>
+  <h3>A ket is a column vector</h3>
+  <p>Physicists write a quantum state as a <strong>ket</strong>, |ψ⟩ (say "ket psi"). It's just a column of complex numbers wearing a fancy bracket. For a qubit the two basis states are</p>
+  <div class="number">|0⟩ = (1, 0)ᵀ    |1⟩ = (0, 1)ᵀ</div>
+  <p>Any qubit state is a <strong>superposition</strong>: |ψ⟩ = a|0⟩ + b|1⟩, where a and b are complex numbers called <strong>amplitudes</strong>, with |a|² + |b|² = 1.</p>
+  <p>A <strong>qudit</strong> works the same way with d basis states, |0⟩, |1⟩, …, |d−1⟩. AWG numbers them |1⟩ … |d⟩, which makes no difference. A qutrit has 3, a ququart 4.</p>
+
+  <h3>The bra and the inner product</h3>
+  <p>Flip a ket into a row and complex-conjugate it, and you get a <strong>bra</strong>, ⟨ψ|. Putting a bra against a ket gives the <strong>inner product</strong>, a single number. That's the "bra-ket" (bracket) joke.</p>
+  <div class="number">⟨φ|ψ⟩ = φ₁*ψ₁ + φ₂*ψ₂ + …<small>⟨0|0⟩ = 1, ⟨0|1⟩ = 0: the basis states are orthonormal</small></div>
+  <p><strong>Born rule:</strong> if you measure |ψ⟩ in a basis and ask "is it |e⟩?", the probability is |⟨e|ψ⟩|². For a|0⟩ + b|1⟩ the chance of getting 0 is |a|².</p>
+
+  <h3>Ket-bra: operators and projectors</h3>
+  <p>Put them the other way round, ket then bra, and you get a matrix (an <strong>operator</strong>): |ψ⟩⟨φ|. The special case |ψ⟩⟨ψ| is a <strong>projector</strong>, the operator that asks "how much of you points along |ψ⟩?"</p>
+  <div class="number">|0⟩⟨0| = [[1, 0], [0, 0]]</div>
+  <p>In Chain Theory, <span class="mono">P_m = |ω_m⟩⟨ω_m|</span> is exactly this: the projector onto the entangled pair state. "Distilling" two qudits means applying this projector.</p>
+
+  <h3>Two systems: the tensor product</h3>
+  <p>For two systems, write the kets side by side: |i⟩|j⟩, short for |i⟩ ⊗ |j⟩ ("i on the first system, j on the second"). The combined space has d₁ × d₂ dimensions:</p>
+  <div class="tw"><table>
+    <tr><th>Pair</th><th>Basis states</th><th>Dimension</th></tr>
+    <tr><td>qubit ⊗ qubit</td><td>|00⟩, |01⟩, |10⟩, |11⟩</td><td>4</td></tr>
+    <tr><td>qutrit ⊗ qubit</td><td>|00⟩, |01⟩, |10⟩, |11⟩, |20⟩, |21⟩</td><td>6</td></tr>
+    <tr><td>qutrit ⊗ qutrit</td><td>|00⟩ … |22⟩</td><td>9</td></tr>
+  </table></div>
+  <div class="callout">That product d₁d₂ is the number in the <strong>read cap</strong>: only pairs with d₁d₂ ≤ 6 are "readable." So the qubit pair (4) and the qutrit–qubit pair (6) are readable, and the qutrit pair (9) is dark.</div>
+
+  <h3>Entanglement: a state you can't factor</h3>
+  <p>Some two-system states split into "this state here, that state there," like |0⟩|1⟩. An <strong>entangled</strong> state can't be split that way. The classic example is a Bell state:</p>
+  <div class="number">|Φ⁺⟩ = (|00⟩ + |11⟩) / √2</div>
+  <p>Each qubit alone is a perfect 50/50 coin, yet the two always agree. No single-qubit description reproduces that. Chain Theory's link state is exactly this pattern for any dimension m:</p>
+  <div class="number">|ω_m⟩ = (1/√m) Σᵢ |i⟩|i⟩<small>m = 2: (|00⟩ + |11⟩)/√2 · m = 3: (|00⟩ + |11⟩ + |22⟩)/√3</small></div>
+  <p>Each term |i⟩|i⟩ is one of the talk's "strands," with amplitude 1/√m. Squaring gives probability 1/m per strand, and the m strands add up to 1. When AWG says a record "runs over d strands at 1/√d each, giving √d," he's adding up these amplitudes: d × (1/√d) = √d.</p>
+  <p>For a qutrit with a qubit, m = min(3, 2) = 2. Only two of the qutrit's three directions can pair up, so "the third dot is cut off."</p>
+
+  <h3>Operators on one end, and the transpose trick</h3>
+  <p>A <strong>Pauli matrix</strong> acts on a qubit: X flips |0⟩↔|1⟩, and Z leaves |0⟩ alone but flips the sign of |1⟩. They <strong>anticommute</strong>, which means doing them in the opposite order flips the sign:</p>
+  <div class="number">XZ = −ZX</div>
+  <p>That minus sign is where Chain Theory's 3 extra "commutator records" come from. A qubit has 3 Paulis (X, Y, Z), a qutrit has 8 <strong>Gell-Mann</strong> matrices, and in general a d-level system has d² − 1 of these traceless "letters."</p>
+  <p>The <strong>transpose trick</strong> is the key fact about |ω⟩. An operator applied at one end equals its transpose applied at the other end:</p>
+  <div class="number">(A ⊗ 𝟙)|ω⟩ = (𝟙 ⊗ Aᵀ)|ω⟩</div>
+  <p>Check it with A = X on (|00⟩ + |11⟩)/√2. Flipping the first qubit gives (|10⟩ + |01⟩)/√2. Flipping the second instead (Xᵀ = X) gives (|01⟩ + |10⟩)/√2. They're the same. This is why, in AWG's words, "whatever a read fixes at one end it fixes at the far end." A consequence: rotating one end by U and the other by its complex conjugate Ū (written U ⊗ Ū) leaves |ω⟩ exactly unchanged. That freedom is the "matching," the theory's gauge freedom.</p>
+
+  <h3>Entanglement swapping, in kets</h3>
+  <p>Start with two pairs: |ω⟩₁₂ |ω⟩₃₄. Project qudits 2 and 3 onto |ω⟩₂₃, which is "distilling 2 with 3." Working through the algebra, qudits 1 and 4, which never touched, end up in |ω⟩₁₄:</p>
+  <div class="number">⟨ω|₂₃ ( |ω⟩₁₂ |ω⟩₃₄ ) = (1/d) |ω⟩₁₄<small>the 1/d is an amplitude, so the lab probability of this outcome is 1/d²</small></div>
+  <p>This is the one act in Chain Theory's axiom.</p>
+
+  <h3>Cheat sheet</h3>
+  <div class="tw"><table>
+    <tr><th>Symbol</th><th>Read as</th><th>Means</th></tr>
+    <tr><td>|ψ⟩</td><td>ket psi</td><td>a state (column vector)</td></tr>
+    <tr><td>⟨ψ|</td><td>bra psi</td><td>its conjugate row vector</td></tr>
+    <tr><td>⟨φ|ψ⟩</td><td>bracket</td><td>inner product, a number; |⟨e|ψ⟩|² is a probability</td></tr>
+    <tr><td>|ψ⟩⟨ψ|</td><td>projector</td><td>an operator (matrix)</td></tr>
+    <tr><td>|i⟩|j⟩ = |i⟩⊗|j⟩</td><td>i, j</td><td>two systems in states i and j</td></tr>
+    <tr><td>|ω_m⟩</td><td>omega</td><td>maximally entangled pair, (1/√m)Σ|i⟩|i⟩</td></tr>
+    <tr><td>P_m</td><td>pair projector</td><td>|ω_m⟩⟨ω_m|, the act of distilling</td></tr>
+    <tr><td>U ⊗ Ū</td><td>a matching</td><td>basis change at both ends; leaves |ω⟩ unchanged</td></tr>
+    <tr><td>Aᵀ, Ū, A†</td><td>transpose, conjugate, dagger</td><td>flip rows/columns; conjugate entries; both</td></tr>
+    <tr><td>𝟙</td><td>identity</td><td>"do nothing," the blank letter</td></tr>
+    <tr><td>Tr M</td><td>trace</td><td>sum of a matrix's diagonal</td></tr>
+  </table></div>
+
+  <h2 id="pr-cross">Part 2 · The cross product, and why it's antisymmetric</h2>
+  <h3>The 3D cross product</h3>
+  <p>Given two 3D vectors a and b, the cross product a × b is a third vector perpendicular to both. Its length is |a||b| sin θ, and its direction comes from the right-hand rule. In components:</p>
+  <div class="number">a × b = (a_y b_z − a_z b_y,  a_z b_x − a_x b_z,  a_x b_y − a_y b_x)</div>
+  <p>Two things to notice. Each component is a <strong>difference of two swapped products</strong>, such as a_x b_y − a_y b_x. And because of that:</p>
+  <ul>
+    <li><strong>Swapping flips the sign:</strong> a × b = −(b × a). That's what <em>antisymmetric</em> means.</li>
+    <li><strong>A vector crossed with itself is zero:</strong> a × a = 0, since each component becomes x − x.</li>
+  </ul>
+  <p>Example: x̂ × ŷ = ẑ, ŷ × ẑ = x̂, ẑ × x̂ = ŷ, while ŷ × x̂ = −ẑ.</p>
+
+  <h3>Symmetric and antisymmetric pairs</h3>
+  <p>Take n directions e₁…eₙ and write every ordered pair eᵢeⱼ. There are n² of them. Swapping the two places sorts them into two kinds:</p>
+  <ul>
+    <li><strong>Symmetric:</strong> eᵢeᵢ, and eᵢeⱼ + eⱼeᵢ. Unchanged by a swap. There are n(n+1)/2 of them, called <strong>Sym²n</strong>.</li>
+    <li><strong>Antisymmetric:</strong> eᵢeⱼ − eⱼeᵢ (i &lt; j). Flips sign under a swap. There are n(n−1)/2 of them, called <strong>Λ²n</strong>.</li>
+  </ul>
+  <p>With three directions x, y, z, the 9 cells of the grid split into 6 symmetric and 3 antisymmetric:</p>
+  <div class="tw"><table>
+    <tr><th></th><th>x</th><th>y</th><th>z</th></tr>
+    <tr><th>x</th><td>xx · sym</td><td>xy</td><td>xz</td></tr>
+    <tr><th>y</th><td>yx</td><td>yy · sym</td><td>yz</td></tr>
+    <tr><th>z</th><td>zx</td><td>zy</td><td>zz · sym</td></tr>
+  </table></div>
+  <p>The diagonal cells are symmetric on their own. The 6 off-diagonal cells pair up across the diagonal: each pair gives one symmetric combination (xy + yx) and one antisymmetric one (xy − yx).</p>
+  <div class="callout good"><strong>Here's the link.</strong> The 3 antisymmetric combinations are yz − zy, zx − xz and xy − yx. Those are exactly the x, y and z components of a cross product. The cross product <em>is</em> the antisymmetric part of a pair of 3D vectors. As the talk puts it, Λ²3 = 3 is "the three components of a cross product."</div>
+  <p>Why the cross product only exists in 3D: the number of antisymmetric pairs, n(n−1)/2, equals n only when n = 3. In 3D the antisymmetric part fits back into a vector. In other dimensions it doesn't, and you get a more general object (a "bivector" or wedge product). For n = 8, Λ²8 = 28.</p>
+
+  <h3>Commutators are cross products too</h3>
+  <p>The <strong>commutator</strong> of two operators, [A, B] = AB − BA, is the operator version of "antisymmetric": [A, B] = −[B, A] and [A, A] = 0. For the Pauli matrices it reproduces the cross product exactly:</p>
+  <div class="number">[X, Y] = 2iZ    [Y, Z] = 2iX    [Z, X] = 2iY<small>compare x̂ × ŷ = ẑ, ŷ × ẑ = x̂, ẑ × x̂ = ŷ</small></div>
+  <p>A qubit's three Paulis behave like 3D arrows under commutation. That's why a qubit's states sit on a sphere (the Bloch sphere), and why spin-½ rotates like a 3D vector.</p>
+
+  <h3>Where it shows up in the α count</h3>
+  <p>With a = 8 (qutrit letters) and b = 3 (qubit letters), the four counts in AWG's formula are symmetric and antisymmetric squares:</p>
+  <div class="tw"><table>
+    <tr><th>Weight</th><th>Count</th><th>Made of</th></tr>
+    <tr><td>1</td><td>79</td><td>antisymmetric: Λ²8 + Λ²3 + 24 + 24 = 28 + 3 + 24 + 24</td></tr>
+    <tr><td>√2</td><td>48</td><td>symmetric mixed pairs: 8·3 + 8·3</td></tr>
+    <tr><td>√3</td><td>42</td><td>symmetric same-kind pairs: Sym²8 + Sym²3 = 36 + 6</td></tr>
+    <tr><td>√6</td><td>3</td><td>the qubit commutators: Λ²3 = 3, a cross product of Paulis</td></tr>
+  </table></div>
+  <p>The swap that sorts records into symmetric and antisymmetric is the "mirror" (exchange of reads). The 3 commutator records are literally the cross product of the two reads' Pauli letters. Now <a href="#l3">Level 3</a> should read smoothly.</p>
+  <div class="next"><a href="#l2"><span>Back</span>← Level 2</a><a class="r" href="#l3"><span>Next</span>Level 3 · The math →</a></div>
 </section>
 
 <!-- ======================= LEVEL 3 ======================= -->
@@ -985,7 +1103,7 @@ $('#tocList').addEventListener('click',e=>{ if(e.target.closest('[data-close]'))
 let guideIndex=null;
 function buildGuideIndex(){
   guideIndex=[];
-  for(const r of ['l1','l2','l3','l4','glossary']){
+  for(const r of ['l1','l2','primer','l3','l4','glossary']){
     const sec=$(`section[data-route="${r}"]`);
     $$('p,li,td,dd,dt,h3,.card',sec).forEach(el=>{ if(el.closest('.card')&&el.classList.contains('card')) return; const t=el.textContent.trim(); if(t.length>20) guideIndex.push({r,t}); });
   }
@@ -995,7 +1113,7 @@ function snippet(t, i, qlen){
   const pre=(s>0?'…':'')+t.slice(s,i), mid=t.slice(i,i+qlen), post=t.slice(i+qlen,e)+(e<t.length?'…':'');
   return esc(pre.replace(/\s+/g,' '))+'<mark>'+esc(mid)+'</mark>'+esc(post.replace(/\s+/g,' '));
 }
-const ROUTE_NAMES={l1:'Level 1',l2:'Level 2',l3:'Level 3',l4:'Compendium map',glossary:'Glossary'};
+const ROUTE_NAMES={primer:'Refresher',l1:'Level 1',l2:'Level 2',l3:'Level 3',l4:'Compendium map',glossary:'Glossary'};
 function doSearch(){
   const q=$('#sQ').value.trim(); const which=$('#sDoc').value; store.set('lastq',q);
   if(q.length<2){ $('#sRes').innerHTML=''; $('#sInfo').textContent='Type at least 2 characters.'; return; }
@@ -1054,8 +1172,9 @@ const LINKS=[
 ];
 function earned(){ return store.get('links',{}); }
 function earn(id){
+  if(!LINKS.some(l=>l[0]===id)) return;
   const e=earned(); if(e[id]) return; e[id]=Date.now(); store.set('links',e);
-  const L=LINKS.find(l=>l[0]===id); const n=Object.keys(e).length;
+  const L=LINKS.find(l=>l[0]===id); if(!L) return; const n=Object.keys(e).length;
   toast(`⛓ Link forged: <b>${esc(L?L[1]:id)}</b> · ${n}/${LINKS.length}`);
   if(n===LINKS.length){ confetti(140); setTimeout(()=>toast('🏆 Full chain! You are now dangerously qualified to argue about α on a plane.'),3000); }
   else confetti(30);
@@ -1115,6 +1234,16 @@ const DECKS=[
   ['Using weights k instead of √k gives 1/α ≈ …', ['137.04','97.51','180.84','139.03'],1,'97.51. AWG rejects it because k is a four-letter, four-point quantity. Try it in the calculator.'],
   ['Why is (3,2) the one readable genre with an acting central charge?', ['Q acts as i(d₂ − d₁): zero at (2,2), nonzero at (3,2)','Because 3+2 = 5','It has the most letters','It\'s chosen to fit α'],0,'The center Q = i·diag(d₂𝟙, −d₁𝟙) acts on the link as the scalar i(d₂ − d₁).'],
   ['The candidate α lies in which number field?', ['ℚ','ℚ(√2, √3)','ℚ(π)','ℚ(i)'],1,'(79 + 48√2 + 42√3 + 3√6)/31104, with rational coordinates (79/31104, 1/648, 7/5184, 1/10368).']
+ ]},
+ {name:'Refresher', lv:'Refresher', desc:'Kets, entanglement, and cross products.', qs:[
+  ['What is a ket |ψ⟩?', ['A row vector','A column vector describing a quantum state','A probability','A matrix'],1,'A ket is a column of complex amplitudes. Its conjugate row is the bra ⟨ψ|.'],
+  ['For |ψ⟩ = a|0⟩ + b|1⟩, the probability of measuring 0 is…', ['a','|a|²','a + b','1/2'],1,'Born rule: probability = |⟨0|ψ⟩|² = |a|².'],
+  ['What is |ψ⟩⟨ψ| (ket then bra)?', ['A number','A projector (an operator)','A bra','Zero'],1,'Ket-bra gives a matrix. P_m = |ω_m⟩⟨ω_m| is the projector that "distilling" applies.'],
+  ['A qutrit paired with a qubit lives in a space of dimension…', ['5','6','9','3'],1,'Dimensions multiply under ⊗: 3 × 2 = 6. That is the edge of the read cap, d₁d₂ ≤ 6.'],
+  ['Which state is entangled?', ['|0⟩|1⟩','(|00⟩ + |11⟩)/√2','|1⟩|1⟩','(|0⟩ + |1⟩)|0⟩/√2'],1,'It cannot be factored into (state of A)(state of B). It is |ω₂⟩, the qubit-pair link.'],
+  ['a × b equals…', ['b × a','−(b × a)','a · b','0 always'],1,'The cross product is antisymmetric: swapping the inputs flips the sign.'],
+  ['How many antisymmetric pairs do 3 directions give (Λ²3)?', ['3','6','9','1'],0,'n(n−1)/2 = 3. These are the x, y, z components of a cross product.'],
+  ['[X, Y] = XY − YX for Pauli matrices equals…', ['0','2iZ','X + Y','−1'],1,'Pauli commutators mirror the cross product: x̂ × ŷ = ẑ. Chain Theory\'s 3 commutator records come from this.']
  ]}
 ];
 let Q=null;
