@@ -1,0 +1,1222 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Chain Theory Explorer</title>
+<meta name="description" content="An offline guide to Alex Wissner-Gross's Chain Theory, from a 60-second summary to the full 754-page compendium.">
+<style>
+:root{
+  --bg:#faf8f4; --panel:#ffffff; --ink:#1d1b18; --muted:#6b655c; --line:#e4dfd6;
+  --accent:#9a4b16; --accent-soft:#f6e7da; --link:#7a3a0e;
+  --thm:#2f6b3a; --cond:#8a6a12; --open:#8b2f3c;
+  --code:#f2eee7; --shadow:0 1px 2px rgba(0,0,0,.06),0 4px 16px rgba(0,0,0,.05);
+  --serif: "Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+  --sans: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --fs: 18px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#16140f; --panel:#1f1c17; --ink:#ece6dc; --muted:#a39a8c; --line:#363027;
+    --accent:#e39a5f; --accent-soft:#3a2a1c; --link:#f0b07c;
+    --thm:#7cc48a; --cond:#e2c062; --open:#e88a98; --code:#2a261f;
+    --shadow:0 1px 2px rgba(0,0,0,.4);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#16140f; --panel:#1f1c17; --ink:#ece6dc; --muted:#a39a8c; --line:#363027;
+  --accent:#e39a5f; --accent-soft:#3a2a1c; --link:#f0b07c;
+  --thm:#7cc48a; --cond:#e2c062; --open:#e88a98; --code:#2a261f;
+  --shadow:0 1px 2px rgba(0,0,0,.4);
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--serif);font-size:var(--fs);line-height:1.6}
+a{color:var(--link)}
+header.top{position:sticky;top:0;z-index:20;background:var(--bg);border-bottom:1px solid var(--line);
+  padding:calc(env(safe-area-inset-top) + 8px) 16px 8px;display:flex;gap:10px;align-items:center}
+header.top .brand{font-family:var(--sans);font-weight:700;font-size:16px;letter-spacing:.2px;text-decoration:none;color:var(--ink);white-space:nowrap}
+header.top .brand span{color:var(--accent)}
+header.top .sp{flex:1}
+.iconbtn{font-family:var(--sans);font-size:14px;border:1px solid var(--line);background:var(--panel);color:var(--ink);
+  border-radius:8px;padding:6px 10px;cursor:pointer;min-height:34px}
+.iconbtn:active{transform:translateY(1px)}
+nav.tabs{font-family:var(--sans);display:flex;gap:6px;overflow-x:auto;padding:8px 16px;border-bottom:1px solid var(--line);
+  background:var(--bg);position:sticky;top:51px;z-index:19;scrollbar-width:none}
+nav.tabs::-webkit-scrollbar{display:none}
+nav.tabs a{flex:none;text-decoration:none;color:var(--muted);font-size:14px;padding:6px 11px;border-radius:999px;border:1px solid transparent}
+nav.tabs a.on{color:var(--ink);background:var(--accent-soft);border-color:var(--line)}
+main{max-width:760px;margin:0 auto;padding:20px 16px 120px}
+h1,h2,h3,h4{font-family:var(--sans);line-height:1.25;letter-spacing:-.01em}
+h1{font-size:30px;margin:.4em 0 .3em}
+h2{font-size:23px;margin:1.6em 0 .5em;padding-top:.4em;border-top:1px solid var(--line)}
+h2:first-of-type{border-top:none}
+h3{font-size:19px;margin:1.3em 0 .4em}
+.kicker{font-family:var(--sans);text-transform:uppercase;letter-spacing:.12em;font-size:12px;color:var(--accent);font-weight:700}
+.lede{font-size:1.12em;color:var(--ink)}
+.muted{color:var(--muted)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin:14px 0;box-shadow:var(--shadow)}
+.card h3{margin-top:0}
+.levels{display:grid;gap:12px;margin:18px 0}
+.levels a.card{display:block;text-decoration:none;color:var(--ink);margin:0}
+.levels a.card:hover{border-color:var(--accent)}
+.levels .lv{font-family:var(--sans);font-size:12px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.1em}
+.levels .t{font-family:var(--sans);font-weight:700;font-size:18px;margin:2px 0 4px}
+.levels .d{color:var(--muted);font-size:15px;line-height:1.45}
+.axiom{font-size:1.2em;font-style:italic;border-left:4px solid var(--accent);padding:10px 16px;margin:18px 0;background:var(--accent-soft);border-radius:0 10px 10px 0}
+.number{font-family:var(--sans);font-size:clamp(17px,4.6vw,24px);text-align:center;padding:14px 8px;background:var(--panel);border:1px solid var(--line);border-radius:12px;margin:16px 0;overflow-x:auto}
+.number small{display:block;font-size:13px;color:var(--muted);margin-top:6px}
+table{border-collapse:collapse;width:100%;font-family:var(--sans);font-size:14.5px;line-height:1.4;margin:12px 0}
+th,td{border-bottom:1px solid var(--line);padding:7px 8px;text-align:left;vertical-align:top}
+th{font-size:12.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.tw{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.pill{display:inline-block;font-family:var(--sans);font-size:12px;font-weight:700;padding:1px 8px;border-radius:999px;border:1px solid currentColor}
+.g-thm{color:var(--thm)} .g-cond{color:var(--cond)} .g-open{color:var(--open)}
+.callout{border:1px solid var(--line);border-left:4px solid var(--cond);background:var(--panel);border-radius:0 10px 10px 0;padding:10px 14px;margin:16px 0;font-size:.95em}
+.callout.warn{border-left-color:var(--open)}
+.callout.good{border-left-color:var(--thm)}
+code,.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.88em;background:var(--code);padding:1px 5px;border-radius:5px}
+.btnrow{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+.btn{font-family:var(--sans);font-size:14px;text-decoration:none;display:inline-block;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:9px;padding:8px 12px;cursor:pointer}
+.btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+:root[data-theme="dark"] .btn.primary{color:#1a120b}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .btn.primary{color:#1a120b}}
+.next{display:flex;justify-content:space-between;gap:10px;margin-top:40px;font-family:var(--sans)}
+.next a{flex:1;text-decoration:none;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--panel);color:var(--ink);font-size:14px}
+.next a span{display:block;color:var(--muted);font-size:12px}
+.next a.r{text-align:right}
+dl.gl dt{font-family:var(--sans);font-weight:700;margin-top:14px}
+dl.gl dd{margin:2px 0 0 0;color:var(--ink)}
+svg.diagram{width:100%;height:auto;display:block;margin:10px 0}
+svg.diagram text{font-family:var(--sans);fill:var(--ink)}
+.stroke{stroke:var(--ink)} .fillacc{fill:var(--accent)} .strokeacc{stroke:var(--accent)} .fillpanel{fill:var(--panel)} .fillmuted{fill:var(--muted)}
+/* reader */
+.reader-bar{font-family:var(--sans);display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:var(--bg);padding:8px 0;border-bottom:1px solid var(--line)}
+.reader-bar input[type=number]{width:72px;font-size:15px;padding:6px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink)}
+.reader-bar .ttl{font-size:13px;color:var(--muted);flex-basis:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.page{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px 18px 24px;margin:14px 0;box-shadow:var(--shadow);overflow-wrap:anywhere}
+.page p{margin:0 0 .85em}
+.page .pno{font-family:var(--sans);font-size:12px;color:var(--muted);text-align:right;margin-bottom:6px}
+.page.slide p{margin:0 0 .5em}
+mark{background:#ffe08a;color:#000;border-radius:3px;padding:0 1px}
+.outline{font-family:var(--sans);font-size:14.5px;line-height:1.35}
+.outline a{display:block;text-decoration:none;color:var(--ink);padding:6px 4px;border-bottom:1px solid var(--line)}
+.outline a .pg{float:right;color:var(--muted);font-size:12px;margin-left:8px}
+.outline a.d0{font-weight:700;color:var(--accent);margin-top:10px;border-bottom:2px solid var(--line)}
+.outline a.d1{padding-left:14px}
+.outline a.d2{padding-left:28px;font-size:13.5px;color:var(--muted)}
+.drawer{position:fixed;inset:0;z-index:50;display:none}
+.drawer.open{display:block}
+.drawer .scrim{position:absolute;inset:0;background:rgba(0,0,0,.4)}
+.drawer .sheet{position:absolute;top:0;bottom:0;left:0;width:min(420px,92vw);background:var(--bg);overflow-y:auto;padding:calc(env(safe-area-inset-top) + 12px) 14px 40px;border-right:1px solid var(--line)}
+.drawer .sheet input{width:100%;font-size:16px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink);margin:8px 0}
+.search-box{display:flex;gap:8px;margin:10px 0}
+.search-box input{flex:1;font-size:16px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--ink);min-width:0}
+.search-box select{font-size:15px;border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--ink);padding:0 6px}
+.hit{display:block;text-decoration:none;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:8px 0;font-size:15px;line-height:1.45}
+.hit .where{font-family:var(--sans);font-size:12px;color:var(--accent);font-weight:700;margin-bottom:3px}
+.calc{font-family:var(--sans)}
+.calc .row{display:grid;grid-template-columns:1fr auto auto;gap:6px 12px;align-items:center;font-size:15px}
+.calc input[type=range]{width:100%}
+.calc .big{font-size:22px;font-weight:700;margin:10px 0 2px}
+.bar{height:10px;background:var(--line);border-radius:6px;position:relative;margin:6px 0 16px}
+.bar i{position:absolute;top:-4px;width:3px;height:18px;border-radius:2px}
+footer.note{font-family:var(--sans);font-size:12.5px;color:var(--muted);text-align:center;padding:30px 16px}
+.hide{display:none!important}
+.toc-mini{font-family:var(--sans);font-size:14px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 14px}
+.toc-mini a{display:block;padding:3px 0;text-decoration:none}
+.resume{font-family:var(--sans)}
+.chainlinks{display:flex;flex-wrap:wrap;gap:0;margin:10px 0 6px;align-items:center}
+.chainlinks a{display:block;width:44px;height:26px;border:4px solid var(--line);border-radius:14px;margin-right:-10px;position:relative;transition:all .4s;text-decoration:none}
+.chainlinks a:nth-child(even){height:16px;border-width:3px;margin-top:0}
+.chainlinks a.on{border-color:var(--accent);box-shadow:0 0 8px var(--accent)}
+.chainlinks a.pop{animation:pop .7s ease}
+@keyframes pop{0%{transform:scale(1)}40%{transform:scale(1.5) rotate(-10deg)}100%{transform:scale(1)}}
+.qbar{height:8px;background:var(--line);border-radius:6px;margin:6px 0 10px;overflow:hidden}
+.qbar i{display:block;height:100%;background:var(--accent);width:0;transition:width .3s}
+.qopts{display:grid;gap:8px;margin:14px 0 6px}
+.qopts button{font-family:var(--sans);font-size:16px;text-align:left;padding:12px 14px;border-radius:10px;border:2px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer;line-height:1.35}
+.qopts button.right{border-color:var(--thm);background:color-mix(in srgb,var(--thm) 18%,var(--bg))}
+.qopts button.wrong{border-color:var(--open);background:color-mix(in srgb,var(--open) 15%,var(--bg));animation:shake .35s}
+@keyframes shake{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+.flip{perspective:1000px;height:300px;margin:14px 0;cursor:pointer}
+.flip-in{position:relative;width:100%;height:100%;transition:transform .5s;transform-style:preserve-3d}
+.flip.flipped .flip-in{transform:rotateY(180deg)}
+.face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:16px;border:1px solid var(--line);background:var(--panel);box-shadow:var(--shadow);display:flex;align-items:center;justify-content:center;padding:22px;text-align:center;overflow:auto}
+.face.front{font-family:var(--sans);font-size:26px;font-weight:700;color:var(--accent)}
+.face.back{transform:rotateY(180deg);font-size:17px;line-height:1.5}
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(120px);background:var(--ink);color:var(--bg);font-family:var(--sans);font-size:15px;padding:12px 18px;border-radius:12px;z-index:90;transition:transform .35s;max-width:90vw;text-align:center}
+.toast.show{transform:translateX(-50%) translateY(0)}
+.confetti{position:fixed;top:-10px;width:9px;height:14px;z-index:95;pointer-events:none;animation:fall linear forwards}
+@keyframes fall{to{transform:translateY(105vh) rotate(720deg)}}
+.pdfframe{width:100%;height:80vh;border:1px solid var(--line);border-radius:10px;background:#fff}
+</style>
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="#home">⛓ Chain <span>Theory</span> Explorer</a>
+  <div class="sp"></div>
+  <button class="iconbtn" id="btnSearch" aria-label="Search">Search</button>
+  <button class="iconbtn" id="btnFont" aria-label="Text size">Aa</button>
+  <button class="iconbtn" id="btnTheme" aria-label="Theme">◐</button>
+</header>
+<nav class="tabs" id="tabs">
+  <a href="#home" data-r="home">Start</a>
+  <a href="#l1" data-r="l1">1 · 60 sec</a>
+  <a href="#l2" data-r="l2">2 · Big picture</a>
+  <a href="#l3" data-r="l3">3 · The math</a>
+  <a href="#l4" data-r="l4">4 · Compendium map</a>
+  <a href="#play" data-r="play">🎮 Play</a>
+  <a href="#calc" data-r="calc">α calculator</a>
+  <a href="#glossary" data-r="glossary">Glossary</a>
+  <a href="#library" data-r="library">Library</a>
+  <a href="#search" data-r="search">Search</a>
+</nav>
+
+<main id="main">
+
+<!-- ======================= HOME ======================= -->
+<section data-route="home">
+  <div class="kicker">Offline field guide</div>
+  <h1>Chain Theory</h1>
+  <p class="lede">Alex Wissner-Gross (AWG, of the <em>Moonshots</em> podcast) released Chain Theory on October 23–24, 2026. It tries to rebuild fundamental physics from one sentence about entangled quantum bits. Its headline claim is a formula for the fine-structure constant, the number that sets the strength of electromagnetism.</p>
+  <p>Everything in this file works offline: the explainers, the full text of all three source documents, search, and the original PDFs, which are embedded inside it. Start at any level and go deeper whenever you like.</p>
+
+  <div class="resume card hide" id="resumeCard">
+    <div class="kicker">Pick up where you left off</div>
+    <div id="resumeBody"></div>
+  </div>
+
+  <div class="card" id="chainCard">
+    <div class="kicker">Your chain · <span id="chainCount">0</span> / <span id="chainTotal">12</span> links forged</div>
+    <div id="chainLinks" class="chainlinks"></div>
+    <div id="chainNext" class="muted" style="font-family:var(--sans);font-size:14px"></div>
+  </div>
+
+  <div class="levels">
+    <a class="card" href="#l1"><div class="lv">Level 1 · 2 min</div><div class="t">The 60-second version</div><div class="d">What it says, why people care, and whether it's settled. No physics background needed.</div></a>
+    <a class="card" href="#l2"><div class="lv">Level 2 · 20 min</div><div class="t">The big picture</div><div class="d">The 50-year "drought" in physics, AWG's three clues, the one axiom, chains vs. strings, the six kinds of link, and what's proved vs. conjectured.</div></a>
+    <a class="card" href="#l3"><div class="lv">Level 3 · 45 min</div><div class="t">The math of the α number</div><div class="d">Qudits, distillation, the read cap at d₁d₂ ≤ 6, the gauge group from a qutrit–qubit pair, and the count of 172 records step by step.</div></a>
+    <a class="card" href="#l4"><div class="lv">Level 4 · hours</div><div class="t">Map of the 754-page compendium</div><div class="d">A guide to all sixteen Parts: what each one claims, how many results are theorems, conditional, or open, and links into the full text.</div></a>
+    <a class="card" href="#library"><div class="lv">Level 5 · the whole flight</div><div class="t">The primary sources, in full</div><div class="d">The intro talk (slides), the 24-page alpha Letter, and the complete 754-page compendium, searchable and bookmarked. Original PDFs included.</div></a>
+  </div>
+
+  <div class="callout">
+    <strong>A note on status.</strong> Chain Theory is days old as of this file (built Nov 3, 2026). The compendium calls itself a "working draft" and "release 0.1", and its author says "much of it is still conditional or underdeveloped." The physics community hasn't had time to evaluate it. The explainers below try to keep AWG's claims separate from established physics.
+  </div>
+  <p class="muted" style="font-family:var(--sans);font-size:14px">Tip: on a phone, use your browser's "Add to Home Screen" or keep this file in your Files/Downloads app. Your reading position and bookmarks are saved in this browser.</p>
+</section>
+
+<!-- ======================= LEVEL 1 ======================= -->
+<section data-route="l1" class="hide">
+  <div class="kicker">Level 1 · The 60-second version</div>
+  <h1>Chain Theory in a minute</h1>
+
+  <h3>The problem</h3>
+  <p>Physics' best theory of particles, the Standard Model, works very well. But it has about two dozen numbers we have to <em>measure</em> because nothing explains them. The most famous is the <strong>fine-structure constant, α ≈ 1/137</strong>, which sets how strongly light and electric charge interact. Richard Feynman called it "a magic number that comes to us with no understanding by man."</p>
+
+  <h3>The idea</h3>
+  <p>AWG proposes that, at bottom, the universe is <strong>nothing but a finite number of tiny quantum objects linked in pairs by perfect entanglement</strong>, like the links of chainmail. Particles aren't vibrating <em>strings</em> (as in string theory); they're small patterns of <em>chain</em>. And the only way anything is ever "known" is by linking to it. There's no observer standing outside the network.</p>
+  <div class="axiom">"Nothing exists but finitely many maximally entangled pairs of qudits, some qudits shared, known only by distilling them."</div>
+  <p class="muted">That sentence is the whole input. "Qudit" means a quantum bit that can have 2, 3, 4… states instead of just 2.</p>
+
+  <h3>The headline result</h3>
+  <p>Take the one special link where a 3-state qudit is entangled with a 2-state qudit. Count, in a precise way, every possible "measurement record" two reads can leave on it. The count produces this number:</p>
+  <div class="number">(79 + 48√2 + 42√3 + 3√6) / 31104 = 1 / 137.035 999 189…<small>Measured (CODATA 2022): 1 / 137.035 999 177(21). They agree to about 10 significant digits.</small></div>
+  <p>AWG <strong>conjectures</strong> that this number <em>is</em> the fine-structure constant. The arithmetic is machine-checked (in the Lean proof language). The claim that it's the <em>real</em> α is a conjecture, to be tested by future measurements.</p>
+
+  <h3>Why it's interesting</h3>
+  <ul>
+    <li><strong>No free knobs.</strong> Past attempts to "derive" 1/137 failed because they had something to tune. This one claims nothing is tuned.</li>
+    <li><strong>It's falsifiable.</strong> The formula fixes every digit in advance. New experiments aim to be up to ten times more precise. If they drift away from 137.035 999 189…, the conjecture is dead.</li>
+    <li><strong>It points further.</strong> The same link has exactly the symmetry group of the Standard Model, SU(3)×SU(2)×U(1). The 754-page compendium sketches how quantum mechanics, spacetime, gravity, three generations of matter, and more might also come out.</li>
+  </ul>
+
+  <h3>The honest caveats</h3>
+  <ul>
+    <li>It's brand new (Oct 23, 2026) and hasn't been vetted by other physicists yet.</li>
+    <li>"Numerology" has a long history: people have found many formulas close to 1/137. AWG argues his is different because it follows from stated rules, but whether those rules are the <em>right</em> rules is the open question.</li>
+    <li>Of the compendium's 407 graded results, 100 are called theorems, 109 are conditional on stated assumptions, and 198 are open. Many links to real particles are "by name only."</li>
+  </ul>
+  <div class="next"><a href="#home"><span>Back</span>Start</a><a class="r" href="#l2"><span>Next</span>Level 2 · The big picture →</a></div>
+</section>
+
+<!-- ======================= LEVEL 2 ======================= -->
+<section data-route="l2" class="hide">
+  <div class="kicker">Level 2 · The big picture</div>
+  <h1>Chain Theory, the big picture</h1>
+  <div class="toc-mini">
+    <a href="#l2" data-jump="l2-who">1. Who, what, when</a>
+    <a href="#l2" data-jump="l2-drought">2. The fifty-year drought</a>
+    <a href="#l2" data-jump="l2-clues">3. Three clues</a>
+    <a href="#l2" data-jump="l2-axiom">4. The axiom, in plain words</a>
+    <a href="#l2" data-jump="l2-name">5. Why "chain"?</a>
+    <a href="#l2" data-jump="l2-genres">6. Six kinds of link, two you can see</a>
+    <a href="#l2" data-jump="l2-alpha">7. The number</a>
+    <a href="#l2" data-jump="l2-more">8. What else it claims</a>
+    <a href="#l2" data-jump="l2-grades">9. Proved, conditional, conjectured</a>
+    <a href="#l2" data-jump="l2-skeptic">10. A skeptic's checklist</a>
+  </div>
+
+  <h2 id="l2-who">1. Who, what, when</h2>
+  <p><strong>Alexander D. Wissner-Gross</strong> is a physicist and computer scientist (PhD in physics from Harvard) and a regular voice on Peter Diamandis's <em>Moonshots</em> podcast. He writes the newsletter <em>The Innermost Loop</em>. In October 2026 he released three documents:</p>
+  <ul>
+    <li><strong>The alpha Letter</strong>: "A Parameter-Free Candidate for the Fine-Structure Constant from Entangled Qudits" (24 pages including the Supplemental Material), dated Oct 23, 2026. This is the sharp, short claim.</li>
+    <li><strong>The compendium</strong>: "Chain Theory: Toward Fundamental Physics from Distilling Networks of Entangled Qudits. A Compendium of Preliminary Findings." Working draft, 754 pages, sixteen Parts plus appendices and 52 "instrument" chapters.</li>
+    <li><strong>An introductory talk</strong> (slides) that walks through both.</li>
+  </ul>
+  <p>All three are in the <a href="#library">Library</a> tab, in full.</p>
+
+  <h2 id="l2-drought">2. The fifty-year drought</h2>
+  <p>AWG frames the project historically. From 1900 to 1928, physics was rebuilt from the ground up: Planck's quantum (1900), special relativity (1905), Bohr's atom (1913), general relativity (1915), quantum mechanics (1925), and Dirac's equation (1928). Over the next decades those became the Standard Model, whose structure was essentially complete by the mid-1970s.</p>
+  <p>Since then, he argues, physics has had confirmation but no new structure. The W and Z bosons (1983), top quark (1995), Higgs boson (2012) and gravitational waves (2015) were all predicted decades earlier. The genuine surprises, neutrino masses and the accelerating expansion (both 1998), were explained by no theory and <em>added</em> parameters.</p>
+  <p>Faced with that, the field largely shifted from <strong>deriving</strong> the constants to <strong>selecting</strong> them: anthropic arguments, the string-theory landscape of many possible vacua, and the "swampland" program. AWG's stance is the opposite. Keep derivation as the goal, and look for new foundations instead.</p>
+
+  <h2 id="l2-clues">3. Three clues hiding in plain sight</h2>
+  <p>AWG argues that existing physics already contains three hints, each of which has been read as something else.</p>
+  <div class="card">
+    <h3>Clue 1 · A bound: finite information</h3>
+    <p>Bekenstein (1981) showed a bounded region can hold only finitely much information. Holography ('t Hooft, Susskind), gravity from thermodynamics (Jacobson 1995), and "spacetime from entanglement" (Van Raamsdonk 2010) all build on this. Fields have infinitely many degrees of freedom and strings infinitely many modes. <strong>Lesson:</strong> build the world from <em>finitely many</em> quantum systems of <em>finite</em> dimension.</p>
+  </div>
+  <div class="card">
+    <h3>Clue 2 · A gauge group: the Standard Model's "ugly" symmetry</h3>
+    <p>The Standard Model's symmetry group is SU(3)×SU(2)×U(1) (more precisely, divided by ℤ₆). Grand Unified Theories treated this lumpy product as a blemish to hide inside one bigger group (SU(5), SO(10)…). Those theories predicted proton decay and superpartners, and neither has been seen.</p>
+    <p>AWG's reading: the group is <em>exactly</em> the set of independent "basis changes" you can make at the two ends of <strong>one qutrit (3 states) perfectly entangled with one qubit (2 states)</strong>. That gives SU(3) at one end, SU(2) at the other, and one leftover phase that belongs to the pair rather than either end. So the gauge group is a signature of a single entangled pair.</p>
+  </div>
+  <div class="card">
+    <h3>Clue 3 · A null result: particles show no parts</h3>
+    <p>Every elementary particle looks like a point, even at the highest collider energies. Yet three generations repeating the same pattern of charges is exactly the sort of thing that usually means constituents (think periodic table → protons/neutrons → quarks).</p>
+    <p>Quantum information has a kind of correlation, <strong>bound entanglement</strong> (Horodecki, Horodecki & Horodecki, 1998), that is genuinely entangled yet can't be "distilled" into a usable entangled pair by any local operations. It first becomes possible when the two systems' dimensions multiply to more than 6. AWG's reading: the substructure of matter isn't <em>undetectable</em>, it's <em>undistillable</em>. Scattering would see a point, while a suitable "entanglement witness" could in principle show the structure.</p>
+  </div>
+
+  <h2 id="l2-axiom">4. The axiom, in plain words</h2>
+  <div class="axiom">Nothing exists but finitely many maximally entangled pairs of qudits, some qudits shared, known only by distilling them.</div>
+  <p>Unpacked:</p>
+  <ul>
+    <li><strong>Qudits.</strong> The building blocks are quantum systems with a finite number of states: qubits (2), qutrits (3), ququarts (4), and so on.</li>
+    <li><strong>Maximally entangled pairs.</strong> They only come in perfectly entangled pairs, called <em>links</em>. Partial entanglement would introduce continuous numbers, which a fully discrete theory can't afford.</li>
+    <li><strong>Some qudits shared.</strong> A qudit can be the end of several links, so pairs join into networks ("webs"). This is the chainmail.</li>
+    <li><strong>Known only by distilling.</strong> The only thing that ever happens is "distillation": projecting two qudits into a perfectly entangled pair in one step. It's the same move as <em>entanglement swapping</em> in quantum networks. In a lab it succeeds only sometimes (probability 1/d²); in the theory it's the only thing that ever happens. Consequence: there is no external observer. <strong>To know something is to link to it.</strong></li>
+  </ul>
+  <p>The model also says time isn't assumed. Acts on separate qudits can be reordered freely, like rewriting 2·3·3·2 = 36 in different groupings. The compendium tries to <em>count</em> time as steps between acts (graded conditional).</p>
+  <svg class="diagram" viewBox="0 0 640 170" role="img" aria-label="Distillation: pairs 1–2 and 3–4 become pairs 1–4 and 2–3">
+    <g stroke-width="3" fill="none">
+      <line class="stroke" x1="60" y1="40" x2="60" y2="130"/>
+      <line class="stroke" x1="170" y1="40" x2="170" y2="130"/>
+      <line class="strokeacc" stroke-dasharray="6 5" x1="60" y1="130" x2="170" y2="130"/>
+      <line class="stroke" x1="420" y1="40" x2="530" y2="40"/>
+      <line class="strokeacc" x1="420" y1="130" x2="530" y2="130"/>
+    </g>
+    <g>
+      <circle class="fillacc" cx="60" cy="40" r="11"/><circle class="fillacc" cx="60" cy="130" r="11"/>
+      <circle class="fillacc" cx="170" cy="40" r="11"/><circle class="fillacc" cx="170" cy="130" r="11"/>
+      <circle class="fillacc" cx="420" cy="40" r="11"/><circle class="fillacc" cx="420" cy="130" r="11"/>
+      <circle class="fillacc" cx="530" cy="40" r="11"/><circle class="fillacc" cx="530" cy="130" r="11"/>
+    </g>
+    <g font-size="14" text-anchor="middle">
+      <text x="38" y="45">1</text><text x="38" y="135">2</text><text x="192" y="45">4</text><text x="192" y="135">3</text>
+      <text x="398" y="45">1</text><text x="398" y="135">2</text><text x="552" y="45">4</text><text x="552" y="135">3</text>
+      <text x="115" y="158">distill 2 with 3</text>
+      <text x="295" y="90" font-size="26">→</text>
+      <text x="475" y="28">new pair 1–4</text>
+      <text x="475" y="158">new pair 2–3</text>
+      <text x="115" y="20" class="fillmuted" fill="currentColor">before: pairs 1–2, 3–4</text>
+    </g>
+  </svg>
+  <p class="muted" style="font-size:.9em">Distillation as entanglement swapping: projecting qudits 2 and 3 into an entangled pair leaves 1 and 4 entangled, although they never touched.</p>
+
+  <h2 id="l2-name">5. Why "chain"?</h2>
+  <p>The name has three sources (from the talk and preface):</p>
+  <ol>
+    <li><strong>Chains, not strings.</strong> Particles are finite chainmail made of discrete links, not continuous strings.</li>
+    <li><strong>Free joints.</strong> Where pairs meet at a shared qudit, nothing fixes how the bases line up, just as two chain links can turn against each other without changing the chain. That freedom is the theory's <em>gauge freedom</em>.</li>
+    <li><strong>Read from one end.</strong> A distillation passes its basis outward along each link, so knowledge accumulates in a fixed order, "the way a chained ledger grows by linking each new entry to the last."</li>
+  </ol>
+
+  <h2 id="l2-genres">6. Six kinds of link, two you can see</h2>
+  <p>A link's <strong>genre</strong> is the pair of its end dimensions. Conjecture 0 of the compendium restricts ends to dimension 2, 3 or 4, which gives six genres. Each is <em>conjectured</em> to correspond to a sector of physics:</p>
+  <div class="tw"><table>
+    <tr><th>Genre</th><th>Ends</th><th>d₁·d₂</th><th>Readable?</th><th>Conjectured sector</th><th>Compendium Part</th></tr>
+    <tr><td><strong>(2,2)</strong></td><td>qubit–qubit</td><td>4</td><td class="g-thm">readable</td><td>spacetime / gravity</td><td><a href="#read/comp/224">VI</a></td></tr>
+    <tr><td><strong>(3,2)</strong></td><td>qutrit–qubit</td><td>6</td><td class="g-thm">readable</td><td>electromagnetism (the photon)</td><td><a href="#read/comp/299">VII</a></td></tr>
+    <tr><td>(4,2)</td><td>ququart–qubit</td><td>8</td><td class="g-open">dark</td><td>weak interaction</td><td><a href="#read/comp/365">VIII</a></td></tr>
+    <tr><td>(3,3)</td><td>qutrit–qutrit</td><td>9</td><td class="g-open">dark</td><td>strong interaction (confinement)</td><td><a href="#read/comp/403">IX</a></td></tr>
+    <tr><td>(4,3)</td><td>ququart–qutrit</td><td>12</td><td class="g-open">dark</td><td>Yukawa sector (masses)</td><td><a href="#read/comp/446">X</a></td></tr>
+    <tr><td>(4,4)</td><td>ququart–ququart</td><td>16</td><td class="g-open">dark</td><td>the Higgs</td><td><a href="#read/comp/489">XI</a></td></tr>
+  </table></div>
+  <p><strong>Why only two are readable:</strong> the axiom says two ends are "known" only if every consistent relation between them is one a distillation can carry. Classic math theorems (Størmer 1963, Woronowicz 1976, Choi 1975) show this holds exactly when d₁·d₂ ≤ 6. That's the same threshold where bound entanglement becomes possible. So only spacetime (2,2) and electromagnetism (3,2) can be observed directly. The other four are "dark" and are seen only at second order, through two distillations. At (3,3) the theory reads this as <strong>confinement</strong>: you never see a lone quark.</p>
+  <div class="callout">Note the elegant coincidence AWG leans on: the boundary between "readable" and "dark" (product ≤ 6) is a theorem of pure mathematics. It happens to split off exactly the two forces we observe directly at long range, light and gravity.</div>
+
+  <h2 id="l2-alpha">7. The number</h2>
+  <p>Why pick α as the test? (From the talk.)</p>
+  <ul>
+    <li><strong>Measured, not derived.</strong> It's known to about one part in ten billion, yet the Standard Model simply takes it from experiment.</li>
+    <li><strong>Hard to hit by accident.</strong> A simple value like Koide's 2/3 can come from many short formulas. Ten digits of 137.035 999… can't.</li>
+    <li><strong>Nothing left to tune.</strong> Older closed forms (Wyler 1969/71, and others) foundered because some volume or normalization could be rescaled. A real derivation has to leave nothing to fix.</li>
+  </ul>
+  <p>The result. Among all configurations of readable links, exactly one satisfies three conditions: it is a two-point function, it is read at the qutrit end, and every link carries an acting electric-type charge. That configuration is one shared qutrit with three links to qubits, two of them "read." Counting the measurement records two reads can leave gives 172 records, sorted by two symmetries into four groups of sizes 79, 48, 42 and 3, weighted 1, √2, √3 and √6. The total number of possible "directions" is 24·36·36 = 31104. So:</p>
+  <div class="number">α = (79 + 48√2 + 42√3 + 3√6) / 31104<small>1/α = 137.035 999 189 566 155 029 183 744…</small></div>
+  <p>The comparison: CODATA 2022 recommends 1/α = 137.035 999 177 with uncertainty 21 in the last two digits. The candidate sits <strong>0.6σ</strong> away, between the two most precise measurements. But those measurements disagree with each other: cesium recoil (2018) and rubidium recoil (2020) are in tension. So the comparison isn't decisive yet. Upcoming measurements (electron g−2 at Northwestern; atomic recoil in Berkeley and Paris) aim to be up to 10× more precise.</p>
+  <p>The <a href="#l3">math level</a> walks through the count, and the <a href="#calc">α calculator</a> lets you play with it.</p>
+
+  <h2 id="l2-more">8. What else it claims</h2>
+  <p>The compendium's abstract lists results at three grades:</p>
+  <div class="card">
+    <p><span class="pill g-thm">Theorems</span> the Standard Model gauge group SU(3)×SU(2)×U(1); conservation laws; the second law of thermodynamics; band structure and the Chern number; phase transitions; a distillation theorem for quantum computation; "three generations as a theorem of the valence" (box 83.1).</p>
+    <p><span class="pill g-cond">Conditional theorems</span> the state space, Born rule, unitarity and uncertainty relation of quantum mechanics; the rotation and Lorentz groups; the signature of spacetime; parity, time reversal and CPT; the α candidate itself (as a physical identification); the electron's anomalous magnetic moment through third order; the hydrogen spectrum; parity violation; confinement; running of couplings; decay rates as finite sums with no renormalization; curvature; the cosmological term.</p>
+    <p><span class="pill g-open">Partly open</span> three generations, particle masses, and the "anatomies" (webs) of Standard Model particles.</p>
+  </div>
+  <p>Particles get proposed webs. For example, the electron is a core triangle of three qutrits (3,3), an in-leg (4,3) joining a "hub" to the core, hub legs (4,2), a qubit pair (2,2), and docks (3,2). The muon carries two hub assemblies and the tau three ("the lepton ladder"). The W and Z are one web read two different ways. A hadron is a "star": a junction qutrit carrying three quark bodies. All of these identifications are <em>conjectures</em>. Of 17 particles drawn on 16 webs, 1 rests on a theorem, 11 on conditional theorems, 2 on open results and 3 on results not in this release.</p>
+
+  <h2 id="l2-grades">9. Proved, conditional, conjectured</h2>
+  <p>AWG is careful about grades, so reading him well means tracking them:</p>
+  <div class="tw"><table>
+    <tr><th>Category</th><th>Meaning</th><th>Count</th></tr>
+    <tr><td><span class="pill g-thm">Theorem</span></td><td>Derived from the axiom and its definitions. 64 are tied to named Lean declarations.</td><td>100</td></tr>
+    <tr><td><span class="pill g-cond">Conditional</span></td><td>Derived under conditions named in its box. A chain of claims carries the lowest grade in the chain.</td><td>109</td></tr>
+    <tr><td><span class="pill g-open">Open</span></td><td>Stated and carried to a named step that remains open: neither established nor excluded.</td><td>198</td></tr>
+    <tr><td>Conjecture</td><td>That the math objects <em>are</em> the physical things (the α identification, the six sectors, the particle webs). Tested by measurement, not proved.</td><td>—</td></tr>
+  </table></div>
+  <div class="callout warn"><strong>AWG's own caution about "theorem":</strong> many theorems are exhaustive checks over the finite set of webs the compendium records. For example, the second law is checked at all 228 one-act reads of fourteen bodies. That's "a census of a finite catalog, not a proof for every web."</div>
+  <p>Also: "names from the literature are correspondences by name." When a box says "the Higgs" or "the weak interaction," it is a statement about networks that <em>he names</em> after the physics. The physical identification is separate.</p>
+
+  <h2 id="l2-skeptic">10. A skeptic's checklist</h2>
+  <p>Questions worth holding while reading. These are mine, not claims from the sources.</p>
+  <ul>
+    <li><strong>Are the rules forced?</strong> The Letter shows (in its "What else the count could have given" table) that small rewordings of the definitions give 1/α of 135.89, 139.03, 146.52, 97.51, 180.84 and so on. AWG argues each alternative is excluded by a definition <em>before</em> comparing with α. A skeptic will ask whether the definitions were chosen knowing the target. Two of the alternatives land within 1%.</li>
+    <li><strong>Lean checks arithmetic, not physics.</strong> The talk says so directly: the Lean file checks that the definitions produce the number, not that they're the right physics. The photon conjecture "appears nowhere in it."</li>
+    <li><strong>The link carries hypercharge, not electric charge.</strong> The talk notes the object's charge is the hypercharge direction, and "its passage to electric charge, together with spacetime and helicity, lies beyond the Letter." That's a real gap between the math object and the photon.</li>
+    <li><strong>Running of α.</strong> α changes with energy. The Letter targets α(0), the zero-momentum (Thomson-limit) value, via the on-shell scheme. That choice is principled, but it's another place to check the reasoning.</li>
+    <li><strong>Look-elsewhere effect.</strong> Ten digits is a lot of evidence <em>if</em> the formula wasn't selected from many candidates. How you weigh it depends on how much freedom you think the construction had.</li>
+    <li><strong>Peer review and conflicts.</strong> At release this was a self-published preprint and draft. Secondary coverage notes AWG co-founded Physical Superintelligence (psi.inc), and that the work was developed with AI assistance. Independent audits were being called for online.</li>
+    <li><strong>The decisive test is coming.</strong> If next-generation α(0) measurements converge on 137.035 999 189 6…, that's very hard to dismiss. If they converge elsewhere, the conjecture fails cleanly. That's a strength.</li>
+  </ul>
+  <div class="next"><a href="#l1"><span>Back</span>← Level 1</a><a class="r" href="#l3"><span>Next</span>Level 3 · The math →</a></div>
+</section>
+
+<!-- ======================= LEVEL 3 ======================= -->
+<section data-route="l3" class="hide">
+  <div class="kicker">Level 3 · The math of the α number</div>
+  <h1>How the count works</h1>
+  <p class="muted">Assumes some linear algebra and the basics of quantum states (kets, tensor products). Follows the alpha Letter and the talk; page references point into the <a href="#read/alpha/1">Letter</a> and the <a href="#read/talk/1">talk</a>.</p>
+  <div class="toc-mini">
+    <a href="#l3" data-jump="l3-defs">1. The definitions</a>
+    <a href="#l3" data-jump="l3-consequences">2. Three consequences: twirl, one copy, trace</a>
+    <a href="#l3" data-jump="l3-cap">3. The read cap: readable iff d₁d₂ ≤ 6</a>
+    <a href="#l3" data-jump="l3-onshell">4. What must be computed: the on-shell coupling</a>
+    <a href="#l3" data-jump="l3-charge">5. The central charge picks (3,2)</a>
+    <a href="#l3" data-jump="l3-unique">6. One configuration</a>
+    <a href="#l3" data-jump="l3-N">7. The denominator N = 31104</a>
+    <a href="#l3" data-jump="l3-records">8. The 172 records</a>
+    <a href="#l3" data-jump="l3-weights">9. The weights √k</a>
+    <a href="#l3" data-jump="l3-sym">10. The fast check: symmetric squares</a>
+    <a href="#l3" data-jump="l3-alt">11. What else it could have been</a>
+    <a href="#l3" data-jump="l3-lean">12. Lean and inputs</a>
+  </div>
+
+  <h2 id="l3-defs">1. The definitions</h2>
+  <p>A <strong>link</strong> of type (d₁, d₂) joins two qudits in the maximally entangled state on their common support, of dimension m = min(d₁, d₂):</p>
+  <div class="number">|ω<sub>m</sub>⟩ = (1/√m) Σ<sub>i=1..m</sub> |i⟩|i⟩</div>
+  <p>Because (A ⊗ 1)|ω⟩ = (1 ⊗ Aᵀ)|ω⟩, the pair has the same form in every basis (with the conjugate basis at the far end). A <strong>matching</strong>, a change of basis by a unitary U, acts as U ⊗ Ū and leaves the pair unchanged. Each pair has its own matching, so nothing aligns the bases of a shared qudit's copies. That freedom at the joins is the gauge freedom.</p>
+  <div class="tw"><table>
+    <tr><th>Word</th><th>Definition (paraphrasing the talk/Letter)</th></tr>
+    <tr><td><strong>qudit</strong></td><td>A finite-dimensional quantum system of dimension ≥ 2. A 1-dimensional system can't be entangled, so it ends no pair.</td></tr>
+    <tr><td><strong>shared</strong></td><td>A qudit that ends two or more pairs, carried as one copy per pair (as at a PEPS site, so monogamy isn't violated). The copies are still one qudit, so exchanging two pairs moves only their far ends.</td></tr>
+    <tr><td><strong>distill</strong></td><td>Project two qudits of dimensions d₁, d₂ onto P<sub>m</sub> = |ω<sub>m</sub>⟩⟨ω<sub>m</sub>| on their common support. One copy, one joint projection, no failure branch.</td></tr>
+    <tr><td><strong>read</strong></td><td>An act at one end of a pair that distills the two ends in a basis of that end (one read per each of its d+1 mutually unbiased bases) and passes the basis along the pair. The basis reaches the far end whole, so a read is taken at the <em>larger</em> end.</td></tr>
+    <tr><td><strong>known</strong></td><td>What its reads fix jointly, under every matching and every exchange of reads or pairs. Two anticommuting reads also fix their product, whose sign flips with their order.</td></tr>
+  </table></div>
+  <p>"To fix" means determined <em>with certainty from a single copy</em>, not estimated over many. Certainty leaves nothing open, and that gives the read cap.</p>
+  <p>Linking two pairs: distilling 2 with 3 makes 1 and 4 a pair, as in entanglement swapping. Ordinary QM gives this branch probability 1/d². The axiom admits no other branch: "the complementary outcome is no configuration of the axiom, so the projection is the act itself." In a lab, that's postselection. (Postselection as a law has been proposed before, for black hole final states and closed timelike curves.)</p>
+  <p><strong>Strand picture:</strong> a pair is d strands, one per term of |ω⟩, each with amplitude 1/√d. A path from 1 to 4 crosses three strands, picking up 1/(d√d), and its d paths sum to (1/d)|ω⟩₁₄. Remember the factor √d = d·(1/√d). It returns as the weights.</p>
+
+  <h2 id="l3-consequences">2. Three consequences settle the measurement theory</h2>
+  <ul>
+    <li><strong>The twirl.</strong> The pair is invariant (envariant, Zurek 2003) under every matching. So every readout is invariant under their average, the <em>isotropic twirl</em>.</li>
+    <li><strong>One copy.</strong> Pairs are finite and distilling creates no qudit, so a read acts once on the one copy of its link. What matters is what a <em>single</em> read fixes, not asymptotic distillability.</li>
+    <li><strong>A trace.</strong> Operators invariant under every matching are spanned by 1 and P<sub>m</sub> (Horodecki & Horodecki 1999), so a read delivers its pair projector and nothing finer. The readout of a configuration is ⟨M⟩ = Tr<sub>R</sub> M / dim R, where R holds the whole operator space of each read link and the traceless part of each unread link.</li>
+  </ul>
+
+  <h2 id="l3-cap">3. The read cap: readable iff d₁d₂ ≤ 6</h2>
+  <p>A read fixes two ends only when every consistent relation between them, meaning every <strong>positive map</strong> between their operator algebras, is of a kind distillations carry. Reads compose only <strong>decomposable</strong> maps (sums of completely positive and co-completely-positive maps). So a genre is readable iff every positive map between its ends is decomposable:</p>
+  <div class="tw"><table>
+    <tr><th>Type</th><th>Positive maps</th><th>Source</th></tr>
+    <tr><td>(2,2)</td><td class="g-thm">all decomposable</td><td>Størmer 1963</td></tr>
+    <tr><td>(3,2)</td><td class="g-thm">all decomposable</td><td>Woronowicz 1976</td></tr>
+    <tr><td>(4,2)</td><td class="g-open">some not decomposable</td><td>Woronowicz 1976</td></tr>
+    <tr><td>(3,3)</td><td class="g-open">some not decomposable</td><td>Choi 1975</td></tr>
+  </table></div>
+  <p>Non-decomposable maps embed in every d₁d₂ ≥ 8, and no product of integers ≥ 2 equals 7. So <strong>readable = (2,2) and (3,2)</strong>, and only (3,2) has unequal ends. This is the same boundary as the Peres–Horodecki criterion: the partial transpose detects all entanglement exactly when d₁d₂ ≤ 6. The talk emphasizes that "no state is bound entangled" in the model. What no distillation carries is a <em>relation</em>, not a state.</p>
+
+  <h2 id="l3-onshell">4. What must be computed: the on-shell coupling</h2>
+  <p>For a massless spin-1 field coupled to a conserved abelian charge, the zero-transfer coupling is universal (Weinberg 1964–65). The Ward identity Z₁ = Z₂ reduces it to vacuum polarization: <span class="mono">α(0) = Z₃ α_bare</span>. Heavy charged states decouple from this limit (Appelquist–Carazzone 1975). So the model must supply:</p>
+  <ol>
+    <li>one object with a conserved abelian charge obeying a Ward identity;</li>
+    <li>a two-point function with its pole at zero transfer;</li>
+    <li>its dressed-over-bare two-point function at that pole (the ratio of residues, Z₃).</li>
+  </ol>
+  <p>In the model: α_bare = 1 (the bare unit), Z₂/Z₁ = 1 by conservation of the count, and Z₃ = Tr<sub>R</sub>M / N. Identifying the normalized readout with the on-shell two-point function is "one definitional identification," used in no proof.</p>
+
+  <h2 id="l3-charge">5. The central charge picks one readable genre</h2>
+  <p>The identification algebra of a link, the infinitesimal basis changes at its two ends, is su(d₁) ⊕ su(d₂) ⊕ u(1). Its center is spanned by</p>
+  <div class="number">Q = i·diag(d₂·𝟙, −d₁·𝟙)</div>
+  <p>which acts on the whole link, pair ket included, as the scalar i(d₂ − d₁). That's <strong>zero at (2,2)</strong> and <strong>i at (3,2)</strong>. So exactly one readable genre carries an acting central charge.</p>
+  <p>At (3,2) the algebra is su(3) ⊕ su(2) ⊕ u(1), the Lie algebra of S(U(3)×U(2)) ≅ (SU(3)×SU(2)×U(1))/ℤ₆, the Standard Model gauge group. Q = 6iY, with Y = diag(½, ½; −⅓, −⅓, −⅓), the hypercharge generator. The link carries (3, 2) with Y = 1/6, which are the quantum numbers of the left-handed quark doublet.</p>
+  <p class="muted">(That S(U(3)×U(2)) is the stabilizer of a 3+2 split in SU(5) is known; see Baez & Huerta 2010. The new part is reading it as the symmetry of one entangled pair.)</p>
+
+  <h2 id="l3-unique">6. Three conditions leave one configuration</h2>
+  <div class="card"><strong>Theorem 1 (uniqueness).</strong> Among configurations of readable links at a shared qudit, exactly one (a) is a two-point function, (b) is read at the qutrit end, and (c) carries an acting central charge on every link: <em>a shared qutrit with three links to qubits, two of them read.</em></div>
+  <ul>
+    <li><strong>Acting charge:</strong> (2,2) links carry none, so only (2,3) links remain.</li>
+    <li><strong>End rule:</strong> a read reaches its far end whole, so (2,3) links are read at the qutrit, and the shared qudit is a qutrit.</li>
+    <li><strong>Two-point function:</strong> two read links (the two insertions) and one unread link of the same type (the state). Reading the third would be a third insertion.</li>
+  </ul>
+  <svg class="diagram" viewBox="0 0 640 230" role="img" aria-label="The fine-structure star: shared qutrit Q with links to qubits q1, q2 (read) and f (unread)">
+    <g stroke-width="4">
+      <line class="strokeacc" x1="320" y1="110" x2="130" y2="50"/>
+      <line class="strokeacc" x1="320" y1="110" x2="510" y2="50"/>
+      <line class="stroke" stroke-dasharray="7 6" x1="320" y1="110" x2="320" y2="200"/>
+    </g>
+    <circle class="fillacc" cx="320" cy="110" r="20"/>
+    <circle class="fillpanel stroke" stroke-width="3" cx="130" cy="50" r="13"/>
+    <circle class="fillpanel stroke" stroke-width="3" cx="510" cy="50" r="13"/>
+    <circle class="fillpanel stroke" stroke-width="3" cx="320" cy="200" r="13"/>
+    <g font-size="14" text-anchor="middle">
+      <text x="320" y="115" fill="#fff" font-weight="700">Q</text>
+      <text x="130" y="28">q₁ (qubit)</text><text x="510" y="28">q₂ (qubit)</text>
+      <text x="400" y="205">f (qubit), unread: the state</text>
+      <text x="210" y="105">read link 1</text><text x="430" y="105">read link 2</text>
+      <text x="320" y="152">shared qutrit</text>
+    </g>
+  </svg>
+
+  <h2 id="l3-N">7. The denominator: N = 24 · 36 · 36 = 31104</h2>
+  <ul>
+    <li><strong>Unread link: 24 = (3²−1)(2²−1).</strong> A traceless "letter" at each end, no blanks. This is the connected part of its pair projector, the state.</li>
+    <li><strong>Each read link: 36 = (3·2)².</strong> The whole operator space of the link, blank (identity) included: 9 × 4.</li>
+  </ul>
+  <p>The bare insertion (the identity) weighs each of the 31104 directions once. The dressed insertion weighs only the 172 records, each by the strands it runs over.</p>
+
+  <h2 id="l3-records">8. The 172 measurement records</h2>
+  <p>Each read places a <strong>letter</strong> at either end of its link: a Gell-Mann matrix at the qutrit (8 choices) or a Pauli matrix at the qubit (3 choices). There are four <strong>slots</strong>: Q₁, q₁ (read 1) and Q₂, q₂ (read 2), with Q₁ and Q₂ being two copies of the one shared qutrit. Slot sizes: (8, 3, 8, 3).</p>
+  <p>A <strong>record</strong> is two letters at two <em>different</em> slots. Two at the same slot would multiply into a single insertion. Picture the slots as corners of a square and records as edges:</p>
+  <div class="tw"><table>
+    <tr><th>Edge</th><th>Slots</th><th>Products</th></tr>
+    <tr><td>Top</td><td>Q₁–Q₂</td><td>8·8 = 64</td></tr>
+    <tr><td>Bottom</td><td>q₁–q₂</td><td>3·3 = 9</td></tr>
+    <tr><td>Sides</td><td>Q₁–q₁, Q₂–q₂</td><td>24 + 24</td></tr>
+    <tr><td>Diagonals</td><td>Q₁–q₂, Q₂–q₁</td><td>24 + 24</td></tr>
+    <tr><td colspan="2"><strong>Products</strong></td><td><strong>169</strong></td></tr>
+  </table></div>
+  <p>Plus <strong>3 commutator records</strong>. At a qubit, two reads in different bases <em>anticommute</em> (XZ = −ZX). By the definition of "known," their commutator is a further record whose sign is the order of the reads. Total: <strong>169 + 3 = 172</strong>.</p>
+  <p><strong>The mirror</strong> (swap read 1 ↔ read 2, i.e. Q₁↔Q₂, q₁↔q₂) fixes 11 products: the same letter on both copies (8) or on both qubits (3). It pairs the other 158 into 79 symmetric + 79 antisymmetric combinations.</p>
+
+  <h2 id="l3-weights">9. Two commuting exchanges set the weights</h2>
+  <ul>
+    <li><strong>X, the exchange of reads</strong>, acts on records with two letters of one type (73 products + the 3 commutators). A read is an act at the end where it is taken, so X acts <em>at the qutrit</em> wherever the letters sit. It carries d = 3.</li>
+    <li><strong>Y, the exchange of links</strong>, leaves the shared qutrit in place (its copies are one qudit) and swaps the two read qubits. It acts on the 96 products with one slot at each end, plus the 3 commutators. It carries d = 2.</li>
+  </ul>
+  <p>A record that <strong>survives</strong> an exchange (returns times its own sign) runs over the d matched directions at amplitude 1/√d: d·(1/√d) = <strong>√d</strong>. Formally, k<sub>r</sub> = ½(2 − X<sub>r</sub>)(3 − Y<sub>r</sub>) and the weight is √k<sub>r</sub>. It's √k and not k because a record carries two letters (two insertions), while k is a four-letter, four-point quantity.</p>
+  <div class="tw"><table>
+    <tr><th>Records</th><th>(X, Y)</th><th>Number</th><th>k</th><th>Weight</th></tr>
+    <tr><td>antisymmetric ("odd")</td><td>(+,+)</td><td>79</td><td>1</td><td>1</td></tr>
+    <tr><td>symmetric, one slot at each end (sides+diagonals)</td><td>(+,−)</td><td>48</td><td>2</td><td>√2</td></tr>
+    <tr><td>symmetric, both slots at one kind of end (top+bottom)</td><td>(−,+)</td><td>42</td><td>3</td><td>√3</td></tr>
+    <tr><td>commutators</td><td>(−,−)</td><td>3</td><td>6</td><td>√6</td></tr>
+    <tr><td colspan="2"><strong>all</strong></td><td><strong>172</strong></td><td></td><td></td></tr>
+  </table></div>
+  <p>Edge by edge (way 1 in the talk):</p>
+  <div class="tw"><table>
+    <tr><th>Edge</th><th>× 1 (antisym)</th><th>× √2</th><th>× √3</th><th>× √6</th></tr>
+    <tr><td>Top (64)</td><td>28</td><td></td><td>36</td><td></td></tr>
+    <tr><td>Bottom (9)</td><td>3</td><td></td><td>6</td><td></td></tr>
+    <tr><td>Sides (48)</td><td>24</td><td>24</td><td></td><td></td></tr>
+    <tr><td>Diagonals (48)</td><td>24</td><td>24</td><td></td><td></td></tr>
+    <tr><td>Commutators</td><td></td><td></td><td></td><td>3</td></tr>
+    <tr><td><strong>Total</strong></td><td><strong>79</strong></td><td><strong>48</strong></td><td><strong>42</strong></td><td><strong>3</strong></td></tr>
+  </table></div>
+  <p>Note the bottom edge: its letters sit at the qubits, yet it takes √3, "because a read is an act at the end where it is taken, the qutrit. Worded the other way, α⁻¹ would be 139.03."</p>
+  <div class="number">Tr M = 79 + 48√2 + 42√3 + 3√6 = 79 + 67.88225 + 72.74613 + 7.34847 = 226.97685<small>226.97685 / 31104 = 1 / 137.0360 · exact: 1/α = 137.035 999 189 566 155 029 183 744…</small></div>
+  <p>The value is an element of ℚ(√2, √3) with rational coordinates (79/31104, 1/648, 7/5184, 1/10368).</p>
+
+  <h2 id="l3-sym">10. The fast check: symmetric and antisymmetric squares</h2>
+  <p>With n directions, ordered pairs split under swap into Sym² (n(n+1)/2) and Λ² (n(n−1)/2). So Sym²8 = 36, Λ²8 = 28, Sym²3 = 6, Λ²3 = 3. Two different sets of sizes m and n swapped into each other give m·n of each kind. With a = 8, b = 3:</p>
+  <div class="tw"><table>
+    <tr><th>Weight</th><th>Count</th><th>Formula</th></tr>
+    <tr><td>1</td><td>Λ²8 + Λ²3 + 8·3 + 8·3 = 79</td><td>½(a²−a+b²−b) + 2ab</td></tr>
+    <tr><td>√2</td><td>8·3 + 8·3 = 48</td><td>2ab</td></tr>
+    <tr><td>√3</td><td>Sym²8 + Sym²3 = 42</td><td>½(a²+a+b²+b)</td></tr>
+    <tr><td>√6</td><td>Λ²3 = 3</td><td>½b(b−1)</td></tr>
+  </table></div>
+  <p class="muted">Both ways use the same rules, so their agreement checks the arithmetic, not the rules.</p>
+
+  <h2 id="l3-alt">11. What else the count could have given</h2>
+  <p>This table, from the Letter and talk, matters for judging whether the result was tuned. AWG says each alternative is excluded by a definition, without comparing to α.</p>
+  <div class="tw"><table>
+    <tr><th>Alternative wording</th><th>1/α</th><th>Excluded by</th></tr>
+    <tr><td><strong>the Letter's definitions</strong></td><td><strong>137.04</strong></td><td>—</td></tr>
+    <tr><td>the two ends swapped</td><td>135.89</td><td>the end rule</td></tr>
+    <tr><td>both exchanges at the qubit end</td><td>146.52</td><td>the end rule</td></tr>
+    <tr><td>both exchanges at the qutrit end</td><td>127.54</td><td>the qutrit's copies are one qudit</td></tr>
+    <tr><td>exchange of reads where the letters sit</td><td>139.03</td><td>a read acts at its own end</td></tr>
+    <tr><td>qubit–qubit records moved by Y</td><td>134.49</td><td>they occupy the same qubits after it</td></tr>
+    <tr><td>commutators surviving X alone</td><td>138.35</td><td>Y moves them between the read qubits</td></tr>
+    <tr><td>weights k in place of √k</td><td>97.51</td><td>four letters, a four-point quantity</td></tr>
+    <tr><td>read ends in place of units of charge</td><td>70.19</td><td>the readout is per unit of the count</td></tr>
+    <tr><td>no weights</td><td>180.84</td><td>the factor √d at a passed end</td></tr>
+  </table></div>
+  <p>Try these in the <a href="#calc">calculator</a>.</p>
+
+  <h2 id="l3-lean">12. Lean, and every input beyond the axiom</h2>
+  <p>A single Lean 4 file (core library only: no Mathlib, no imports) builds all 172 records from the slots and commutator matrices, checks each is an eigenvector of the exchange of reads, applies the weight law, and evaluates exactly:</p>
+  <p><code>readout objectWorld objectTwoPoint = ([(1, 79), (2, 48), (3, 42), (6, 3)], 31104)</code></p>
+  <p>The main theorem depends only on propositional extensionality and takes about two minutes and 2 GB to check. It does <em>not</em> check whether the definitions are the right physics. The read cap enters as a named hypothesis citing Størmer/Woronowicz/Choi, and the Photon Conjecture appears nowhere in it.</p>
+  <div class="tw"><table>
+    <tr><th>Input</th><th>Status</th></tr>
+    <tr><td>five definitions</td><td>the axiom's terms</td></tr>
+    <tr><td>a read fixes two ends only when every positive map is decomposable</td><td>the definition of "fix"; gives the read cap</td></tr>
+    <tr><td>Størmer, Woronowicz, Choi; Horodecki</td><td>theorems of the literature</td></tr>
+    <tr><td>read taken at its own end, reaches far end whole; shared qudit's copies are one qudit; known holds under every exchange</td><td>clauses of the definitions</td></tr>
+    <tr><td>a record is two letters, with weight √k</td><td>a step of the model</td></tr>
+    <tr><td>no failure branch of a distillation</td><td>a step of the model, from the axiom</td></tr>
+    <tr><td>the two-point function and its units</td><td>definitions of the computed quantity</td></tr>
+    <tr><td>on-shell correspondence of the readout</td><td>one definition; names the result</td></tr>
+    <tr><td><strong>the Photon Conjecture</strong></td><td><strong>conjecture: the identification with α(0)</strong></td></tr>
+  </table></div>
+  <div class="callout"><strong>Conjecture (Photon).</strong> The qutrit–qubit link of Theorem 1 is the elementary link of the photon, and its dressed-over-bare readout is the electromagnetic coupling at zero momentum transfer, α(0).</div>
+  <p>To go deeper, read the Letter's Supplemental Material: <a href="#read/alpha/8">the model</a>, <a href="#read/alpha/10">what a read can measure</a>, <a href="#read/alpha/15">the records and the count</a>, <a href="#read/alpha/20">explicit matrices</a>, <a href="#read/alpha/22">formalization</a>.</p>
+  <div class="next"><a href="#l2"><span>Back</span>← Level 2</a><a class="r" href="#l4"><span>Next</span>Level 4 · Compendium map →</a></div>
+</section>
+
+<!-- ======================= LEVEL 4 ======================= -->
+<section data-route="l4" class="hide">
+  <div class="kicker">Level 4 · Map of the compendium</div>
+  <h1>The 754-page compendium, Part by Part</h1>
+  <p>"Chain Theory: Toward Fundamental Physics from Distilling Networks of Entangled Qudits. A Compendium of Preliminary Findings." Working draft, release 0.1, Oct 23, 2026. Every boxed statement carries a grade. Counts below are <span class="pill g-thm">theorems</span> · <span class="pill g-cond">conditional</span> · <span class="pill g-open">open</span>, from the talk's tally. Tap a Part to open it in the reader.</p>
+  <div class="callout"><strong>Reading strategy for a flight:</strong> (1) <a href="#read/comp/2">Preface</a>, pp. 2–5, the best plain-English overview, by AWG. (2) <a href="#read/comp/20">Abstract & Introduction</a>, p. 20 on. (3) The Rosetta glossary, pp. 22–33, which pairs each Chain Theory term with its nearest standard physics term. (4) <a href="#read/comp/39">How to read this compendium</a>, ch. 1. (5) Then any Part's introduction below.</div>
+  <div id="partsList"></div>
+  <p class="muted" style="font-size:.9em">Page numbers are PDF pages (1-based), as shown in the reader. The book's printed page numbers run one higher in the front of Part I.</p>
+  <div class="next"><a href="#l3"><span>Back</span>← Level 3</a><a class="r" href="#read/comp/1"><span>Open</span>The full compendium →</a></div>
+</section>
+
+<!-- ======================= PLAY ======================= -->
+<section data-route="play" class="hide">
+  <div class="kicker">Play</div>
+  <h1>Test yourself</h1>
+  <p>Three quiz decks, one per level, plus flashcards. Every deck you clear forges a link in your chain.</p>
+  <div id="quizPick">
+    <div class="levels" id="deckList"></div>
+    <a class="card" href="#play" id="flashBtn" style="display:block;text-decoration:none;color:var(--ink)"><div class="lv" style="font-family:var(--sans);font-size:12px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.1em">Flashcards</div><div style="font-family:var(--sans);font-weight:700;font-size:18px">Glossary flip cards</div><div class="muted" style="font-size:15px">Tap to flip, then say whether you knew it. Cards you miss come back sooner.</div></a>
+  </div>
+  <div id="quizBox" class="hide">
+    <div style="display:flex;justify-content:space-between;font-family:var(--sans);font-size:14px" class="muted"><span id="qProg"></span><span id="qScore"></span></div>
+    <div class="qbar"><i id="qBarFill"></i></div>
+    <div class="card"><div id="qText" style="font-family:var(--sans);font-weight:700;font-size:19px;line-height:1.35"></div>
+      <div id="qOpts" class="qopts"></div>
+      <div id="qExp" class="callout hide"></div>
+      <div class="btnrow"><button class="btn primary hide" id="qNext">Next →</button><button class="btn" id="qQuit">Quit</button></div>
+    </div>
+  </div>
+  <div id="quizDone" class="hide card" style="text-align:center">
+    <div id="qdEmoji" style="font-size:54px;line-height:1"></div>
+    <h2 style="border:none;margin-top:.3em" id="qdTitle"></h2>
+    <p id="qdText"></p>
+    <div class="btnrow" style="justify-content:center"><button class="btn primary" id="qdAgain">Play again</button><button class="btn" id="qdBack">All decks</button></div>
+  </div>
+  <div id="flashBox" class="hide">
+    <div class="muted" style="font-family:var(--sans);font-size:14px" id="fProg"></div>
+    <div class="flip" id="fCard"><div class="flip-in"><div class="face front" id="fFront"></div><div class="face back" id="fBack"></div></div></div>
+    <div class="btnrow" style="justify-content:center"><button class="btn" id="fMiss">😕 Didn't know</button><button class="btn primary" id="fGot">😎 Knew it</button></div>
+    <div class="btnrow" style="justify-content:center"><button class="btn" id="fQuit">Done</button></div>
+  </div>
+</section>
+
+<!-- ======================= CALCULATOR ======================= -->
+<section data-route="calc" class="hide">
+  <div class="kicker">Interactive</div>
+  <h1>α calculator</h1>
+  <p>Change the counts and weights and see how far 1/α moves. The Letter's values are the defaults. Small changes to the rules wreck the agreement, and that's the point.</p>
+  <div class="card calc">
+    <div class="row"><b>Weight 1 count</b><input type="number" id="c1" value="79" style="width:80px"><span></span></div>
+    <div class="row"><b>Weight √2 count</b><input type="number" id="c2" value="48" style="width:80px"><span></span></div>
+    <div class="row"><b>Weight √3 count</b><input type="number" id="c3" value="42" style="width:80px"><span></span></div>
+    <div class="row"><b>Weight √6 count</b><input type="number" id="c6" value="3" style="width:80px"><span></span></div>
+    <div class="row"><b>Denominator N</b><input type="number" id="cN" value="31104" style="width:100px"><span></span></div>
+    <label style="display:block;margin-top:10px;font-size:14px"><input type="checkbox" id="useK"> Use weights k (1,2,3,6) instead of √k</label>
+    <div class="big" id="cOut"></div>
+    <div id="cSig" style="font-size:14px"></div>
+    <div class="btnrow">
+      <button class="btn" id="cReset">Reset to the Letter</button>
+      <button class="btn" id="cNoW">No weights (all 1)</button>
+    </div>
+  </div>
+  <h3>Measurements of 1/α(0)</h3>
+  <div class="tw"><table>
+    <tr><th>Determination</th><th>Candidate's distance</th></tr>
+    <tr><td>electron g−2 (Fan et al. 2023)</td><td>+1.6σ</td></tr>
+    <tr><td>Rb recoil (Morel et al. 2020)</td><td>−1.5σ</td></tr>
+    <tr><td>Cs recoil (Parker et al. 2018)</td><td>+5.3σ</td></tr>
+    <tr><td><strong>CODATA 2022</strong>: 137.035 999 177(21)</td><td><strong>+0.6σ</strong></td></tr>
+  </table></div>
+  <p class="muted">Distances as given in the Letter's Figure 3 / the talk. The Rb and Cs values disagree with each other, an unresolved tension.</p>
+</section>
+
+<!-- ======================= GLOSSARY ======================= -->
+<section data-route="glossary" class="hide">
+  <div class="kicker">Reference</div>
+  <h1>Glossary</h1>
+  <p>Plain-language definitions. For AWG's own ~200-term "Rosetta table," which pairs each Chain Theory noun with its nearest standard term, see <a href="#read/comp/22">compendium pp. 22–33</a>. The alpha Letter also has a <a href="#read/alpha/24">glossary</a>.</p>
+  <input id="glFilter" placeholder="Filter terms…" style="width:100%;font-size:16px;padding:9px 11px;border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--ink)">
+  <dl class="gl" id="glList">
+    <dt>α, α(0), fine-structure constant</dt><dd>The dimensionless strength of electromagnetism, ≈ 1/137.036. α(0) is its value at zero momentum transfer (the Thomson limit), the one measured by low-energy experiments. α grows slowly at higher energies ("running").</dd>
+    <dt>Axiom</dt><dd>The single input: "Nothing exists but finitely many maximally entangled pairs of qudits, some qudits shared, known only by distilling them."</dd>
+    <dt>Bound entanglement</dt><dd>Entanglement that's real (certifiable by a witness) but cannot be distilled into pure entangled pairs by local operations and classical communication, from any number of copies. Possible only when d₁d₂ > 6. AWG's model for why particle substructure is invisible.</dd>
+    <dt>Bra end / ket end</dt><dd>In the "copy model," every link joins one ket end and one bra end, like indices of a tensor.</dd>
+    <dt>CODATA</dt><dd>The international committee that recommends best values for fundamental constants every four years. CODATA 2022: 1/α = 137.035 999 177(21).</dd>
+    <dt>Commutator record</dt><dd>One of the 3 extra records at the qubits: two reads in different bases anticommute (XZ = −ZX), so their commutator is fixed too, with a sign set by the order of reads. Weight √6.</dd>
+    <dt>Conditional theorem</dt><dd>A result derived under conditions that are named in its box. A composite claim takes the lowest grade in its chain.</dd>
+    <dt>Confinement</dt><dd>The fact that quarks are never seen alone. In Chain Theory, read as the (3,3) genre being "dark": no read survives at first order.</dd>
+    <dt>Dark genre</dt><dd>A link type whose ends are related by some non-decomposable positive map (d₁d₂ ≥ 8), so a single read can't fix them. Seen only at second order. (4,2), (3,3), (4,3), (4,4).</dd>
+    <dt>Decomposable map</dt><dd>A positive map that's a sum of a completely positive map and a completely positive map composed with transpose. Every positive map is decomposable in dimensions 2×2 and 2×3 (Størmer, Woronowicz), but not beyond.</dd>
+    <dt>Distill / distillation</dt><dd>In the axiom: project two qudits onto the maximally entangled state on their common support, in one step, with no failure branch. Equivalent to the projection in entanglement swapping. In standard QI, "distillation" means extracting good pairs from many noisy copies; AWG generalizes it.</dd>
+    <dt>Dressed vs. bare insertion</dt><dd>The bare insertion is the identity, weighing every one of N directions once. The dressed insertion M weighs only what the reads fix (the 172 records, weighted). Their ratio is the readout.</dd>
+    <dt>Entanglement swapping</dt><dd>Measuring qudits 2 and 3 of pairs (1,2) and (3,4) in an entangled basis leaves 1 and 4 entangled. The basic move of quantum repeaters, and the act of the axiom.</dd>
+    <dt>Exchange of links (Y)</dt><dd>The symmetry that swaps two links at the shared qutrit (moving their far-end qubits). Carries d = 2, giving weight √2 to symmetric records it acts on.</dd>
+    <dt>Exchange of reads (X)</dt><dd>Swaps the order/identity of the two reads. Acts at the qutrit (where reads are taken), carries d = 3, giving weight √3.</dd>
+    <dt>Fine-structure star</dt><dd>The configuration of Theorem 1: a qutrit of degree three with three (3,2) arms, two read and one held (unread).</dd>
+    <dt>Fix</dt><dd>To determine with certainty from a single copy, not to estimate statistically over many.</dd>
+    <dt>Gauge group</dt><dd>The symmetry group of the Standard Model, (SU(3)×SU(2)×U(1))/ℤ₆. In Chain Theory, the group of basis changes at the two ends of a qutrit–qubit pair, S(U(3)×U(2)).</dd>
+    <dt>Gell-Mann matrices</dt><dd>The 8 traceless Hermitian 3×3 matrices that form a basis for su(3). The "letters" at a qutrit.</dd>
+    <dt>Genre</dt><dd>A link's type, the pair of its end dimensions written larger first: (2,2), (3,2), (4,2), (3,3), (4,3), (4,4).</dd>
+    <dt>Hub, hub assembly</dt><dd>A recurring sub-web in the conjectured particle webs. Each fermion generation adds one hub assembly (electron 1, muon 2, tau 3: "the lepton ladder").</dd>
+    <dt>Hypercharge (Y)</dt><dd>The U(1) charge of the Standard Model before electroweak symmetry breaking. The central charge of the (3,2) link is 6iY.</dd>
+    <dt>Known</dt><dd>What reads fix jointly, unchanged under every matching and every exchange of reads or pairs.</dd>
+    <dt>Lean 4</dt><dd>A proof assistant / programming language that machine-checks mathematical proofs. Used here to verify the finite computations (64 theorems tied to Lean declarations).</dd>
+    <dt>Letter</dt><dd>(1) A traceless operator basis element at a slot: Gell-Mann at a qutrit, Pauli at a qubit. (2) "The alpha Letter," the short paper with the α result.</dd>
+    <dt>Link / pair</dt><dd>Two qudits in the maximally entangled state |ω_m⟩ on their common support.</dd>
+    <dt>Matching</dt><dd>A change of basis U on a pair's support, acting as U⊗Ū. It leaves the pair unchanged, which is the gauge freedom at the joins.</dd>
+    <dt>Maximally entangled</dt><dd>|ω_m⟩ = (1/√m) Σ|i⟩|i⟩. Each end on its own is completely random, while together they're perfectly correlated.</dd>
+    <dt>Monogamy of entanglement</dt><dd>A system maximally entangled with one partner can't be entangled with another. Why a shared qudit is carried as one copy per pair.</dd>
+    <dt>Mutually unbiased bases</dt><dd>Bases in which measuring one tells you nothing about the other. A d-level system has up to d+1 of them; one read per MUB.</dd>
+    <dt>On-shell scheme</dt><dd>The convention defining α by the physical (zero-momentum) photon coupling: α(0) = Z₃·α_bare after the Ward identity.</dd>
+    <dt>Open result</dt><dd>A statement carried to a named step that remains open: neither established nor excluded.</dd>
+    <dt>Pauli matrices</dt><dd>X, Y, Z, the 3 traceless Hermitian 2×2 matrices. The "letters" at a qubit.</dd>
+    <dt>PEPS</dt><dd>Projected entangled pair states: a tensor-network construction where each site holds several virtual qudits, each maximally entangled with a neighbor. The model of a shared qudit.</dd>
+    <dt>Photon Conjecture</dt><dd>That the qutrit–qubit link of Theorem 1 is the elementary link of the photon, so its readout is α(0).</dd>
+    <dt>Positive map</dt><dd>A linear map on operators that sends positive operators to positive operators. Every "consistent relation" between two ends is one.</dd>
+    <dt>Qubit / qutrit / ququart / qudit</dt><dd>Quantum systems with 2 / 3 / 4 / d states. AWG also calls them registers two, three, four.</dd>
+    <dt>Read</dt><dd>An act at one end of a pair, distilling the two ends in a basis of that end, passing the basis along. Taken at the larger end.</dd>
+    <dt>Read cap</dt><dd>The theorem that a genre is readable iff d₁d₂ ≤ 6: only (2,2) and (3,2).</dd>
+    <dt>Readout</dt><dd>⟨M⟩ = Tr_R M / dim R, the dressed-over-bare normalized trace.</dd>
+    <dt>Record</dt><dd>Two letters at two different slots, the two insertions of a two-point function. 169 products + 3 commutators = 172.</dd>
+    <dt>Rosetta table</dt><dd>The compendium's instrument mapping each Chain Theory noun to its nearest standard concept.</dd>
+    <dt>Saturation, seed, sink</dt><dd>Compendium machinery. A seeded web is grown by moves ("waves") until it reaches a sink, a stable endpoint. Particles are proposed to be sinks; decay is a forward edge out of a non-sink.</dd>
+    <dt>Slot</dt><dd>One of the four ends where letters sit: Q₁, q₁, Q₂, q₂.</dd>
+    <dt>Standard Model</dt><dd>The established theory of quarks, leptons, and the electromagnetic, weak and strong forces plus the Higgs. About two dozen measured parameters.</dd>
+    <dt>Twirl</dt><dd>Averaging over all matchings U⊗Ū. Since pairs are invariant, every readout is twirl-invariant, so reads see only 𝟙 and the pair projector.</dd>
+    <dt>Ward identity</dt><dd>A consequence of charge conservation (Z₁ = Z₂) that makes the charge's renormalization depend only on the photon's vacuum polarization Z₃.</dd>
+    <dt>Web</dt><dd>A network of pairs joined at shared qudits. The nearest standard term is a graph state / tensor network. Particles are conjectured to be specific webs.</dd>
+    <dt>σ (sigma)</dt><dd>Standard deviations of measurement uncertainty. 0.6σ means the candidate is well within the error bar.</dd>
+  </dl>
+</section>
+
+<!-- ======================= LIBRARY ======================= -->
+<section data-route="library" class="hide">
+  <div class="kicker">Primary sources</div>
+  <h1>Library</h1>
+  <p>Full extracted text of every document, readable and searchable here, plus the original PDFs (embedded in this file) for the equations and figures. Text extraction scrambles some math, so open the PDF page when an equation looks garbled.</p>
+  <div class="card">
+    <h3>An Introduction to Chain Theory (talk slides)</h3>
+    <p class="muted">A. D. Wissner-Gross · Oct 23, 2026. The best structured walk-through, ~70 slides covering motivation, the axiom, the α count, Lean, and the compendium.</p>
+    <div class="btnrow"><a class="btn primary" href="#read/talk/1">Read text</a><button class="btn" data-pdf="talk">Open PDF</button><button class="btn" data-dl="talk">Save PDF</button></div>
+  </div>
+  <div class="card">
+    <h3>A Parameter-Free Candidate for the Fine-Structure Constant from Entangled Qudits</h3>
+    <p class="muted">The alpha Letter + Supplemental Material · 24 pages · Oct 23, 2026.</p>
+    <div class="btnrow"><a class="btn primary" href="#read/alpha/1">Read text</a><button class="btn" data-pdf="alpha">Open PDF</button><button class="btn" data-dl="alpha">Save PDF</button></div>
+  </div>
+  <div class="card">
+    <h3>Chain Theory: Toward Fundamental Physics from Distilling Networks of Entangled Qudits</h3>
+    <p class="muted">A Compendium of Preliminary Findings · Working draft, release 0.1 · 754 pages · 352 bookmarked sections.</p>
+    <div class="btnrow"><a class="btn primary" href="#read/comp/1">Read text</a><button class="btn" data-outline="comp">Contents</button><button class="btn" data-pdf="comp">Open PDF</button><button class="btn" data-dl="comp">Save PDF</button></div>
+  </div>
+  <div class="card" id="bmCard">
+    <h3>Your bookmarks</h3>
+    <div id="bmList" class="muted">None yet. Tap ☆ in the reader to bookmark a page.</div>
+  </div>
+  <p class="muted" style="font-size:.9em">Sources: alexwg.org/publications (ChainTheoryCompendium.pdf, ChainTheoryAlpha.pdf, ChainTheoryTalk.pdf), downloaded Nov 3, 2026. Copyright their author; bundled here for personal offline reading.</p>
+</section>
+
+<!-- ======================= READER ======================= -->
+<section data-route="read" class="hide">
+  <div class="reader-bar">
+    <div class="ttl" id="rTitle"></div>
+    <button class="btn" id="rPrev">‹ Prev</button>
+    <input type="number" id="rNum" min="1" inputmode="numeric" aria-label="Page">
+    <span id="rOf" class="muted" style="font-size:14px"></span>
+    <button class="btn" id="rNext">Next ›</button>
+    <button class="btn" id="rToc">Contents</button>
+    <button class="btn" id="rBm" title="Bookmark this page">☆</button>
+    <button class="btn" id="rPdf">PDF</button>
+  </div>
+  <div id="rPages"></div>
+  <div class="btnrow" style="justify-content:center"><button class="btn primary" id="rMore">Next page ›</button></div>
+</section>
+
+<!-- ======================= SEARCH ======================= -->
+<section data-route="search" class="hide">
+  <div class="kicker">Full-text search</div>
+  <h1>Search everything</h1>
+  <form class="search-box" id="sForm">
+    <input id="sQ" type="search" placeholder="e.g. Higgs, Born rule, 31104, confinement" autocomplete="off">
+    <select id="sDoc"><option value="all">All</option><option value="guide">Guide</option><option value="talk">Talk</option><option value="alpha">Letter</option><option value="comp">Compendium</option></select>
+  </form>
+  <div id="sInfo" class="muted" style="font-family:var(--sans);font-size:14px"></div>
+  <div id="sRes"></div>
+</section>
+
+</main>
+
+<div class="drawer" id="drawer"><div class="scrim" id="drawerScrim"></div><div class="sheet">
+  <div style="display:flex;align-items:center;gap:8px"><strong style="font-family:var(--sans);flex:1" id="drawerTitle">Contents</strong><button class="btn" id="drawerClose">Close</button></div>
+  <input id="tocFilter" placeholder="Filter sections…">
+  <div class="outline" id="tocList"></div>
+</div></div>
+
+<footer class="note">Chain Theory Explorer · an unofficial reader's guide. Explainers summarize and paraphrase AWG's documents; check the originals for exact statements.</footer>
+
+<script id="pdf-talk" type="text/plain">__PDF_TALK__</script>
+<script id="pdf-alpha" type="text/plain">__PDF_ALPHA__</script>
+<script id="pdf-comp" type="text/plain">__PDF_COMP__</script>
+<script>
+const DOCS = __DOCS_JSON__;
+</script>
+<script>
+(function(){
+"use strict";
+const $ = (s,el=document)=>el.querySelector(s);
+const $$ = (s,el=document)=>Array.from(el.querySelectorAll(s));
+const store = {
+  get(k,d){ try{ const v=localStorage.getItem('ct_'+k); return v==null?d:JSON.parse(v);}catch(e){return d;} },
+  set(k,v){ try{ localStorage.setItem('ct_'+k, JSON.stringify(v)); }catch(e){} }
+};
+const esc = s => s.replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ---------- theme & font ---------- */
+const root = document.documentElement;
+let theme = store.get('theme', null);
+if(theme) root.setAttribute('data-theme', theme);
+$('#btnTheme').onclick = ()=>{
+  const dark = theme ? theme==='dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+  theme = dark ? 'light' : 'dark'; root.setAttribute('data-theme', theme); store.set('theme', theme);
+};
+const sizes=[16,18,20,22]; let fsi = store.get('fsi',1);
+const applyFs=()=>root.style.setProperty('--fs', sizes[fsi]+'px'); applyFs();
+$('#btnFont').onclick=()=>{ fsi=(fsi+1)%sizes.length; applyFs(); store.set('fsi',fsi); };
+$('#btnSearch').onclick=()=>{ location.hash='#search'; setTimeout(()=>$('#sQ').focus(),50); };
+
+/* ---------- PDFs ---------- */
+const pdfUrls = {};
+function pdfUrl(id){
+  if(pdfUrls[id]) return pdfUrls[id];
+  const b64 = $('#pdf-'+id).textContent.trim();
+  const bin = atob(b64); const len = bin.length; const bytes = new Uint8Array(len);
+  for(let i=0;i<len;i++) bytes[i]=bin.charCodeAt(i);
+  pdfUrls[id] = URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));
+  return pdfUrls[id];
+}
+const IS_ANDROID=/Android/i.test(navigator.userAgent);
+function openPdf(id, page){
+  if(IS_ANDROID){ savePdf(id); toast('PDF saved to Downloads. Open it from your notifications or Files app.'); return; }
+  const u = pdfUrl(id) + (page ? '#page='+page : '');
+  const w = window.open(u, '_blank');
+  if(!w){ location.href = u; }
+}
+function savePdf(id){
+  const a=document.createElement('a'); a.href=pdfUrl(id); a.download=DOCS[id].file; document.body.appendChild(a); a.click(); a.remove();
+}
+document.addEventListener('click', e=>{
+  const p=e.target.closest('[data-pdf]'); if(p){ openPdf(p.dataset.pdf); return; }
+  const d=e.target.closest('[data-dl]'); if(d){ savePdf(d.dataset.dl); return; }
+  const o=e.target.closest('[data-outline]'); if(o){ openToc(o.dataset.outline); return; }
+  const j=e.target.closest('[data-jump]'); if(j){ e.preventDefault(); const t=document.getElementById(j.dataset.jump); if(t) t.scrollIntoView({behavior:'smooth'}); return; }
+});
+
+/* ---------- compendium parts map ---------- */
+const PARTS = [
+ ["Front matter","Preface, abstract, introduction, the Rosetta glossary, chapter maps and the register matrix. Start here: AWG's preface (pp. 2–5) is the clearest plain-language overview anywhere.",1,null],
+ ["Part I. The Framework","Everything descends from the axiom (Definition 1.1) and five definitions. Part I builds the shared objects: the link and its six genres, the read cap, records and the 'gain lemma' (Born count), the moves between webs, saturation to sinks, the register at which a probe reads, the classical limit, decoupling. No particles or forces yet.",38,[20,9,23]],
+ ["Part II. The Rule, the Chain Automata and the Single Root","Tables only in this release: lists four instrument chapters (chain automata, the move table, locality, light cone, regeneration) printed at the end.",98,null],
+ ["Part III. Quantum Mechanics","Can textbook QM be read off the framework instead of postulated? State space as the span of act outputs (35.1), the Born rule and unitarity, uncertainty from the Weyl relation, measurement as 'the wash at one act' (theorem 28.1), indistinguishability and spin-statistics, energy, the path integral as a finite record sum, the Wigner function. Mostly conditional: 'the Born rule is an output, conditional on its premises, not an input.'",100,[1,8,4]],
+ ["Part IV. Spacetime, Symmetry and the Dynamics of the Read","'Nothing in the axiom mentions space.' Time as an order coordinate counting steps (50.1), the rotation group, the Lorentz group as isometries of the Hermitian split (signature one-against-three at the qutrit–qubit link, 54.1/55.1), boosts, spin and helicity, the spin-c group, P, C, T and CPT.",133,[6,5,4]],
+ ["Part V. The Matrix: the Standard Model at the Six Genres","Gauge theory read backwards from its premises. Gauge invariance as the 'known' clause (64.1), the gauge group as the face group of the qutrit–qubit tether, S(U(2)×U(3)) (64.2, theorem), representations as a census of open ends, Cartan weights and charge, conservation as the kernel of the move matrix (74.1), the Ward identity, anomaly cancellation, and 'Three, a theorem of the valence' (83.1): three generations from three core sites.",169,[14,6,24]],
+ ["Part VI. The Metric, the Worldline and the Horizon: the (2,2) cell","Gravity 'as a statement about counting.' A metric from the depth of a web, curvature as a graph Laplacian (90.2), the field equation at the 'counting face', the area law, the horizon as a seeded saturation at every rung (99.1), abundances and rate at the horizon (104.1, theorem), the cosmological term at the depth exponent (115.1), dark sinks, the expansion rate. The correspondence to spacetime is conjectured.",224,[2,17,30]],
+ ["Part VII. The Photon: the (3,2) cell","Where the construction 'first meets a number.' The coupling at the one link (the α result, including earlier editions of the Lean derivation), the electron's anomalous magnetic moment, the hydrogen ladder, Lamb shift and Casimir effect, finiteness of the sums, running of the coupling, the photon itself, the charged-lepton ladder as hub assemblies, and the Koide class.",299,[5,10,9]],
+ ["Part VIII. The Carriers and the Breaking: the (4,2) cell","The weak interaction as the 'hub step', the move that attaches or detaches a junction and changes generation. Carriers (W/Z as one web read two ways), doublets, handedness and parity violation, the weak angle, mixing, beta decay, widths, the electroweak table. 'The most names attached by correspondence and the fewest theorems.'",365,[1,8,17]],
+ ["Part IX. The Junction: the (3,3) cell","The strong force. The one genre where no read survives at first order, read as confinement (171.1). A hadron is a 'star': a junction qutrit of degree three carrying three quark bodies. Strong coupling, nucleon structure, the proton as a seeded sink (open), the proton/electron mass ratio candidate, the hadron spectrum, quark flavors.",403,[1,12,12]],
+ ["Part X. The Yukawa Leg and the Higgs Offices at the Bodies: the (4,3) cell","'Mass is a read.' The mass unit and first power (185.1), the body-alone office rule (195.1, theorem), next-order terms, generation as depth momentum (197.1), and the unified mass readout (198.3). No measured mass is used as input.",446,[6,18,8]],
+ ["Part XI. The Higgs, its Hub Register and the Dressing Field: the (4,4) cell","The Higgs as the closed hub read (200.1). The Higgs quartic as an exact element of ℚ(√2,√3) at all 10,123 Higgs-form sinks (202.1, theorem).",489,[2,3,2]],
+ ["Part XII. Decays and Nuclear Physics","'A body that is not a sink moves on.' Stability as being a sink of the move graph, decay rates as washed squares of reads with no renormalization, lifetimes and branching, the deuteron and alpha particle as pairing records, nuclear rows, fission/fusion and stellar bounds.",505,[1,9,16]],
+ ["Part XIII. Thermodynamics","The second law as a non-decreasing boundary count of records under acts (217.1, theorem, checked exhaustively), the thermal state as a twirl fixed point, ensembles, phase transitions as a change of sink class (221.1), the distillation theorem at forward saturation, entropy and the arrow of time.",537,[7,0,5]],
+ ["Part XIV. Condensed Matter and Atoms","'A lattice is a periodic sink.' Rings of copies, bands as spectra of the step generator (225.1), chains of pairs, the Chern number as the winding of the wash holonomy, the periodic table as joined-electron sinks, atoms as hydrogen probe webs.",554,[6,0,3]],
+ ["Part XV. Quantum Information","Back home: closure of a web as computation (230.1), the moves as a gate set, whether the Hadamard is inside it, the read as the maximal distillation (233.2), read cost, the adiabatic theorem, holonomy of basis transport (235.2). The most theorems after Part I.",568,[11,1,5]],
+ ["Part XVI. The Scorecard, the Open Results and What Remains","The ledger: re-tallies (100 · 109 · 198), open results by form and Part, the status matrix of the six genres, 'what the construction has not reached', and the conclusion. Use it as an index to any claim's standing.",587,null],
+ ["Appendices","Including the hub-forming move as symmetry breaking, saturation in one figure (seeds, waves, termination, sinks), the sector-to-ends map, and Standard Model tables.",null,[6,2,23]],
+ ["Instruments","52 instrument chapters: the machinery and tables behind the Parts (chain automata, decoherence and open systems, causal structure and covariance, the Lagrangian table, per-genre censuses).",660,[11,1,13]]
+];
+function renderParts(){
+  const appx = (DOCS.comp.outline.find(o=>/^Appendix|^A /.test(o.t)&&o.d<=1)||{}).p;
+  $('#partsList').innerHTML = PARTS.map(([t,d,pg,c])=>{
+    if(t==='Appendices' && pg==null){ pg = 588; }
+    const counts = c ? `<div style="font-family:var(--sans);font-size:13px;margin:4px 0 8px"><span class="pill g-thm">${c[0]} thm</span> <span class="pill g-cond">${c[1]} cond</span> <span class="pill g-open">${c[2]} open</span></div>` : '';
+    const link = pg ? `<a class="btn" href="#read/comp/${pg}">Read from p. ${pg} →</a>` : '';
+    return `<div class="card"><h3>${esc(t)}</h3>${counts}<p style="margin:.3em 0 .6em">${esc(d)}</p>${link}</div>`;
+  }).join('');
+}
+
+/* ---------- glossary filter ---------- */
+$('#glFilter').addEventListener('input', e=>{
+  const q=e.target.value.toLowerCase();
+  $$('#glList dt').forEach(dt=>{ const dd=dt.nextElementSibling; const m=!q||(dt.textContent+dd.textContent).toLowerCase().includes(q); dt.classList.toggle('hide',!m); dd.classList.toggle('hide',!m); });
+});
+
+/* ---------- calculator ---------- */
+const CODATA = 137.035999177, CSIG = 0.000000021;
+function calc(){
+  const c1=+$('#c1').value, c2=+$('#c2').value, c3=+$('#c3').value, c6=+$('#c6').value, N=+$('#cN').value;
+  const useK=$('#useK').checked;
+  const w2=useK?2:Math.SQRT2, w3=useK?3:Math.sqrt(3), w6=useK?6:Math.sqrt(6);
+  const num=c1+c2*w2+c3*w3+c6*w6; const inv=N/num;
+  $('#cOut').textContent = '1/α = ' + (isFinite(inv)? inv.toFixed(9) : '—');
+  const sig=(inv-CODATA)/CSIG;
+  $('#cSig').innerHTML = `Numerator ${num.toFixed(6)} · vs CODATA 2022 (137.035999177 ± 0.000000021): <b>${Math.abs(sig)<1e4? sig.toFixed(2)+'σ' : (sig/1e6).toFixed(1)+' million σ'}</b> ${Math.abs(sig)<2?'<span class="g-thm">✓ consistent</span>':'<span class="g-open">✗ ruled out</span>'}`;
+}
+['#c1','#c2','#c3','#c6','#cN','#useK'].forEach(s=>$(s).addEventListener('input',calc));
+$('#cReset').onclick=()=>{ $('#c1').value=79;$('#c2').value=48;$('#c3').value=42;$('#c6').value=3;$('#cN').value=31104;$('#useK').checked=false;calc(); };
+$('#cNoW').onclick=()=>{ $('#c1').value=172;$('#c2').value=0;$('#c3').value=0;$('#c6').value=0;$('#useK').checked=false;calc(); };
+calc();
+
+/* ---------- reader ---------- */
+let cur = {doc:null, page:1, loaded:[]};
+function paraHtml(txt){
+  return txt.split(/\n{2,}/).map(p=>`<p>${esc(p).replace(/\n/g,'<br>')}</p>`).join('');
+}
+function sectionFor(doc, p){
+  const ol = DOCS[doc].outline||[]; let best=null;
+  for(const o of ol){ if(o.p+1<=p && o.d<=1) best=o; }
+  return best;
+}
+function pageEl(doc, p, hl){
+  const d=DOCS[doc]; const txt=d.pages[p-1]||'';
+  let html=paraHtml(txt);
+  if(hl){ const re=new RegExp('('+hl.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi'); html=html.replace(/>([^<]+)</g,(m,t)=>'>'+t.replace(re,'<mark>$1</mark>')+'<'); }
+  const div=document.createElement('div'); div.className='page'+(doc==='talk'?' slide':''); div.dataset.p=p;
+  div.innerHTML=`<div class="pno">${esc(d.short)} · page ${p} of ${d.pages.length} · <a href="#" data-openpdf="${p}">view in PDF</a></div>`+html;
+  return div;
+}
+document.addEventListener('click',e=>{ const a=e.target.closest('[data-openpdf]'); if(a){ e.preventDefault(); openPdf(cur.doc, +a.dataset.openpdf); }});
+function showReader(doc, p, hl){
+  const d=DOCS[doc]; if(!d) return;
+  p=Math.max(1,Math.min(d.pages.length, p|0||1));
+  cur={doc, page:p, loaded:[p]};
+  const box=$('#rPages'); box.innerHTML=''; box.appendChild(pageEl(doc,p,hl));
+  updateBar(); window.scrollTo(0,0); trackRead(doc,p);
+  store.set('last', {doc, page:p});
+  const pos=store.get('pos',{}); pos[doc]=p; store.set('pos',pos);
+}
+function updateBar(){
+  const d=DOCS[cur.doc]; const p=cur.loaded[cur.loaded.length-1];
+  $('#rNum').value=cur.page; $('#rOf').textContent='/ '+d.pages.length;
+  const s=sectionFor(cur.doc,cur.page);
+  $('#rTitle').textContent = d.title + (s? ' — '+s.t : '');
+  $('#rToc').classList.toggle('hide', !(d.outline&&d.outline.length));
+  const bms=store.get('bm',[]); $('#rBm').textContent = bms.some(b=>b.doc===cur.doc&&b.page===cur.page)?'★':'☆';
+  $('#rMore').classList.toggle('hide', p>=d.pages.length);
+}
+$('#rPrev').onclick=()=>{ if(cur.page>1) location.hash=`#read/${cur.doc}/${cur.page-1}`; };
+$('#rNext').onclick=()=>{ if(cur.page<DOCS[cur.doc].pages.length) location.hash=`#read/${cur.doc}/${cur.page+1}`; };
+$('#rNum').addEventListener('change',e=>{ location.hash=`#read/${cur.doc}/${e.target.value}`; });
+$('#rPdf').onclick=()=>openPdf(cur.doc, cur.page);
+$('#rMore').onclick=()=>{
+  const last=cur.loaded[cur.loaded.length-1]; const d=DOCS[cur.doc];
+  if(last<d.pages.length){ const n=last+1; cur.loaded.push(n); $('#rPages').appendChild(pageEl(cur.doc,n)); cur.page=n; trackRead(cur.doc,n);
+    history.replaceState(null,'',`#read/${cur.doc}/${n}`); store.set('last',{doc:cur.doc,page:n}); const pos=store.get('pos',{}); pos[cur.doc]=n; store.set('pos',pos); updateBar(); }
+};
+// track page in view while scrolling through appended pages
+let scrollT=null;
+window.addEventListener('scroll',()=>{
+  if(currentRoute!=='read'||cur.loaded.length<2) return;
+  clearTimeout(scrollT); scrollT=setTimeout(()=>{
+    const pages=$$('#rPages .page'); let vis=null;
+    for(const el of pages){ const r=el.getBoundingClientRect(); if(r.top<window.innerHeight*0.4) vis=el; }
+    if(vis){ const n=+vis.dataset.p; if(n!==cur.page){ cur.page=n; history.replaceState(null,'',`#read/${cur.doc}/${n}`); store.set('last',{doc:cur.doc,page:n}); const pos=store.get('pos',{}); pos[cur.doc]=n; store.set('pos',pos); updateBar(); } }
+  },150);
+},{passive:true});
+$('#rBm').onclick=()=>{
+  let bms=store.get('bm',[]); const i=bms.findIndex(b=>b.doc===cur.doc&&b.page===cur.page);
+  if(i>=0) bms.splice(i,1); else { const s=sectionFor(cur.doc,cur.page); bms.push({doc:cur.doc,page:cur.page,label:s?s.t:''}); }
+  store.set('bm',bms); updateBar(); renderBm();
+};
+function renderBm(){
+  const bms=store.get('bm',[]);
+  $('#bmList').innerHTML = bms.length? bms.map(b=>`<a class="hit" href="#read/${b.doc}/${b.page}"><div class="where">${esc(DOCS[b.doc].short)} · p. ${b.page}</div>${esc(b.label||'')}</a>`).join('') : 'None yet. Tap ☆ in the reader to bookmark a page.';
+}
+
+/* ---------- TOC drawer ---------- */
+let tocDoc=null;
+function openToc(doc){
+  tocDoc=doc; const d=DOCS[doc];
+  $('#drawerTitle').textContent=d.short+' · contents';
+  $('#tocFilter').value=''; renderToc(''); $('#drawer').classList.add('open');
+}
+function renderToc(q){
+  const d=DOCS[tocDoc]; q=q.toLowerCase();
+  const items=(d.outline||[]).filter(o=>!q||o.t.toLowerCase().includes(q));
+  const front = (!q && tocDoc==='comp') ? `<a class="d0" href="#read/comp/1" data-close>Front matter<span class="pg">1</span></a><a class="d1" href="#read/comp/2" data-close>Preface<span class="pg">2</span></a><a class="d1" href="#read/comp/6" data-close>Contents<span class="pg">6</span></a><a class="d1" href="#read/comp/20" data-close>Abstract & Introduction<span class="pg">20</span></a><a class="d1" href="#read/comp/22" data-close>Rosetta glossary<span class="pg">22</span></a><a class="d1" href="#read/comp/36" data-close>Register matrix<span class="pg">36</span></a>` : '';
+  $('#tocList').innerHTML = front + items.map(o=>`<a class="d${Math.min(o.d,2)}" href="#read/${tocDoc}/${o.p+1}" data-close>${esc(o.t)}<span class="pg">${o.p+1}</span></a>`).join('');
+}
+$('#tocFilter').addEventListener('input',e=>renderToc(e.target.value));
+$('#rToc').onclick=()=>openToc(cur.doc);
+const closeDrawer=()=>$('#drawer').classList.remove('open');
+$('#drawerClose').onclick=closeDrawer; $('#drawerScrim').onclick=closeDrawer;
+$('#tocList').addEventListener('click',e=>{ if(e.target.closest('[data-close]')) closeDrawer(); });
+
+/* ---------- search ---------- */
+let guideIndex=null;
+function buildGuideIndex(){
+  guideIndex=[];
+  for(const r of ['l1','l2','l3','l4','glossary']){
+    const sec=$(`section[data-route="${r}"]`);
+    $$('p,li,td,dd,dt,h3,.card',sec).forEach(el=>{ if(el.closest('.card')&&el.classList.contains('card')) return; const t=el.textContent.trim(); if(t.length>20) guideIndex.push({r,t}); });
+  }
+}
+function snippet(t, i, qlen){
+  const s=Math.max(0,i-90), e=Math.min(t.length,i+qlen+140);
+  const pre=(s>0?'…':'')+t.slice(s,i), mid=t.slice(i,i+qlen), post=t.slice(i+qlen,e)+(e<t.length?'…':'');
+  return esc(pre.replace(/\s+/g,' '))+'<mark>'+esc(mid)+'</mark>'+esc(post.replace(/\s+/g,' '));
+}
+const ROUTE_NAMES={l1:'Level 1',l2:'Level 2',l3:'Level 3',l4:'Compendium map',glossary:'Glossary'};
+function doSearch(){
+  const q=$('#sQ').value.trim(); const which=$('#sDoc').value; store.set('lastq',q);
+  if(q.length<2){ $('#sRes').innerHTML=''; $('#sInfo').textContent='Type at least 2 characters.'; return; }
+  const ql=q.toLowerCase(); const out=[]; let total=0; const LIMIT=300;
+  if(which==='all'||which==='guide'){
+    if(!guideIndex) buildGuideIndex();
+    const seen=new Set();
+    for(const g of guideIndex){ const i=g.t.toLowerCase().indexOf(ql); if(i>=0){ const key=g.r+g.t.slice(0,60); if(seen.has(key)) continue; seen.add(key); total++; if(out.length<LIMIT) out.push(`<a class="hit" href="#${g.r}"><div class="where">Guide · ${ROUTE_NAMES[g.r]}</div>${snippet(g.t,i,q.length)}</a>`);} }
+  }
+  for(const doc of ['talk','alpha','comp']){
+    if(!(which==='all'||which===doc)) continue;
+    const d=DOCS[doc];
+    d.pages.forEach((t,pi)=>{
+      const tl=d.lower[pi]; let i=tl.indexOf(ql); if(i<0) return;
+      let n=0; let j=i; while(j>=0){ n++; j=tl.indexOf(ql,j+ql.length); }
+      total+=n;
+      if(out.length<LIMIT){ const s=sectionFor(doc,pi+1);
+        out.push(`<a class="hit" href="#read/${doc}/${pi+1}?q=${encodeURIComponent(q)}"><div class="where">${esc(d.short)} · p. ${pi+1}${s?' · '+esc(s.t):''}${n>1?' · '+n+' hits':''}</div>${snippet(t,i,q.length)}</a>`); }
+    });
+  }
+  if(total) earn('search');
+  $('#sInfo').textContent = total? `${total} match${total>1?'es':''}${out.length>=LIMIT?' (showing first '+LIMIT+' pages/passages)':''}` : 'No matches.';
+  $('#sRes').innerHTML=out.join('');
+}
+let sT=null;
+$('#sQ').addEventListener('input',()=>{ clearTimeout(sT); sT=setTimeout(doSearch,250); });
+$('#sDoc').addEventListener('change',doSearch);
+$('#sForm').addEventListener('submit',e=>{ e.preventDefault(); doSearch(); $('#sQ').blur(); });
+for(const k of ['talk','alpha','comp']) DOCS[k].lower = DOCS[k].pages.map(p=>p.toLowerCase());
+
+/* ---------- resume ---------- */
+function renderResume(){
+  const last=store.get('last',null);
+  if(last && DOCS[last.doc]){
+    $('#resumeCard').classList.remove('hide');
+    const s=sectionFor(last.doc,last.page);
+    $('#resumeBody').innerHTML=`<a class="hit" href="#read/${last.doc}/${last.page}"><div class="where">${esc(DOCS[last.doc].short)} · page ${last.page}</div>${esc(s?s.t:DOCS[last.doc].title)}</a>`;
+  }
+}
+
+/* ---------- fun: toast, confetti, chain progress ---------- */
+const toastEl=document.createElement('div'); toastEl.className='toast'; document.body.appendChild(toastEl);
+let toastT=null;
+function toast(msg){ toastEl.innerHTML=msg; toastEl.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>toastEl.classList.remove('show'),2800); }
+function confetti(n=60){
+  const cols=['#e39a5f','#9a4b16','#2f6b3a','#e2c062','#8b2f3c','#7cc48a'];
+  for(let i=0;i<n;i++){ const c=document.createElement('div'); c.className='confetti';
+    c.style.left=Math.random()*100+'vw'; c.style.background=cols[i%cols.length];
+    c.style.animationDuration=(1.6+Math.random()*1.8)+'s'; c.style.animationDelay=(Math.random()*.4)+'s';
+    c.style.borderRadius=Math.random()<.5?'50%':'2px'; document.body.appendChild(c); setTimeout(()=>c.remove(),4200); }
+}
+const LINKS=[
+  ['l1','Read Level 1','#l1'],['l2','Read Level 2','#l2'],['l3','Read Level 3','#l3'],['l4','Explore the compendium map','#l4'],
+  ['calc','Break the formula in the α calculator','#calc'],['q0','Clear the Basics quiz','#play'],['q1','Clear the Big Picture quiz','#play'],['q2','Clear the Math quiz','#play'],
+  ['flash','Know 10 flashcards','#play'],['letter','Read 5 pages of the alpha Letter','#read/alpha/1'],['comp','Read 25 compendium pages','#read/comp/2'],['search','Search the sources','#search']
+];
+function earned(){ return store.get('links',{}); }
+function earn(id){
+  const e=earned(); if(e[id]) return; e[id]=Date.now(); store.set('links',e);
+  const L=LINKS.find(l=>l[0]===id); const n=Object.keys(e).length;
+  toast(`⛓ Link forged: <b>${esc(L?L[1]:id)}</b> · ${n}/${LINKS.length}`);
+  if(n===LINKS.length){ confetti(140); setTimeout(()=>toast('🏆 Full chain! You are now dangerously qualified to argue about α on a plane.'),3000); }
+  else confetti(30);
+  renderChain(id);
+}
+function renderChain(pop){
+  const e=earned(); const n=LINKS.filter(l=>e[l[0]]).length;
+  $('#chainCount').textContent=n; $('#chainTotal').textContent=LINKS.length;
+  $('#chainLinks').innerHTML=LINKS.map(l=>`<a href="${l[2]}" title="${esc(l[1])}" class="${e[l[0]]?'on':''} ${pop===l[0]?'pop':''}" aria-label="${esc(l[1])}${e[l[0]]?' (done)':''}"></a>`).join('');
+  const nx=LINKS.find(l=>!e[l[0]]);
+  $('#chainNext').innerHTML = nx? `Next link: <a href="${nx[2]}">${esc(nx[1])}</a>` : '🏆 Chain complete. Every link forged.';
+}
+function trackRead(doc,p){
+  const k='seen_'+doc; const s=store.get(k,{}); if(!s[p]){ s[p]=1; store.set(k,s); }
+  const n=Object.keys(s).length;
+  if(doc==='alpha'&&n>=5) earn('letter');
+  if(doc==='comp'&&n>=25) earn('comp');
+}
+window.addEventListener('scroll',()=>{
+  if(!/^l[1-4]$/.test(currentRoute)) return;
+  if(window.innerHeight+window.scrollY >= document.body.scrollHeight-400) earn(currentRoute);
+},{passive:true});
+let calcTouched=false;
+['#c1','#c2','#c3','#c6','#cN','#useK','#cNoW'].forEach(s=>$(s).addEventListener(s==='#cNoW'?'click':'input',()=>{ if(!calcTouched){calcTouched=true; setTimeout(()=>earn('calc'),600);} }));
+
+/* ---------- quiz ---------- */
+const DECKS=[
+ {name:'Basics', lv:'Level 1', desc:'The 60-second ideas: what, who, the number.', qs:[
+  ['What is Chain Theory\'s single input?', ['A Lagrangian with 19 parameters','One axiom about maximally entangled pairs of qudits','Ten-dimensional strings','A cellular automaton rule'],1,'The whole construction starts from one sentence: "Nothing exists but finitely many maximally entangled pairs of qudits, some qudits shared, known only by distilling them."'],
+  ['Which famous constant does the alpha Letter target?', ['The speed of light','Newton\'s G','The fine-structure constant α','Planck\'s constant'],2,'α ≈ 1/137.036 sets the strength of electromagnetism. Feynman called it "a magic number that comes to us with no understanding by man."'],
+  ['In the name "Chain Theory," particles are pictured as…', ['Vibrating continuous strings','Finite chainmail of discrete entangled links','Point-like billiard balls','Waves in an aether'],1,'"A chain, not a string." Particles are finite networks of discrete links.'],
+  ['What is a qudit?', ['A unit of quantum money','A quantum system with a finite number d ≥ 2 of states','A quark with a dipole','A dark-matter particle'],1,'Qubit = 2 states, qutrit = 3, ququart = 4, and so on. All are qudits.'],
+  ['How closely does the candidate 1/α match CODATA 2022?', ['Within 1%','About 3 digits','About 10 significant digits, 0.6σ away','It matches exactly, with zero uncertainty'],2,'137.035 999 189 6… vs 137.035 999 177(21): ten significant digits, 0.60 standard deviations.'],
+  ['What checks the arithmetic of the count?', ['A Mathematica notebook','A single Lean 4 proof file','Peer review','A supercomputer simulation'],1,'A single Lean 4 file with no imports builds all 172 records and evaluates the readout exactly.'],
+  ['Is "this number IS the physical α" proved?', ['Yes, in Lean','Yes, by experiment','No, it\'s the Photon Conjecture, tested by measurement','No, AWG says it\'s a coincidence'],2,'The number is a theorem of the definitions. Its identification with α(0) is explicitly a conjecture.'],
+  ['What would falsify the conjecture?', ['Nothing, it\'s unfalsifiable','Future α measurements converging away from 137.035 999 189…','Finding a 4th generation','A failed Lean build'],1,'The exact form has no uncertainty of its own. More precise α(0) measurements will either close in on it or rule it out.']
+ ]},
+ {name:'Big Picture', lv:'Level 2', desc:'Clues, genres, grades, and the skeptic\'s view.', qs:[
+  ['Which is NOT one of AWG\'s three clues?', ['Finite information in a bounded region (Bekenstein)','The Standard Model gauge group','No observed substructure in elementary particles','The muon g−2 anomaly'],3,'The three clues are a bound, a gauge group, and a null result.'],
+  ['The gauge group SU(3)×SU(2)×U(1) is read as the symmetry of…', ['A ten-dimensional manifold','A qutrit maximally entangled with a qubit','Three qubits in a ring','The Higgs field'],1,'Basis changes at the ends give SU(3) and SU(2), plus a relative phase that neither end owns.'],
+  ['"Bound entanglement" first becomes possible when d₁·d₂ exceeds…', ['2','4','6','12'],2,'Above 6 (Horodecki 1998). The same threshold sets the read cap.'],
+  ['Which two genres are "readable"?', ['(2,2) and (3,2)','(3,3) and (4,4)','(4,2) and (4,3)','All six'],0,'Only d₁d₂ ≤ 6 is readable: (2,2), conjectured spacetime, and (3,2), conjectured electromagnetism. The other four are dark.'],
+  ['Which sector is conjectured for the dark (3,3) genre?', ['Gravity','The strong interaction / confinement','The Higgs','Dark energy'],1,'No read survives at first order at (3,3), which Part IX reads as confinement.'],
+  ['In the axiom, "distilling" two qudits is essentially…', ['Heating them','The projection used in entanglement swapping','Cloning them','Measuring their mass'],1,'Project onto the maximally entangled state in one step, with no failure branch. In a lab it\'s a Bell-measurement outcome with probability 1/d².'],
+  ['How many results does the compendium grade as full theorems?', ['7','100','407','754'],1,'100 theorems, 109 conditional theorems, 198 open results. 64 theorems are tied to Lean declarations.'],
+  ['AWG\'s own caution about many of his "theorems":', ['They were found by AI','They are exhaustive checks over a finite catalog of webs','They contradict experiment','They assume string theory'],1,'E.g., the second law is checked at all 228 one-act reads of fourteen bodies: "a census of a finite catalog, not a proof for every web."'],
+  ['Why is the gap from "hypercharge" to the photon important?', ['It isn\'t','The link\'s charge is the hypercharge direction; reaching electric charge lies beyond the Letter','Hypercharge is the same as mass','It doubles α'],1,'The talk says so directly: the passage to electric charge, together with spacetime and helicity, lies beyond the Letter.']
+ ]},
+ {name:'The Math', lv:'Level 3', desc:'Records, weights, and 31104.', qs:[
+  ['How many measurement records does the count use?', ['137','169','172','31104'],2,'169 products of two letters at different slots, plus 3 commutator records at the qubits.'],
+  ['Where do the 3 commutator records come from?', ['Gluons','Two reads at a qubit anticommute (XZ = −ZX)','The three generations','The three dimensions of space'],1,'By the definition of "known," the commutator of two anticommuting reads is itself fixed, with a sign set by the order of the reads.'],
+  ['The denominator N = 31104 equals…', ['137 × 227','24 · 36 · 36','2¹⁵','172²'],1,'24 = (3²−1)(2²−1) for the unread link; 36 = (3·2)² for each read link.'],
+  ['How many "letters" sit at a qutrit end?', ['3','4','8 (Gell-Mann matrices)','9'],2,'d² − 1 traceless basis elements: 8 at a qutrit, 3 (Paulis) at a qubit.'],
+  ['The configuration of Theorem 1 is…', ['Two qubits, one link','A shared qutrit with three links to qubits, two of them read','A triangle of qutrits','A ququart hub'],1,'The "fine-structure star": two read links (the insertions) plus one unread link (the state).'],
+  ['Why does a record surviving an exchange get weight √d?', ['It\'s fitted to data','Its letter runs over d strands at amplitude 1/√d each: d·(1/√d) = √d','It\'s a convention','Because α ≈ √137'],1,'The strand picture: each strand of a pair carries 1/√d.'],
+  ['Which group of records has weight √3?', ['79 antisymmetric','48 symmetric, one slot at each end','42 symmetric, both slots at one kind of end','3 commutators'],2,'The exchange of reads X acts at the qutrit (d = 3): Sym²8 + Sym²3 = 36 + 6 = 42.'],
+  ['Using weights k instead of √k gives 1/α ≈ …', ['137.04','97.51','180.84','139.03'],1,'97.51. AWG rejects it because k is a four-letter, four-point quantity. Try it in the calculator.'],
+  ['Why is (3,2) the one readable genre with an acting central charge?', ['Q acts as i(d₂ − d₁): zero at (2,2), nonzero at (3,2)','Because 3+2 = 5','It has the most letters','It\'s chosen to fit α'],0,'The center Q = i·diag(d₂𝟙, −d₁𝟙) acts on the link as the scalar i(d₂ − d₁).'],
+  ['The candidate α lies in which number field?', ['ℚ','ℚ(√2, √3)','ℚ(π)','ℚ(i)'],1,'(79 + 48√2 + 42√3 + 3√6)/31104, with rational coordinates (79/31104, 1/648, 7/5184, 1/10368).']
+ ]}
+];
+let Q=null;
+function shuffle(a){ for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]];} return a; }
+function renderDecks(){
+  const best=store.get('best',{});
+  $('#deckList').innerHTML=DECKS.map((d,i)=>`<a class="card" href="#play" data-deck="${i}"><div class="lv">${d.lv} · ${d.qs.length} questions</div><div class="t">${esc(d.name)} ${earned()['q'+i]?'⛓':''}</div><div class="d">${esc(d.desc)}${best[i]!=null?` · best: ${best[i]}/${d.qs.length}`:''}</div></a>`).join('');
+}
+$('#deckList').addEventListener('click',e=>{ const a=e.target.closest('[data-deck]'); if(a){ e.preventDefault(); startQuiz(+a.dataset.deck); }});
+function showPlay(which){ ['#quizPick','#quizBox','#quizDone','#flashBox'].forEach(s=>$(s).classList.toggle('hide', s!==which)); window.scrollTo(0,0); }
+function startQuiz(i){
+  const d=DECKS[i];
+  Q={deck:i, order:shuffle(d.qs.map((_,k)=>k)), at:0, score:0, streak:0};
+  showPlay('#quizBox'); renderQ();
+}
+function renderQ(){
+  const d=DECKS[Q.deck]; const q=d.qs[Q.order[Q.at]];
+  $('#qProg').textContent=`${d.name} · ${Q.at+1}/${d.qs.length}`;
+  $('#qScore').textContent=`Score ${Q.score}${Q.streak>=3?' · 🔥'+Q.streak:''}`;
+  $('#qBarFill').style.width=(Q.at/d.qs.length*100)+'%';
+  $('#qText').textContent=q[0];
+  const opts=shuffle(q[1].map((t,k)=>({t,k})));
+  $('#qOpts').innerHTML=opts.map(o=>`<button data-k="${o.k}">${esc(o.t)}</button>`).join('');
+  $('#qExp').classList.add('hide'); $('#qNext').classList.add('hide');
+}
+$('#qOpts').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b||$('#qOpts').dataset.done==='1'&&false) return;
+  if($$('#qOpts button.right').length) return;
+  const d=DECKS[Q.deck]; const q=d.qs[Q.order[Q.at]]; const k=+b.dataset.k;
+  const ok = k===q[2];
+  $$('#qOpts button').forEach(x=>{ if(+x.dataset.k===q[2]) x.classList.add('right'); });
+  if(!ok){ b.classList.add('wrong'); Q.streak=0; } else { Q.score++; Q.streak++; if(Q.streak===3) toast('🔥 3 in a row!'); if(Q.streak===5) toast('🔥🔥 5 streak. Entangled with the truth.'); }
+  const ex=$('#qExp'); ex.className='callout '+(ok?'good':'warn'); ex.innerHTML=(ok?'<b>Correct.</b> ':'<b>Not quite.</b> ')+esc(q[3]);
+  $('#qScore').textContent=`Score ${Q.score}${Q.streak>=3?' · 🔥'+Q.streak:''}`;
+  $('#qNext').classList.remove('hide'); $('#qNext').textContent = Q.at+1<d.qs.length?'Next →':'See results';
+});
+$('#qNext').onclick=()=>{ const d=DECKS[Q.deck]; Q.at++; if(Q.at<d.qs.length) renderQ(); else finishQuiz(); };
+$('#qQuit').onclick=()=>{ renderDecks(); showPlay('#quizPick'); };
+function finishQuiz(){
+  const d=DECKS[Q.deck], n=d.qs.length, s=Q.score, pct=s/n;
+  const best=store.get('best',{}); if(best[Q.deck]==null||s>best[Q.deck]){ best[Q.deck]=s; store.set('best',best); }
+  $('#qdEmoji').textContent = pct===1?'🏆':pct>=.7?'⛓':pct>=.4?'🤔':'🌀';
+  $('#qdTitle').textContent = `${s} / ${n}`;
+  $('#qdText').textContent = pct===1?'Flawless. Maximally entangled with the material.':pct>=.7?'Deck cleared! A new link is forged.':'Need 70% to forge this link. Review the level and try again.';
+  showPlay('#quizDone');
+  if(pct>=.7){ confetti(pct===1?120:50); earn('q'+Q.deck); }
+}
+$('#qdAgain').onclick=()=>startQuiz(Q.deck);
+$('#qdBack').onclick=()=>{ renderDecks(); showPlay('#quizPick'); };
+
+/* ---------- flashcards ---------- */
+let F=null;
+function startFlash(){
+  const cards=$$('#glList dt').map(dt=>({f:dt.textContent, b:dt.nextElementSibling.textContent}));
+  F={q:shuffle(cards), known:store.get('fknown',0), n:0};
+  showPlay('#flashBox'); renderF();
+}
+function renderF(){
+  const c=F.q[0]; $('#fCard').classList.remove('flipped');
+  setTimeout(()=>{ $('#fFront').textContent=c.f; $('#fBack').textContent=c.b; }, 150);
+  $('#fProg').textContent=`Known so far: ${F.known} · cards in deck: ${F.q.length} · tap the card to flip`;
+}
+$('#flashBtn').onclick=e=>{ e.preventDefault(); startFlash(); };
+$('#fCard').onclick=()=>$('#fCard').classList.toggle('flipped');
+$('#fGot').onclick=()=>{ F.known++; store.set('fknown',F.known); F.q.push(F.q.shift()); if(F.known>=10) earn('flash'); renderF(); };
+$('#fMiss').onclick=()=>{ const c=F.q.shift(); F.q.splice(Math.min(3,F.q.length),0,c); renderF(); };
+$('#fQuit').onclick=()=>{ renderDecks(); showPlay('#quizPick'); };
+
+/* ---------- router ---------- */
+let currentRoute='home';
+function route(){
+  const h=decodeURIComponent(location.hash.slice(1)||'home');
+  let r=h, args=[];
+  if(h.startsWith('read/')){ r='read'; args=h.split('/'); }
+  if(!$(`section[data-route="${r}"]`)) r='home';
+  currentRoute=r;
+  $$('section[data-route]').forEach(s=>s.classList.toggle('hide', s.dataset.route!==r));
+  $$('#tabs a').forEach(a=>a.classList.toggle('on', a.dataset.r===r || (r==='read'&&a.dataset.r==='library')));
+  const on=$('#tabs a.on'); if(on) on.scrollIntoView({inline:'center',block:'nearest'});
+  if(r==='read'){
+    const doc=args[1]; let [pg,qs]=(args[2]||'1').split('?'); let hl=null;
+    if(qs){ const m=qs.match(/q=([^&]*)/); if(m) hl=decodeURIComponent(m[1]); }
+    if(!DOCS[doc]){ location.hash='#library'; return; }
+    showReader(doc, parseInt(pg,10), hl);
+    if(hl){ const m=$('#rPages mark'); if(m) setTimeout(()=>m.scrollIntoView({block:'center'}),30); }
+  } else {
+    window.scrollTo(0,0);
+    if(r==='home'){ renderResume(); renderChain(); }
+    if(r==='play'){ renderDecks(); showPlay('#quizPick'); }
+    if(r==='library') renderBm();
+    if(r==='search'){ const q=store.get('lastq',''); if(q && !$('#sQ').value){ $('#sQ').value=q; doSearch(); } }
+    if(r!=='home' && r!=='search') store.set('lastRoute', r);
+  }
+}
+window.addEventListener('hashchange',route);
+document.addEventListener('keydown',e=>{
+  if(currentRoute!=='read'||e.target.tagName==='INPUT') return;
+  if(e.key==='ArrowRight') $('#rNext').click(); if(e.key==='ArrowLeft') $('#rPrev').click();
+});
+renderParts();
+route();
+})();
+</script>
+</body>
+</html>
