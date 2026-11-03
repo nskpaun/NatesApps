@@ -2,10 +2,10 @@
 """Convert the web guide content + PDFs into JSON assets for the Android app."""
 import json, re, subprocess, sys, pathlib, shutil
 from html.parser import HTMLParser
-ROOT = pathlib.Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(ROOT / "chain-theory" / "src"))
+ROOT = pathlib.Path(__file__).resolve().parents[2]  # chain-theory/
+sys.path.insert(0, str(ROOT / "web"))
 import build as web  # reuse text extraction
-TPL = (ROOT / "chain-theory" / "src" / "template.html").read_text(encoding="utf-8")
+TPL = (ROOT / "web" / "template.html").read_text(encoding="utf-8")
 ASSETS = ROOT / "android" / "app" / "src" / "main" / "assets"
 ASSETS.mkdir(parents=True, exist_ok=True)
 
@@ -177,7 +177,7 @@ content["parts"] = data["parts"]; content["decks"] = data["decks"]
 (ASSETS / "content.json").write_text(json.dumps(content, ensure_ascii=False), encoding="utf-8")
 
 for key, (fn, title, short) in web.DOCS.items():
-    p = ROOT / "chain-theory" / "pdfs" / fn
+    p = ROOT / "pdfs" / fn
     d = {"title": title, "short": short, "pages": web.pages(p, slides=(key == "talk")), "outline": web.outline(p)}
     (ASSETS / f"{key}.json").write_text(json.dumps(d, ensure_ascii=False), encoding="utf-8")
     shutil.copy(p, ASSETS / f"{key}.pdf")

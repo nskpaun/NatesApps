@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Build the single-file offline Chain Theory Explorer.
 
-Usage: python3 chain-theory/src/build.py
-Reads PDFs from chain-theory/pdfs/, writes chain-theory/chain-theory.html.
+Usage: python3 chain-theory/web/build.py
+Reads PDFs from chain-theory/pdfs/, writes chain-theory/web/chain-theory.html.
 Requires: pdftotext (poppler-utils), pypdf.
 """
 import base64, json, re, subprocess, pathlib
@@ -110,7 +110,7 @@ def main():
         tpl = tpl.replace(f"__PDF_{key.upper()}__", b64)
     js = json.dumps(data, ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/")
     tpl = tpl.replace("__DOCS_JSON__", js)
-    out = ROOT / "chain-theory.html"
+    out = HERE / "chain-theory.html"
     out.write_text(tpl, encoding="utf-8")
     print(out, round(out.stat().st_size / 1e6, 2), "MB")
 
