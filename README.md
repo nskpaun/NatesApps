@@ -14,6 +14,15 @@ An offline guide to Alex Wissner-Gross's **Chain Theory** (October 2026), his at
 - **Single-file web version**: the same content in one HTML file that works offline in any browser.
 - **Install:** download [`chain-theory/ChainTheory.apk`](chain-theory/ChainTheory.apk) on an Android phone and open it. Allow installs from unknown sources when prompted.
 
+### [Ackoff: Systems Thinking for the Flight](ackoff/)
+
+A guide to **Russell Ackoff**: his 1993 talk *From Mechanistic to Social Systemic Thinking*, and his claim that leadership is an aesthetic act.
+
+![Ackoff app on Android: home, talk guide, leadership, swipe game and quiz](ackoff/docs/screenshots.png)
+
+- **Native Android app**, fully offline: five levels (from a 3-minute intro to hands-on exercises), a section-by-section study guide to the talk, quizzes, flashcards, a "Machine or Systems?" swipe game, search, and a library that imports PDFs for offline reading.
+- **Install:** download [`ackoff/Ackoff.apk`](ackoff/Ackoff.apk) on an Android phone and open it.
+
 ## Repository layout
 
 ```
