@@ -14,6 +14,30 @@ An offline app for exploring Alex Wissner-Gross's **Chain Theory** (October 2026
 - **Library:** the full text of the intro talk, the alpha Letter and the compendium, with contents, bookmarks, resume, and the original PDF pages (pinch to zoom).
 - **Search:** across the guide and all three documents.
 
+## Website
+
+The browser port lives at [`web/chain-theory/`](../web/chain-theory/) in this repository (not in `chain-theory/web/`, which is still the single-file offline build). Install, test, and production build:
+
+```bash
+cd web/chain-theory
+npm install
+npm test
+npm run build          # static site in dist/
+```
+
+To deploy that site on Vercel, use this repository with:
+
+| Setting | Value |
+| --- | --- |
+| Root directory | `web/chain-theory` |
+| Framework preset | Vite |
+| Install command | `npm install` |
+| Build command | `npm run build` |
+| Output directory | `dist` |
+| Node.js version | 22.x |
+
+No environment variables. The build copies the guide and PDFs from the Android assets, so the Vercel project has to be the whole repository with that root directory.
+
 ## Install
 
 - **Android:** download [`ChainTheory.apk`](ChainTheory.apk) on the phone, open it, and allow installs from that source when prompted. It is signed with a debug key, so Play Protect may warn that it's from an unknown developer.
