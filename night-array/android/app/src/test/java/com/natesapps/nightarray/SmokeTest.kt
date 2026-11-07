@@ -138,6 +138,15 @@ class SmokeTest {
         act("dock-strip-lower")
         assertEquals("studio", app.nav.top)
         assertEquals("lower", app.host.dockStep)
+        post("""{"type":"ready"}""") // the page is up: what was queued for it goes out
+        assertTrue(sent.contains("""NA.dock("lower")"""))
+        back(); assertEquals("story/dock", app.nav.top)
+        // step 3 lifts the laptop straight out: there is nothing to release first
+        scrollTo("story", "seq")
+        act("dock-strip-lift")
+        assertEquals("lift", app.host.dockStep)
+        assertTrue(sent.contains("""NA.dock("lift")"""))
+        assertFalse(sent.any { it.contains("release") })
     }
 
     @Test fun boardZoomsAndBackReturns() = show("board") {
@@ -276,16 +285,23 @@ class SmokeTest {
         post("""{"type":"dockStep","step":"lower"}""")
         tag("dock-step-lower").assertIsSelected(); tag("dock-step-align").assertIsNotSelected()
         assertTrue(shows(dockUiSteps(scene)[1].caption))
-        post("""{"type":"dockStep","step":"release"}""")
-        tag("dock-step-release").assertIsSelected()
         post("""{"type":"dockStep","step":"lift"}""")
-        tag("dock-step-release").assertIsSelected()
+        tag("dock-step-lift").assertIsSelected(); tag("dock-step-lower").assertIsNotSelected()
+        assertTrue(shows(dockUiSteps(scene)[2].caption))
+        // a step this app doesn't know (an older page's "release") changes nothing
+        post("""{"type":"dockStep","step":"release"}""")
+        tag("dock-step-lift").assertIsSelected(); assertEquals("lift", app.host.dockStep)
         post("""{"type":"dockStep","step":"done"}""")
-        listOf("align", "lower", "release").forEach { tag("dock-step-$it").assertIsNotSelected() }
+        listOf("align", "lower", "lift").forEach { tag("dock-step-$it").assertIsNotSelected() }
         assertFalse(app.host.dockPlaying)
-        // tapping step 3 twice: release, then lift
-        act("dock-step-release"); assertTrue(sent.contains("""NA.dock("release")"""))
-        act("dock-step-release"); assertTrue(sent.contains("""NA.dock("lift")"""))
+        // three cards, three steps: card 3 lifts the laptop straight out in one tap
+        act("dock-step-lift"); assertEquals("""NA.dock("lift")""", sent.last { it.startsWith("NA.dock(") })
+        tag("dock-step-lift").assertIsSelected()
+        act("dock-step-align"); assertEquals("""NA.dock("align")""", sent.last { it.startsWith("NA.dock(") })
+        // NA.dock only ever gets align | lower | lift | play | reset
+        val before = sent.size
+        app.host.dock("release"); idle(); tick(300)
+        assertEquals("an unknown step sends nothing", before, sent.size); assertEquals("align", app.host.dockStep)
         // error → still + notice with the message
         post("""{"type":"error","message":"WebGL2 unavailable"}""")
         assertEquals(LiveStatus.Error, app.host.status)
@@ -317,7 +333,7 @@ class SmokeTest {
         assertTrue("Playing…", shows("Playing"))
         assertEquals("the still follows the step", "align", app.host.dockStep)
         runDock(6500, seen)
-        assertEquals(listOf("align", "lower", "release", "lift"), seen)
+        assertEquals(listOf("align", "lower", "lift"), seen)
         assertFalse("the sequence ends", app.host.dockPlaying)
         assertNull(app.host.dockStep)
         assertTrue(shows("Play sequence"))
@@ -336,7 +352,7 @@ class SmokeTest {
         assertEquals(0, host.pending)
         val seen = mutableListOf<String?>()
         repeat(60) { shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(100)); host.dockStep?.let { if (seen.lastOrNull() != it) seen += it } }
-        assertEquals("carries on from where it was", listOf("lower", "release", "lift"), seen)
+        assertEquals("carries on from where it was", listOf("lower", "lift"), seen)
         assertFalse(host.dockPlaying)
         // a page that took the command but never reports a step doesn't leave "Playing…" forever either
         host.handle("""{"type":"ready"}""")
@@ -549,14 +565,19 @@ class SmokeTest {
         assertEquals(2, s.screen.panels)
         assertEquals(5120, s.screen.canvasW)
         assertTrue(s.groups.all { g -> s.partsOf(g.id).isNotEmpty() })
-        assertEquals(listOf("align", "lower", "release"), dockUiSteps(s).map { it.id })
+        assertEquals(listOf("align", "lower", "lift"), dockUiSteps(s).map { it.id })
+        assertEquals(listOf("dock-align.jpg", "dock-lower.jpg", "dock-lift.jpg"), dockUiSteps(s).map { it.still })
+        assertEquals(listOf("Align", "Lower", "Lift out"), dockUiSteps(s).map { it.title })
         // partial / hostile input never throws and falls back sensibly
         val p = SceneParser.parse("""{"groups":[{"id":"base","bbox_mm":"oops"},{"nope":1},5],"parts":[{"id":"base_shell","group":"base","mass_g":"x"}],
             "screen":{"panels":"two","resolution_each":[2560],"seam_mm":-3},"dock_sequence":[],"files":[{"path":"files/parts/base.step"}],"bounds":{"min":[0]}}""")
         assertEquals("base", p.groups.single().id)
         assertEquals(2, p.screen.panels); assertEquals(listOf(2560, 1440), p.screen.resEach); assertEquals(14.0, p.screen.seamMm, 0.0)
         assertEquals("STEP", p.files.single().format)
-        assertEquals(4, p.dockSteps.size)
+        assertEquals(listOf("align", "lower", "lift"), p.dockSteps.map { it.step })
+        assertEquals(listOf("align", "lower", "lift"), Fallback.scene.dockSteps.map { it.step })
+        assertTrue(Fallback.scene.partsOf("dock").any { it.id == "dock_led" && it.material == "amber_led" })
+        assertFalse(Fallback.scene.parts.any { it.id.contains("latch") })
         val empty = SceneParser.parse("{}")
         assertEquals(Fallback.scene.groups.size, empty.groups.size)
         assertEquals(mimeOf("STEP"), "model/step"); assertEquals(mimeOf("STL"), "model/stl"); assertEquals(mimeOf("GLB"), "model/gltf-binary")
@@ -592,7 +613,13 @@ class SmokeTest {
         assertTrue(s.stationMassG in 15_000.0..60_000.0)
         assertEquals("Neutral Titanium", s.materialLabel("titanium"))
         assertTrue(s.materialSpecs["titanium"].orEmpty().contains("titanium", ignoreCase = true))
-        assertEquals(listOf("align", "lower", "release", "lift"), s.dockSteps.map { it.step })
+        assertEquals(listOf("align", "lower", "lift"), s.dockSteps.map { it.step })
+        assertEquals(listOf("Align", "Lower", "Lift out"), s.dockSteps.map { it.title })
+        // the dock is latch-free: a seated light and nothing that moves
+        assertEquals(listOf("dock_cradle", "dock_panels", "dock_led", "dock_connector"), s.group("dock")!!.parts)
+        assertEquals("amber_led", s.parts.single { it.id == "dock_led" }.material)
+        assertFalse(s.parts.any { it.id.contains("latch") })
+        assertEquals(dockUiSteps(s).map { it.caption }, s.dockSteps.map { it.caption })
         assertTrue(s.dims.any { it.id == "seam" } && s.dims.any { it.pose == "work" })
         specSheet(s).flatMap { it.rows }.forEach { assertFalse(it.label, it.value.contains("null") || it.value.contains("NaN")) }
         STORIES.forEach { st -> storySpecs(st, s).forEach { assertFalse(it.label, it.value.contains("null") || it.value.contains("NaN")) } }
@@ -836,12 +863,38 @@ class SmokeTest {
             assertEquals(46.0, portFromHingeMm(s)!!, 0.5)
             val dock = storySpecs(story("dock")!!, s)
             assertTrue(dock.any { it.label == "Laptop" && it.value.startsWith("Slim laptops up to 18 mm thick") })
-            assertTrue(dock.any { it.label == "Footprint" && it.value == "125 × 260 mm (268 with latch)" })
+            assertTrue(dock.any { it.label == "Footprint" && it.value == "125 × 260 mm" })
+            assertTrue(dock.any { it.label == "Seated light" && it.value == "30 × 2 mm amber line on the front face" })
+            assertTrue(specSheet(s).flatMap { it.rows }.any { it.label == "Dock light" && it.value.startsWith("30 mm") })
             assertTrue(storySpecs(story("charge")!!, s).any { it.value == "2 coils, 160 mm apart" })
             assertTrue(specSheet(s).flatMap { it.rows }.any { it.label == "Laptops" && it.value.contains("18 mm thick") && it.value.contains("46 mm from the hinge end") })
         }
+        assertEquals("no line starts with a dash", "Lift straight up\u00A0— nothing to unlock", "Lift straight up — nothing to unlock".nbUnits())
+        assertEquals("its own weight seats it on the USB-C", "Its own weight seats it on the USB-C".lowerFirst()); assertEquals("USB-C", "USB-C".lowerFirst())
         assertFalse(MODES.any { it.body.contains("session and all") })
         assertFalse(STORIES.flatMap { it.body }.any { it.contains("turn your eyes, not your head") })
+    }
+
+    /** The dock is latch-free: no copy about it may talk of a latch, a button, a lock or a switch, or of pressing or releasing it. */
+    @Test fun dockCopyIsLatchFree() {
+        val banned = Regex("""\b(latch\w*|press(es|ed|ing)?|press-release|buttons?|lock(s|ed|ing)?|switch\w*|releas\w*)\b""", RegexOption.IGNORE_CASE)
+        val fixture = SceneParser.parse(javaClass.classLoader!!.getResourceAsStream("scene-fixture.json")!!.bufferedReader().use { it.readText() })
+        for (sc in listOf(Repo.scene(ctx), fixture, Fallback.scene)) {
+            val copy = buildList {
+                for (id in listOf("dock", "amber")) {
+                    val st = story(id)!!
+                    add(st.title); add(st.line); add(st.lede); addAll(st.body); addAll(st.stills.map { it.caption })
+                    (st.specs + storySpecs(st, sc)).forEach { add(it.label); add(it.value) }
+                }
+                specSheet(sc).filter { it.title in setOf("Dock", "Lighting") }.flatMap { it.rows }.forEach { add(it.label); add(it.value) }
+                dockUiSteps(sc).forEach { add(it.title); add(it.caption) }
+                sc.dockSteps.forEach { add(it.title); add(it.caption) }
+                listOf("dock", "laptop").mapNotNull { sc.group(it) }.forEach { add(it.name); add(it.summary); add(it.description) }
+                sc.partsOf("dock").forEach { add(it.name) }
+            }
+            assertTrue(copy.size > 30)
+            copy.forEach { assertNull("\"$it\"", banned.find(it)) }
+        }
     }
 
     @Test fun stillsMatchTheViewerState() {
@@ -852,6 +905,11 @@ class SmokeTest {
         st.isolate = null; st.style = "studio"
         assertEquals("trays.jpg", stillsFor(st, camera = "trays").first())
         assertEquals("dock-lower.jpg", stillsFor(st, dockStep = "lower").first())
-        assertEquals("display", stillFocus("renders/display.jpg")); assertEquals("release", stillDockStep("dock-release.jpg"))
+        assertEquals("dock-align.jpg", stillsFor(st, dockStep = "align").first())
+        assertEquals("dock-lift.jpg", stillsFor(st, camera = "dock", dockStep = "lift").first())
+        assertFalse("the seated still never stands in for the lift", "dock-lower.jpg" in stillsFor(st, camera = "dock", dockStep = "lift"))
+        assertEquals("dock-lower.jpg", stillsFor(st, camera = "dock").first())
+        assertFalse(stillsFor(st, dockStep = "release").any { it.startsWith("dock-") })
+        assertEquals("display", stillFocus("renders/display.jpg")); assertEquals("lift", stillDockStep("dock-lift.jpg"))
     }
 }

@@ -71,7 +71,7 @@ class ViewerHost(private val appContext: Context) {
     var errorMessage by mutableStateOf<String?>(null); private set
     /** Group the user tapped in the 3D view (drives the part sheet). */
     var picked by mutableStateOf<String?>(null)
-    /** Last dockStep event (align/lower/release/lift), null when idle or done. */
+    /** Last dockStep event (align/lower/lift), null when idle or done. */
     var dockStep by mutableStateOf<String?>(null); private set
     var dockPlaying by mutableStateOf(false); private set
     var lastCamera by mutableStateOf("hero"); private set
@@ -125,7 +125,8 @@ class ViewerHost(private val appContext: Context) {
                 main.removeCallbacks(dockWatchdog); cancelLocalDock()
                 when (val s = o.optString("step")) {
                     "done" -> { dockStep = null; dockPlaying = false }
-                    "align", "lower", "release", "lift" -> dockStep = s
+                    in DOCK_STEP_IDS -> dockStep = s
+                    // anything else (a step this app doesn't know) changes nothing
                 }
             }
             "error" -> fail(o.optString("message", "").ifBlank { "the live renderer stopped" })
@@ -156,7 +157,9 @@ class ViewerHost(private val appContext: Context) {
 
     fun camera(name: String) { lastCamera = name; call("NA.camera(${JSONObject.quote(name)})") }
     fun frame(group: String) { call("NA.frame(${JSONObject.quote(group)})") }
+    /** NA.dock: one of the [DOCK_STEPS] (align / lower / lift), "play" or "reset". Anything else is ignored, as the page does. */
     fun dock(step: String) {
+        if (step != "play" && step != "reset" && step !in DOCK_STEP_IDS) return
         cancelLocalDock(); main.removeCallbacks(dockWatchdog)
         when (step) {
             "play" -> { dockPlaying = true; dockStep = null }
@@ -561,8 +564,13 @@ class ViewerHost(private val appContext: Context) {
 
     companion object {
         const val TAG = "NightArray"
-        /** Stills timings for the dock sequence (ms from the start), after app.js playDock. */
-        private val LOCAL_DOCK = listOf("align" to 0L, "lower" to 1500L, "release" to 3000L, "lift" to 4300L, "done" to 6000L)
+        /**
+         * Stills timings for the dock sequence (ms from the start), after app.js DOCK_PLAY but a little slower (these are
+         * stills): align, lower at 1.5 s, a beat seated with the light on, then the lift, and done as it settles back in.
+         */
+        private val LOCAL_DOCK = listOf("align" to 0L, "lower" to 1500L, "lift" to 3500L, "done" to 5500L)
+        /** The dock steps a page may report and a step card may send (SPEC.md §3 dock_sequence). */
+        val DOCK_STEP_IDS: Set<String> = DOCK_STEPS.map { it.first }.toSet()
         private const val DOCK_WATCHDOG_MS = 15_000L
         /** Watchdog periods a still-loading page gets to report a dock step before the stills play the sequence. */
         private const val DOCK_WATCHDOG_PERIODS = 2
@@ -599,11 +607,12 @@ fun ViewerSlot(host: ViewerHost, modifier: Modifier = Modifier) {
 fun stillsFor(s: ViewerState, camera: String = "hero", dockStep: String? = null): List<String> = buildList {
     s.isolate?.let { add("part-$it.jpg") }
     if (s.cinematic) add("night.jpg")
-    when (dockStep) { "align" -> add("dock-align.jpg"); "lower" -> add("dock-lower.jpg"); "release", "lift" -> add("dock-release.jpg") }
+    if (dockStep != null && dockStep in ViewerHost.DOCK_STEP_IDS) add("dock-$dockStep.jpg")
     when (s.style) { "cad" -> add("cad.jpg"); "xray" -> add("xray.jpg"); "blueprint" -> add("blueprint.jpg") }
     if (s.sectionOn) add("section.jpg")
     if (s.explode > 0.25f) add("exploded.jpg")
-    if (s.style == "studio") when (camera) { "dock" -> add("dock-lower.jpg"); "trays" -> add("trays.jpg"); "display" -> add("display.jpg") }
+    // the dock camera's still shows the laptop seated: not while the sequence has it in the air
+    if (s.style == "studio") when (camera) { "dock" -> if (dockStep == null || dockStep == "lower") add("dock-lower.jpg"); "trays" -> add("trays.jpg"); "display" -> add("display.jpg") }
     if (s.finish != "titanium") add("finish-${s.finish}.jpg")
     if (s.amber < 0.05f) add("amber-off.jpg")
     add("hero-${s.mode}.jpg")

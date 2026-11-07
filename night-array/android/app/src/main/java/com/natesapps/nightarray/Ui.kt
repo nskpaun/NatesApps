@@ -273,8 +273,11 @@ fun Panel(modifier: Modifier = Modifier, padding: Dp = 18.dp, content: @Composab
 /** label ......... value row used in spec lists. */
 private val UNIT_GAP = Regex("""(\d) (mm|cm|kg|g|ppi|%|cm³|m|°)(?!\p{L})""")
 
-/** Keeps a number with its unit ("54 mm", "29.00 kg") and with "×", so a measurement never breaks across lines. */
-fun String.nbUnits(): String = UNIT_GAP.replace(this) { "${it.groupValues[1]}\u00A0${it.groupValues[2]}" }.replace(" × ", "\u00A0×\u00A0")
+/**
+ * Keeps a number with its unit ("54 mm", "29.00 kg") and with "×", so a measurement never breaks across lines; and an
+ * em dash with the word before it, so no line starts with one ("Lift straight up — nothing to unlock").
+ */
+fun String.nbUnits(): String = UNIT_GAP.replace(this) { "${it.groupValues[1]}\u00A0${it.groupValues[2]}" }.replace(" × ", "\u00A0×\u00A0").replace(" — ", "\u00A0— ")
 
 @Composable
 fun SpecRow(label: String, value: String, modifier: Modifier = Modifier, last: Boolean = false) {

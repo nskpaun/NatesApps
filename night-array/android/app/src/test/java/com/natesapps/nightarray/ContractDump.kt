@@ -217,13 +217,15 @@ class ContractDump {
             // the dock panel
             step("Dock panel: Play sequence") { host.camera("dock"); host.dock("play") }
             dockEvents()
-            for (s in dockUiSteps(scene)) step("Dock step card ${s.n} (${s.id})") { host.dock(dockCard(s, host)) }
-            step("Dock step card 3 again (lift)") { host.dock(dockCard(dockUiSteps(scene)[2], host)) }
+            for (s in dockUiSteps(scene)) step("Dock step card ${s.n} (${s.id})") { host.dock(dockCard(s)) }
+            step("Dock step card 3 again (lift)") { host.dock(dockCard(dockUiSteps(scene)[2])) }
             step("Dock panel: Reset") { host.dock("reset") }
             step("Dock panel: Play sequence") { host.camera("dock"); host.dock("play") }
             event("page: dockStep align", """{"type":"dockStep","step":"align"}""")
             step("Dock panel: Reset mid-sequence") { host.dock("reset") }
             step("Explore dock strip: step 2 (lower)") { app.openStudio(Preset(mode = "stow", camera = "dock", dock = "lower")) }
+            step("Dock panel: Reset") { host.dock("reset") }
+            step("Explore dock strip: step 3 (lift)") { app.openStudio(Preset(mode = "stow", camera = "dock", dock = "lift")) }
             step("Dock panel: Reset") { host.dock("reset") }
             // Night shift over an isolated group: the Night screen takes the WebView and gives it back
             step("Mode tab work") { host.setMode("work") }
@@ -333,11 +335,11 @@ class ContractDump {
         /** Everything the shadows recorded, across WebViews, in order. */
         val calls = ArrayList<Call>()
 
-        /** The dockStep events a Play sequence posts (app.js DOCK_PLAY; 'done' once the reset motion starts). */
-        val DOCK_EVENTS = listOf("align", "lower", "release", "lift", "done")
+        /** The dockStep events a Play sequence posts (SPEC.md §4, app.js DOCK_PLAY; 'done' once the reset motion starts). */
+        val DOCK_EVENTS = listOf("align", "lower", "lift", "done")
 
-        /** What a Studio dock step card sends (Studio.kt DockPanel): card 3 tapped while released lifts the laptop out. */
-        fun dockCard(s: DockUiStep, host: ViewerHost) = if (s.n == 3 && host.dockStep == "release") "lift" else s.id
+        /** What a Studio dock step card sends (Studio.kt DockPanel): its own step, align / lower / lift, every time. */
+        fun dockCard(s: DockUiStep) = s.id
 
         /** android/app/build/contract/kotlin-dump.json (Gradle runs unit tests in the module directory). */
         fun dumpFile(): File {

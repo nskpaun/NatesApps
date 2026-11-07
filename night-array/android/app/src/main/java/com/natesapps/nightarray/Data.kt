@@ -249,9 +249,9 @@ object Fallback {
             "One 1290 mm titanium slab with a raised rim and a recessed deck. Two pockets hold the keyboard and mouse on soft-touch charging pads; amber marks on the pocket lips show charge state.",
             listOf("base_shell" to "titanium", "tray_pad_kb" to "graphite", "tray_pad_mouse" to "graphite", "base_glow" to "amber_led", "kb_charge_led" to "amber_led", "mouse_charge_led" to "amber_led", "base_feet" to "rubber"),
             listOf(1290.0, 36.0, 300.0), listOf(0.005, 0.0, 0.0)),
-        g("dock", "Laptop dock", "Vertical cradle on the right wing with a press-release latch.",
-            "A titanium cradle with a 20 mm slot and chamfered lead-ins. A sprung USB-C connector waits on the slot floor; the latch on the front face releases it.",
-            listOf("dock_cradle" to "titanium", "dock_panels" to "oxblood", "dock_latch" to "graphite", "dock_latch_led" to "amber_led", "dock_connector" to "steel"),
+        g("dock", "Laptop dock", "Open right-wing cradle: guide the laptop in, its own weight seats it on a sprung USB-C, lift it straight out.",
+            "A titanium cradle with a 20 mm slot and chamfered lead-ins. The laptop's own weight seats it on a sprung, self-centring USB-C plug on the slot floor; to undock, lift it straight out. A slim amber light on the front face glows while it is seated.",
+            listOf("dock_cradle" to "titanium", "dock_panels" to "oxblood", "dock_led" to "amber_led", "dock_connector" to "steel"),
             listOf(125.0, 120.0, 260.0), listOf(0.7125, 0.0, 0.0)),
         g("laptop", "Laptop", "Generic 14-inch laptop, docked on its side.",
             "A stand-in for your laptop: 304 × 212 × 15 mm, standing lid-closed in the cradle, hinge to the back.",
@@ -280,7 +280,7 @@ object Fallback {
             "display_spine" to "steel", "display_boards" to "pcb",
             "neck" to "graphite", "neck_light" to "amber_led", "neck_badge" to "titanium", "base_shell" to "titanium", "tray_pad_kb" to "graphite",
             "tray_pad_mouse" to "graphite", "base_glow" to "amber_led", "kb_charge_led" to "amber_led", "mouse_charge_led" to "amber_led", "base_feet" to "rubber",
-            "dock_cradle" to "titanium", "dock_panels" to "oxblood", "dock_latch" to "graphite", "dock_latch_led" to "amber_led", "dock_connector" to "steel",
+            "dock_cradle" to "titanium", "dock_panels" to "oxblood", "dock_led" to "amber_led", "dock_connector" to "steel",
             "laptop_body" to "laptop_alu", "keyboard_body" to "graphite", "keyboard_keys" to "keycap", "keyboard_coil" to "copper", "mouse_shell" to "graphite",
             "mouse_wheel" to "rubber", "mouse_glow" to "amber_led", "mouse_coil" to "copper", "deskmat" to "felt", "compute_board" to "pcb", "compute_heatsink" to "steel",
             "compute_fan" to "graphite", "psu" to "graphite", "qi_coil_kb" to "copper", "qi_coil_mouse" to "copper", "ferrite_kb" to "ferrite", "ferrite_mouse" to "ferrite", "dock_board" to "pcb",
@@ -300,12 +300,7 @@ object Fallback {
         Scene(
             "Night Array — Work & Stow", JSONObject(), listOf(-0.640, 0.0, -0.15), listOf(0.775, 0.520, 0.15), MATERIAL_LABELS,
             groupDefs, fixedParts, files, groupDefs.associate { it.id to "drawings/${it.id}.png" }, emptyList(), ScreenInfo.DEFAULT,
-            listOf(
-                DockStep("align", "Align", "Guide into the open cradle"),
-                DockStep("lower", "Lower", "Seat the laptop onto the connector"),
-                DockStep("release", "Press-release & lift", "Press to release, then lift out"),
-                DockStep("lift", "Lift out", "Laptop free; compute stays in the base"),
-            ),
+            DOCK_STEPS.map { (id, title, caption) -> DockStep(id, title, caption) },
             poses, fromFile = false,
         )
     }

@@ -61,6 +61,10 @@ class Screenshots {
     @Test fun studioDock() = shoot("08-studio-dock", "studio", prep = { it.studioPanel = "dock" }, extra = {
         app.host.handle("""{"type":"dockStep","step":"lower"}""")
     })
+    /** Step 3 while the sequence plays: the stage badge and the panel both say how the laptop leaves (a lift, nothing else). */
+    @Test fun studioDockLift() = shoot("46-studio-dock-lift", "studio", prep = { it.studioPanel = "dock" }, extra = {
+        app.host.dock("play"); app.host.handle("""{"type":"dockStep","step":"lift"}""")
+    })
     @Test fun partSheet() = shoot("09-part-sheet", "studio", extra = { app.host.handle("""{"type":"pick","group":"dock"}""") })
     @Test fun files() = shoot("10-files", "files")
     @Test fun group() = shoot("11-group-detail", "group/dock")

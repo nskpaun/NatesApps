@@ -395,38 +395,19 @@
    "front_panel": {
     "x": [
      657.0,
-     727.0
+     756.0
     ],
     "y": [
-     9.0,
-     51.0
+     7.0,
+     53.0
     ]
    },
-   "latch": {
-    "x": [
-     735.0,
-     769.0
-    ],
-    "y": [
-     18.0,
-     40.0
-    ],
-    "z": [
-     124.0,
-     138.0
-    ],
-    "travel": 3.0,
-    "clear": 0.5,
-    "pocket_z0": 119.0
-   },
-   "latch_led": {
-    "w": 26.0,
-    "d": 3.0,
-    "z": [
-     133.0,
-     136.0
-    ],
-    "depth": 0.8
+   "led": {
+    "x": 722.0,
+    "w": 30.0,
+    "h": 2.0,
+    "y": 46.0,
+    "depth": 1.0
    },
    "connector": {
     "z": -60.0,
@@ -659,8 +640,7 @@
    "work_lift": 30.0,
    "work_clear_z": 200.0,
    "dock_align_lift": 70.0,
-   "dock_lift_out": 160.0,
-   "latch_travel": 3.0
+   "dock_lift_out": 160.0
   }
  },
  "bounds": {
@@ -891,53 +871,38 @@
   {
    "id": "dock",
    "name": "Laptop dock",
-   "summary": "Right-wing cradle with a swept profile, lead-in slot, sprung USB-C and a press-release latch.",
-   "description": "The dock wing rises 120 mm at the back and sweeps down in a concave curve to a 60 mm front, wrapped in brushed oxblood panels. A 20 mm slot with 4 mm lead-in chamfers guides a closed laptop on its side onto a sprung USB-C plug standing up from the slot floor. Press the latch (3 mm travel) to release, then lift out; the amber strip on the latch glows while the laptop is locked in and goes dark when you press it.",
+   "summary": "Open right-wing cradle: guide the laptop in, its own weight seats it on a sprung USB-C, lift it straight out.",
+   "description": "The dock wing rises 120 mm at the back and sweeps down in a concave curve to a 60 mm front, wrapped in brushed oxblood panels. A 20 mm slot with 4 mm lead-in chamfers guides a closed laptop in on its side, its own weight (about 13 N) seats it on a sprung, self-centring USB-C plug standing up from the slot floor, and to undock you simply lift it straight out. It works because the slot walls hold the laptop upright, so the plug only carries power and data and is never levered, while USB-C's own retention (roughly 8–20 N) keeps it connected. A slim amber light on the front face glows while the laptop is seated.",
    "parts": [
     "dock_cradle",
     "dock_panels",
-    "dock_latch",
-    "dock_latch_led",
+    "dock_led",
     "dock_connector"
    ],
    "pivot": [
     0.7125,
     -0.0,
-    0.004
+    0.0
    ],
    "bbox_mm": [
     125.0,
     120.0,
-    268.0
+    260.0
    ],
-   "mass_g": 2952.8,
-   "volume_cm3": 685.6,
+   "mass_g": 2942.0,
+   "volume_cm3": 680.4,
    "materials": [
     "titanium",
     "oxblood",
-    "graphite",
     "amber_led",
     "steel"
-   ],
-   "subgroups": {
-    "dock_latch": {
-     "parts": [
-      "dock_latch",
-      "dock_latch_led"
-     ],
-     "pivot": [
-      0.752,
-      0.018,
-      0.131
-     ]
-    }
-   }
+   ]
   },
   {
    "id": "laptop",
    "name": "Laptop",
-   "summary": "A slim laptop (up to about 19 mm) with a USB-C port on its left side, standing closed in the dock: your hardware.",
-   "description": "A generic 14-inch class laptop (304 × 212 × 15 mm) stands closed on its left side, hinge toward the back, with its USB-C port seated on the dock's sprung connector. Docked, it drives the dual display and charges; lifted out, the station keeps running on the compute in the base. Mass is an estimate for a real device.",
+   "summary": "A slim laptop (up to about 19 mm) that stands closed in the dock on its own USB-C port: your hardware.",
+   "description": "A generic 14-inch class laptop (304 × 212 × 15 mm, about 1.3 kg) stands closed on its left side, hinge toward the back. Set it in and its weight seats its USB-C port on the dock's sprung connector; lift it straight out to take it with you. Docked, it drives the dual display and charges; lifted out, the station keeps running on the compute in the base. Mass is an estimate for a real device.",
    "parts": [
     "laptop_body"
    ],
@@ -1043,7 +1008,7 @@
    "id": "internals",
    "name": "Internals",
    "summary": "Compute stays in the base: mainboard, vapor chamber, blower, PSU, Qi2 coils and the dock PCB.",
-   "description": "Inside the hollow base: a 300 × 230 mm compute board with a vapor chamber and fin stack exhausting through the rear grille, a slim blower, a 140 × 158 mm internal power supply, three Qi2 transmitter coils on ferrite shields under the pocket windows and, under the cradle, the dock PCB that feeds the sprung USB-C plug. Because compute stays in the base, the station works with or without the laptop.",
+   "description": "Inside the hollow base: a 300 × 230 mm compute board with a vapor chamber and fin stack exhausting through the rear grille, a slim blower, a 140 × 158 mm internal power supply, three Qi2 transmitter coils on ferrite shields under the pocket windows and, under the cradle, the dock PCB that feeds the sprung USB-C plug and lights the seated indicator when the plug sees the laptop. Because compute stays in the base, the station works with or without the laptop.",
    "parts": [
     "compute_board",
     "compute_heatsink",
@@ -1065,8 +1030,8 @@
     20.0,
     264.0
    ],
-   "mass_g": 1777.1,
-   "volume_cm3": 808.5,
+   "mass_g": 1775.0,
+   "volume_cm3": 807.2,
    "materials": [
     "pcb",
     "steel",
@@ -1463,8 +1428,8 @@
     120.0,
     260.0
    ],
-   "volume_cm3": 634.74,
-   "mass_g": 2811.9,
+   "volume_cm3": 636.62,
+   "mass_g": 2820.2,
    "density_g_cm3": 4.43
   },
   {
@@ -1483,46 +1448,26 @@
     106.0,
     253.0
    ],
-   "volume_cm3": 39.88,
-   "mass_g": 107.7,
+   "volume_cm3": 43.05,
+   "mass_g": 116.2,
    "density_g_cm3": 2.7,
    "solids": 2
   },
   {
-   "id": "dock_latch",
+   "id": "dock_led",
    "group": "dock",
-   "name": "Press-release latch",
-   "material": "graphite",
-   "internal": false,
-   "explode": [
-    0.24,
-    0.12,
-    0.12
-   ],
-   "bbox_mm": [
-    34.0,
-    22.0,
-    14.0
-   ],
-   "volume_cm3": 10.24,
-   "mass_g": 27.6,
-   "density_g_cm3": 2.7
-  },
-  {
-   "id": "dock_latch_led",
-   "group": "dock",
-   "name": "Latch status light",
+   "name": "Seated indicator",
    "material": "amber_led",
    "internal": false,
    "explode": [
-    0.24,
-    0.15,
-    0.12
+    0.33,
+    0.12,
+    0.08
    ],
    "bbox_mm": [
-    26.0,
-    0.8,
-    3.0
+    30.0,
+    2.0,
+    1.0
    ],
    "volume_cm3": 0.06,
    "mass_g": 0.1,
@@ -1918,8 +1863,8 @@
     13.5,
     230.0
    ],
-   "volume_cm3": 40.16,
-   "mass_g": 64.2,
+   "volume_cm3": 38.83,
+   "mass_g": 62.1,
    "density_g_cm3": 1.6,
    "mass_note": "PCB + components, effective density"
   }
@@ -2018,7 +1963,7 @@
   {
    "step": "align",
    "title": "Align",
-   "caption": "Guide into the open cradle",
+   "caption": "Guide it into the open cradle",
    "laptop": {
     "t": [
      0,
@@ -2030,38 +1975,19 @@
   {
    "step": "lower",
    "title": "Lower",
-   "caption": "Seat the laptop onto the connector",
+   "caption": "Its own weight seats it on the USB-C",
    "laptop": {
     "t": [
      0,
      0,
      0
-    ]
-   }
-  },
-  {
-   "step": "release",
-   "title": "Press-release & lift",
-   "caption": "Press to release, then lift out",
-   "laptop": {
-    "t": [
-     0,
-     0,
-     0
-    ]
-   },
-   "dock_latch": {
-    "t": [
-     0,
-     0,
-     -0.003
     ]
    }
   },
   {
    "step": "lift",
    "title": "Lift out",
-   "caption": "Laptop free; compute stays in the base",
+   "caption": "Lift straight up — nothing to unlock",
    "laptop": {
     "t": [
      0,
@@ -2282,7 +2208,7 @@
    "format": "STEP",
    "label": "Full assembly",
    "path": "files/night-array-assembly.step",
-   "bytes": 5918723
+   "bytes": 5849273
   },
   {
    "id": "assembly-glb",
@@ -2290,7 +2216,7 @@
    "format": "GLB",
    "label": "Full assembly",
    "path": "model/station.glb",
-   "bytes": 2730324
+   "bytes": 2699912
   },
   {
    "id": "display-step",
@@ -2394,7 +2320,7 @@
    "format": "STEP",
    "label": "Laptop dock",
    "path": "files/parts/dock.step",
-   "bytes": 531516
+   "bytes": 474800
   },
   {
    "id": "dock-stl",
@@ -2402,7 +2328,7 @@
    "format": "STL",
    "label": "Laptop dock",
    "path": "files/parts/dock.stl",
-   "bytes": 316384
+   "bytes": 287284
   },
   {
    "id": "dock-svg",
@@ -2410,7 +2336,7 @@
    "format": "SVG",
    "label": "Laptop dock drawing",
    "path": "files/drawings/dock.svg",
-   "bytes": 53061
+   "bytes": 45232
   },
   {
    "id": "dock-dxf",
@@ -2418,7 +2344,7 @@
    "format": "DXF",
    "label": "Laptop dock top view",
    "path": "files/drawings/dock-top.dxf",
-   "bytes": 38041
+   "bytes": 33074
   },
   {
    "id": "laptop-step",
@@ -2554,7 +2480,7 @@
    "format": "STEP",
    "label": "Internals",
    "path": "files/parts/internals.step",
-   "bytes": 809287
+   "bytes": 802748
   },
   {
    "id": "internals-stl",
@@ -2562,7 +2488,7 @@
    "format": "STL",
    "label": "Internals",
    "path": "files/parts/internals.stl",
-   "bytes": 340084
+   "bytes": 339084
   },
   {
    "id": "internals-svg",
@@ -2570,7 +2496,7 @@
    "format": "SVG",
    "label": "Internals drawing",
    "path": "files/drawings/internals.svg",
-   "bytes": 83114
+   "bytes": 82687
   },
   {
    "id": "internals-dxf",
@@ -2578,7 +2504,7 @@
    "format": "DXF",
    "label": "Internals top view",
    "path": "files/drawings/internals-top.dxf",
-   "bytes": 120188
+   "bytes": 119675
   }
  ],
  "drawings": {

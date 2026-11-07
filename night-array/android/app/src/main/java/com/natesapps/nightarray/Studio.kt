@@ -198,7 +198,8 @@ private fun DockStepBadge(host: ViewerHost, scene: Scene, modifier: Modifier) {
     val n = dockStepNumber(host.dockStep)
     AnimatedVisibility(n > 0 && host.dockPlaying, modifier, enter = fadeIn() + slideInVertically { it / 2 }, exit = fadeOut()) {
         val step = dockUiSteps(scene).getOrNull(n - 1)
-        if (step != null) Notice("${step.n} · ${step.title} — ${if (host.dockStep == "lift") scene.dockSteps.firstOrNull { it.step == "lift" }?.caption ?: step.caption else step.caption}")
+        // "3 · Lift out: lift straight up — nothing to unlock", worded like the dock story's still captions
+        if (step != null) Notice("${step.n} · ${step.title}: ${step.caption.lowerFirst()}")
     }
 }
 
@@ -352,10 +353,7 @@ private fun DockPanel(app: AppState, scene: Scene) {
             val bc by androidx.compose.animation.animateColorAsState(if (on) C.amber.copy(alpha = .85f) else C.line, tween(260), label = "dsb")
             Column(
                 Modifier.weight(1f).heightIn(min = 92.dp).semantics { selected = on }.testTag("dock-step-${s.id}").clip(shape).background(bg).border(1.dp, bc, shape)
-                    .clickable(role = Role.Button) {
-                        // step 3 is "press-release & lift": a second tap lifts the laptop out
-                        host.dock(if (s.n == 3 && host.dockStep == "release") "lift" else s.id)
-                    }.padding(10.dp),
+                    .clickable(role = Role.Button) { host.dock(s.id) }.padding(10.dp),
             ) {
                 Text("${s.n}", color = if (on) C.amber else C.muted, fontSize = 20.sp, fontWeight = FontWeight.Light)
                 Spacer(Modifier.height(4.dp))
@@ -365,12 +363,11 @@ private fun DockPanel(app: AppState, scene: Scene) {
     }
     Spacer(Modifier.height(12.dp))
     val caption = when {
-        host.dockStep == "lift" -> scene.dockSteps.firstOrNull { it.step == "lift" }?.caption ?: "Laptop free; compute stays in the base"
         active > 0 -> steps[active - 1].caption
         host.dockPlaying -> "Starting…"
         else -> "Tap a step, or play the whole sequence."
     }
-    Text(caption, color = if (active > 0) C.ink else C.muted, fontSize = 13.5.sp, lineHeight = 19.sp, modifier = Modifier.testTag("dock-caption"))
+    Text(caption.nbUnits(), color = if (active > 0) C.ink else C.muted, fontSize = 13.5.sp, lineHeight = 19.sp, modifier = Modifier.testTag("dock-caption"))
     Spacer(Modifier.height(14.dp))
     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         LineButton(if (host.dockPlaying) "Playing…" else "Play sequence", { if (!host.dockPlaying) { host.camera("dock"); host.dock("play") } },
@@ -468,8 +465,11 @@ fun BoxScope.MoreBelow(scroll: ScrollState, background: Color) {
     if (scroll.canScrollForward) Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(24.dp).background(Brush.verticalGradient(listOf(Color.Transparent, background))))
 }
 
+/** "Its own weight" → "its own weight", but an acronym ("USB-C …") keeps its capitals. */
+fun String.lowerFirst(): String = if (length > 1 && this[0].isUpperCase() && this[1].isLowerCase()) this[0].lowercaseChar() + substring(1) else this
+
 /**
- * A docking-step title ("Press-release & lift"): it may break after the hyphen, but never inside a word.
+ * A docking-step title ("Lift out"): it may break between words, or after a hyphen, but never inside a word.
  * (Android's line breaker doesn't break at a hyphen unless hyphenation is on, so a zero-width space marks the spot.)
  */
 @Composable

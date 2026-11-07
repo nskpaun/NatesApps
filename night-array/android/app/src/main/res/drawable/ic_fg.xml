@@ -21,9 +21,9 @@
         <!-- base -->
         <path android:fillColor="#00000000" android:strokeColor="#BDB2A4" android:strokeWidth="1.6"
             android:pathData="M26.5,63 L76,63 Q77.5,63 77.5,64.5 L77.5,67 Q77.5,68.5 76,68.5 L26.5,68.5 Q25,68.5 25,67 L25,64.5 Q25,63 26.5,63 Z"/>
-        <!-- laptop standing in the dock, dock wing, latch light -->
+        <!-- laptop standing in the dock, dock wing, and the seated light on its front face right under the laptop -->
         <path android:fillColor="#BDB2A4" android:pathData="M79,47 L82,47 L82,63 L79,63 Z"/>
         <path android:fillColor="#7A2E2A" android:pathData="M77.5,60.5 L85,60.5 L85,68.5 L77.5,68.5 Z"/>
-        <path android:fillColor="#F2A04A" android:pathData="M82.6,59.6 L84.6,59.6 L84.6,60.5 L82.6,60.5 Z"/>
+        <path android:fillColor="#F2A04A" android:pathData="M79.2,61.4 L81.8,61.4 L81.8,62.3 L79.2,62.3 Z"/>
     </group>
 </vector>

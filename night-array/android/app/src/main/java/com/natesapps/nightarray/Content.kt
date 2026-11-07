@@ -63,16 +63,17 @@ val STORIES = listOf(
         "dock", "03", "Dock", "The dock", "A vertical cradle on the right wing",
         "Your laptop stands on its edge in the right wing, lid closed, connected by its own weight.",
         listOf(
-            "The cradle is a titanium wing with a 20 mm slot and chamfered lead-ins. Lower the laptop and its USB-C port meets a sprung connector on the slot floor. The chamfers do the aiming, not your eyes.",
-            "To leave, press the latch on the cradle's front face. It travels 3 mm, the amber strip on top goes dark, the connector lets go, and the laptop lifts straight out.",
-            "The outer faces wear brushed oxblood: the station's one deep colour, on the side your hand reaches for.",
+            "The cradle is a titanium wing with a 20 mm slot and chamfered lead-ins. Guide the laptop into the open cradle and let go: its own weight, about 1.3 kg, seats its USB-C port on a sprung, self-centring connector on the slot floor. The chamfers do the aiming, not your eyes.",
+            "To leave, lift it straight out. The slot walls hold the laptop upright, so the plug only carries power and data and is never levered. USB-C's own grip, roughly 8–20 N, keeps it connected, and a gentle lift is all it takes to let go.",
+            "The outer faces wear brushed oxblood: the station's one deep colour, on the side your hand reaches for. A slim amber line near the top of the front face, right under the laptop, glows while it is seated.",
         ),
         listOf(
-            StorySpec("Position", "Right outer wing"), StorySpec("Slot", "20 × 224 mm, 4 mm lead-in chamfers"), StorySpec("Connector", "Sprung USB-C on the slot floor"),
-            StorySpec("Release", "Press latch, 3 mm travel"), StorySpec("Laptop", "Slim laptops up to 18 mm thick, with a USB-C port on the docking edge near the hinge"),
-            StorySpec("Footprint", "125 × 260 mm (268 with latch)"),
+            StorySpec("Position", "Right outer wing"), StorySpec("Slot", "20 × 224 mm, 4 mm lead-in chamfers"), StorySpec("Connector", "Sprung, self-centring USB-C on the slot floor"),
+            StorySpec("Docking", "Its own weight seats it; lift straight out"), StorySpec("Seated light", "30 × 2 mm amber line on the front face"),
+            StorySpec("Laptop", "Slim laptops up to 18 mm thick, with a USB-C port on the docking edge near the hinge"),
+            StorySpec("Footprint", "125 × 260 mm"),
         ),
-        listOf(StoryStill("dock-align.jpg", "1 · Align: guide into the open cradle."), StoryStill("dock-lower.jpg", "2 · Lower: seat the laptop onto the connector."), StoryStill("dock-release.jpg", "3 · Press-release & lift.")),
+        listOf(StoryStill("dock-align.jpg", "1 · Align: guide it into the open cradle."), StoryStill("dock-lower.jpg", "2 · Lower: its own weight seats it on the USB-C."), StoryStill("dock-lift.jpg", "3 · Lift out: straight up, and it lets go.")),
         Preset(mode = "stow", style = "studio", camera = "dock", explode = 0f, dock = "play"), liveLabel = "Play the sequence live",
     ),
     Story(
@@ -110,12 +111,12 @@ val STORIES = listOf(
         "amber", "06", "Light", "Light that informs", "Amber only where it means something",
         "Five lights, five jobs. None of them blinks, none of them changes colour.",
         listOf(
-            "The under-glow along the front edge finds the desk in a dark room. The bar on the neck says the panels are awake. The marks on the pocket lips say charging. The strip on the dock latch says the laptop is locked in. The tail light on the mouse tells you where you left it.",
+            "The under-glow along the front edge finds the desk in a dark room. The bar on the neck says the panels are awake. The marks on the pocket lips say charging. The line on the dock's front face says the laptop is seated. The tail light on the mouse tells you where you left it.",
             "One slider sets all five, from off to a low warm glow. The amber sits well below the screens' white, so it never competes with what you're reading.",
         ),
         listOf(
             StorySpec("Under-glow", "1120 mm strip, front edge"), StorySpec("Neck bar", "150 mm, panels awake"), StorySpec("Pocket marks", "Charging; fade when full"),
-            StorySpec("Latch strip", "Laptop locked in"), StorySpec("Mouse", "Tail light"), StorySpec("Colour", "Amber #F2A04A, dims to off"),
+            StorySpec("Dock light", "Laptop seated"), StorySpec("Mouse", "Tail light"), StorySpec("Colour", "Amber #F2A04A, dims to off"),
         ),
         listOf(StoryStill("hero-work.jpg", "Amber at 80 %."), StoryStill("amber-off.jpg", "Amber off.")),
         Preset(mode = "stow", style = "studio", amber = 1f, camera = "trays"), liveLabel = "Set the light live",
@@ -161,16 +162,16 @@ fun storySpecs(s: Story, scene: Scene): List<StorySpec> = when (s.id) {
     "dual" -> dualSpecs(scene)
     "dock" -> {
         val slotW = scene.span("dock.slot.x"); val slotL = scene.span("dock.slot.z")
-        val lead = scene.num("dock.slot.lead_in"); val travel = scene.num("dock.latch.travel")
-        val w = scene.span("dock.x"); val d = scene.span("dock.z"); val withLatch = scene.bbox("dock")?.get(2)
+        val lead = scene.num("dock.slot.lead_in")
+        val ledW = scene.num("dock.led.w"); val ledH = scene.num("dock.led.h")
+        val w = scene.span("dock.x"); val d = scene.span("dock.z")
         s.specs.map { r ->
             when (r.label) {
                 "Slot" -> if (slotW != null && slotL != null) r.copy(value = "${fmtNum(slotW)} × ${fmtNum(slotL)} mm, ${fmtNum(lead ?: 4.0)} mm lead-in chamfers") else r
-                "Release" -> if (travel != null) r.copy(value = "Press latch, ${fmtNum(travel)} mm travel") else r
+                "Seated light" -> if (ledW != null && ledH != null) r.copy(value = "${fmtNum(ledW)} × ${fmtNum(ledH)} mm amber line on the front face") else r
                 "Laptop" -> if (slotW != null) r.copy(value = "Slim laptops up to ${fmtNum(slotW - LAPTOP_CLEARANCE_MM)} mm thick, with a USB-C port on the docking edge near the hinge") else r
-                // the plan footprint, and the depth the Specs and Files show (the latch stands proud of the front face)
-                "Footprint" -> if (w != null && d != null) r.copy(value = "${fmtNum(w)} × ${fmtNum(d)} mm" +
-                    (withLatch?.takeIf { it > d + 1 }?.let { " (${fmtMm(it)} with latch)" } ?: "")) else r
+                // the plan footprint: nothing stands proud of the cradle, so it is the dock's own width × depth
+                "Footprint" -> if (w != null && d != null) r.copy(value = "${fmtNum(w)} × ${fmtNum(d)} mm") else r
                 else -> r
             }
         }
@@ -254,19 +255,25 @@ val NIGHT_LINES = listOf(
     "Your hardware. Your OS.",
 )
 
-/** Dock UI steps: release and lift are both part of step 3, as on the board. */
+/**
+ * Dock UI steps, one per scene.json dock_sequence step (SPEC.md §3). Nothing on the dock moves: you guide the laptop
+ * in, its weight seats it, and you lift it out. Each card sends NA.dock(id).
+ */
 data class DockUiStep(val n: Int, val id: String, val title: String, val caption: String, val still: String)
 
-fun dockUiSteps(scene: Scene): List<DockUiStep> {
-    fun st(id: String) = scene.dockSteps.firstOrNull { it.step == id }
-    return listOf(
-        DockUiStep(1, "align", st("align")?.title ?: "Align", st("align")?.caption ?: "Guide into the open cradle", "dock-align.jpg"),
-        DockUiStep(2, "lower", st("lower")?.title ?: "Lower", st("lower")?.caption ?: "Seat the laptop onto the connector", "dock-lower.jpg"),
-        DockUiStep(3, "release", st("release")?.title ?: "Press-release & lift", st("release")?.caption ?: "Press to release, then lift out", "dock-release.jpg"),
-    )
+/** The three dock steps (id, fallback title, fallback caption), as SPEC.md §3 words them. */
+val DOCK_STEPS = listOf(
+    Triple("align", "Align", "Guide it into the open cradle"),
+    Triple("lower", "Lower", "Its own weight seats it on the USB-C"),
+    Triple("lift", "Lift out", "Lift straight up — nothing to unlock"),
+)
+
+fun dockUiSteps(scene: Scene): List<DockUiStep> = DOCK_STEPS.mapIndexed { i, (id, title, caption) ->
+    val st = scene.dockSteps.firstOrNull { it.step == id }
+    DockUiStep(i + 1, id, st?.title ?: title, st?.caption ?: caption, "dock-$id.jpg")
 }
 
-fun dockStepNumber(step: String?): Int = when (step) { "align" -> 1; "lower" -> 2; "release", "lift" -> 3; else -> 0 }
+fun dockStepNumber(step: String?): Int = DOCK_STEPS.indexOfFirst { it.first == step } + 1
 
 /** Chord width of the two toed-in facets, from the screen block (used when scene.json has no display bbox). */
 fun chordFromScreen(sc: ScreenInfo): Double {

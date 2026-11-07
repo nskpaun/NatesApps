@@ -145,7 +145,8 @@ fun DrawScope.drawStation(
     focus: String? = null, dockStep: String? = null,
 ) {
     val work = mode != "stow"
-    val lift = when (dockStep) { "align" -> 140f; "lift" -> 160f; else -> 0f }
+    // laptop heights of the dock_sequence steps (scene.json): align 70 mm up in the lead-in, lift 160 mm up and clear
+    val lift = when (dockStep) { "align" -> 70f; "lift" -> 160f; else -> 0f }
     val fr = frameFor(focus, work, lift)
     val x0 = fr[0]; val x1 = fr[1]; val y0 = fr[2]; val y1 = fr[3]
     val s = min(size.width / (x1 - x0), size.height / (y1 - y0)) * (if (focus == null) 0.9f else 0.84f)
@@ -364,18 +365,19 @@ private fun DrawScope.drawDock(pr: Proj, ad: Float, al: Float, laptop: Boolean, 
     drawPath(panel, Brush.linearGradient(listOf(Color(0xFF9A433B), Color(0xFF5A201D), Color(0xFF86362F)), start = pr.p(775f, 120f, -120f), end = pr.p(775f, 0f, 120f)), alpha = ad)
     val front = poly(pr.p(650f, 0f, 130f), pr.p(775f, 0f, 130f), pr.p(775f, 60f, 130f), pr.p(650f, 60f, 130f))
     drawPath(front, Brush.verticalGradient(listOf(m.mid, m.lo), startY = pr.p(0f, 60f, 130f).y, endY = pr.p(0f, 0f, 130f).y), alpha = ad)
-    drawPath(poly(pr.p(656f, 6f, 130.5f), pr.p(730f, 6f, 130.5f), pr.p(730f, 54f, 130.5f), pr.p(656f, 54f, 130.5f)),
-        Brush.verticalGradient(listOf(Color(0xFF8E3A33), Color(0xFF4E1B18)), startY = pr.p(0f, 54f, 130f).y, endY = pr.p(0f, 6f, 130f).y), alpha = ad)
+    // one oxblood front panel with the side panel's 7 mm titanium margins, so the two read as one wrap round the corner
+    drawPath(poly(pr.p(657f, 7f, 130.5f), pr.p(756f, 7f, 130.5f), pr.p(756f, 53f, 130.5f), pr.p(657f, 53f, 130.5f)),
+        Brush.verticalGradient(listOf(Color(0xFF8E3A33), Color(0xFF4E1B18)), startY = pr.p(0f, 53f, 130f).y, endY = pr.p(0f, 7f, 130f).y), alpha = ad)
     drawLine(m.hi.copy(alpha = .9f * ad), pr.p(650f, 60f, 130f), pr.p(775f, 60f, 130f), max(1f, px * .8f))
-    // press-release latch with its amber strip (pressed 3 mm in step 3; the strip goes dark once released)
-    val lz = if (step == "release") 141f else 144f
-    val lf = poly(pr.p(735f, 18f, lz), pr.p(769f, 18f, lz), pr.p(769f, 40f, lz), pr.p(735f, 40f, lz))
-    val lt = poly(pr.p(735f, 40f, lz), pr.p(769f, 40f, lz), pr.p(769f, 40f, 130f), pr.p(735f, 40f, 130f))
-    drawPath(lt, Color(0xFF4A4542), alpha = ad); drawPath(lf, Color(0xFF2B2826), alpha = ad)
-    val ledA = if (step == "release" || step == "lift" || step == "align" || !laptop) .25f else 1f
-    val l1 = pr.p(739f, 40.5f, lz - 7f); val l2 = pr.p(765f, 40.5f, lz - 7f)
-    drawLine(C.amber.copy(alpha = .3f * amberA * ad * ledA), l1, l2, max(3f, 7f * pr.s), cap = StrokeCap.Round)
-    drawLine(Color(0xFFFFCF8F).copy(alpha = amberA * ad * ledA), l1, l2, max(1.2f, 2.6f * pr.s), cap = StrokeCap.Round)
+    // the seated light: a slim 30 × 2 mm amber line inlaid in the front panel on the slot axis, right under the laptop.
+    // Only a light (nothing on the dock moves): on while the laptop sits on the plug, dark while it is out of the cradle.
+    val seated = laptop && step != "align" && step != "lift"
+    val l1 = pr.p(707f, 47f, 130.6f); val l2 = pr.p(737f, 47f, 130.6f)
+    drawLine(Color(0xFF2A1A12).copy(alpha = ad), l1, l2, max(1.2f, 2.2f * pr.s), cap = StrokeCap.Butt)
+    if (seated) {
+        drawLine(C.amber.copy(alpha = .3f * amberA * ad), l1, l2, max(3f, 7f * pr.s), cap = StrokeCap.Round)
+        drawLine(Color(0xFFFFCF8F).copy(alpha = amberA * ad), l1, l2, max(1.2f, 2.2f * pr.s), cap = StrokeCap.Round)
+    }
     // motion cue for the sequence: down while lowering, up while lifting
     val arrowAt = when (step) {
         "align", "lower" -> pr.p(700f, 300f + lift, 106f) to pr.p(700f, 200f + lift, 106f)
@@ -389,12 +391,6 @@ private fun DrawScope.drawDock(pr: Proj, ad: Float, al: Float, laptop: Boolean, 
         val dir = if (b.y > a.y) 1f else -1f
         drawLine(C.amber.copy(alpha = .95f * ad), b, b + Offset(-h * .6f, -dir * h), w, cap = StrokeCap.Round)
         drawLine(C.amber.copy(alpha = .95f * ad), b, b + Offset(h * .6f, -dir * h), w, cap = StrokeCap.Round)
-    }
-    if (step == "release") { // the finger's press, as on the board
-        val c = pr.p(752f, 29f, lz + 18f)
-        drawLine(C.amber.copy(alpha = .9f * ad), c, c + Offset(max(8f, 18f * pr.s), 0f), max(1.5f, 2.2f * pr.s), cap = StrokeCap.Round)
-        drawLine(C.amber.copy(alpha = .9f * ad), c, c + Offset(max(4f, 8f * pr.s), -max(4f, 8f * pr.s)), max(1.5f, 2.2f * pr.s), cap = StrokeCap.Round)
-        drawLine(C.amber.copy(alpha = .9f * ad), c, c + Offset(max(4f, 8f * pr.s), max(4f, 8f * pr.s)), max(1.5f, 2.2f * pr.s), cap = StrokeCap.Round)
     }
 }
 

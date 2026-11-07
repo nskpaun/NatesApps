@@ -121,8 +121,9 @@ fun specSheet(scene: Scene): List<SpecSection> {
         SpecSection("Dock", "Right outer wing", listOf(
             StorySpec("Cradle", box(dock, "125 × 120 × 260 mm") + ", titanium + brushed oxblood"),
             StorySpec("Slot", "${fmtNum(slotW ?: 20.0)} × ${fmtNum(slotL ?: 224.0)} mm, ${mm(scene.num("dock.slot.lead_in"), "4 mm")} chamfered lead-ins"),
-            StorySpec("Connector", "Sprung USB-C on the slot floor"),
-            StorySpec("Release", "Press latch on the front face, ${mm(scene.num("dock.latch.travel") ?: scene.num("poses_mm.latch_travel"), "3 mm")} travel"),
+            StorySpec("Connector", "Sprung, self-centring USB-C on the slot floor"),
+            StorySpec("Docking", "Guide it in and its own weight seats it on the plug; lift straight out to leave"),
+            StorySpec("Hold", "USB-C's own retention, roughly 8–20 N; the slot walls keep the laptop upright"),
             StorySpec("Laptops", "Up to ${mm(slotW?.minus(LAPTOP_CLEARANCE_MM), "18 mm")} thick and ${mm(slotL, "224 mm")} deep, standing closed on edge; " +
                 "USB-C port about ${mm(portFromHingeMm(scene), "46 mm")} from the hinge end"),
         )),
@@ -152,7 +153,7 @@ fun specSheet(scene: Scene): List<SpecSection> {
             StorySpec("Under-glow", "1120 mm strip along the front edge"),
             StorySpec("Neck bar", "${mm(scene.num("neck.light.w"), "150 mm")}, panels awake"),
             StorySpec("Pocket marks", "30 mm and 16 mm, charging"),
-            StorySpec("Latch strip", "26 mm, laptop locked in"),
+            StorySpec("Dock light", "${mm(scene.num("dock.led.w"), "30 mm")} on the cradle's front face, laptop seated"),
             StorySpec("Mouse", "Tail light"),
         )),
         SpecSection("Materials", "Three finishes for the metal", buildList {
