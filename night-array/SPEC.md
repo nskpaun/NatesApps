@@ -54,10 +54,13 @@ Never write outside your own directories (plus the two asset dirs the viewer own
 | `stand` | `neck` | graphite | Trapezoid neck: bottom width 320, top width 180, y∈[36,156], z∈[-140,-70], slight rearward lean. Joins display back. |
 | `stand` | `neck_light` | amber_led | Light bar along the neck's top-front edge, ~150×5×3, y≈148–153. |
 | `stand` | `neck_badge` | titanium | Inlaid "NIGHT ARRAY" lettering on the neck front face (CadQuery `text`). |
-| `display` | `display_glass` | glass_black | Front cover glass incl. bezels: arc length 1414, height 373 (y∈[156,529]), 2 mm thick. Cylindrical about a vertical axis, **1800R**, concave toward the user. Front surface at the centre is z=-62, so the axis of curvature is at x=0, z=1738. |
-| `display` | `display_screen` | screen | Active area 1400 × 350 (4:1, 57" class, 7680×1920), y∈[172,522], 0.3 mm proud of the glass. **Must carry TEXCOORD_0** (glTF convention: u 0→1 left→right as seen by the user, v 0 = top edge, 1 = bottom edge). |
-| `display` | `display_frame` | titanium | Thin metal edge rim around the glass (~3 mm). |
-| `display` | `display_back` | graphite | Rear housing, ~22 mm deep at edges, central electronics bulge ~45 mm deep × 600 wide × 250 tall, VESA-style boss where the neck joins. |
+| `display` | `display_screen` | screen | **Dual 27" display (design decision — replaces the old single ultrawide).** Two off-the-shelf 27" QHD IPS monitors (2560×1440 each, active area 596.7 × 335.7 mm), stripped of their plastic housings and mounted side by side. Each panel is **toed in 10°** toward the user about a vertical axis through the seam at x=0, z=-62 (front surface at the seam), so the outer edges come forward (left facet runs along (−cos10°, 0, +sin10°) from the seam, right facet along (+cos10°, 0, +sin10°)). The visible seam between the two active areas is **14 mm** (7 mm each side of x=0). Active areas y∈[172,507.7], 0.3 mm proud of the bezel faces. One part, two facets. **Must carry TEXCOORD_0** (glTF convention, v 0 = top edge, 1 = bottom): the left panel maps u 0→0.5 (outer-left edge → seam), the right panel u 0.5→1 (seam → outer-right edge) — i.e. one 5120×1440 canvas split exactly like an OS spans two displays; the seam has no pixels. |
+| `display` | `display_glass` | glass_black | The two monitors' black front faces / bezels, one facet per panel, from the seam out to 7+596.7+9 mm along each facet; height 360.7 (y∈[156,516.7]: 16 mm chin, 9 mm top). ~2 mm thick. Two solids, one part. |
+| `display` | `display_seam` | titanium | "The honest seam": a 4 mm wide titanium mullion running the full height of the glass at x=0, slightly proud, covering the joint between the two panels' inner borders. |
+| `display` | `display_frame` | titanium | Shared shroud front rim (~3 mm) that wraps the outer edges of both panels (hides their outer bezels) and follows the 10° fold at the seam. |
+| `display` | `display_back` | graphite | Shared rear shroud following both facets (~45 mm deep behind the panel faces), vent slots, central spine cover with the VESA hub where the neck joins. |
+| `display` | `display_spine` | steel | **internal: true.** Steel mounting spine with two VESA 100 plates angled ±10°, one per monitor. |
+| `display` | `display_boards` | pcb | **internal: true.** Each monitor's own scaler + power board, kept as-is and mounted on the spine (two solids, one part). |
 | `dock` | `dock_cradle` | titanium | Right wing x∈[650,775], z∈[-130,130]. Side profile: ~120 tall at the back, sweeping down to ~60 at the front (concave curve). Laptop slot 20 wide (x∈[712,732]), z∈[-112,112], floor y=24, lead-in chamfers. |
 | `dock` | `dock_panels` | oxblood | 2 mm accent panels on the outer (+x) face and front face of the cradle. |
 | `dock` | `dock_latch` | graphite | Press-release button on the cradle's front face, right side, ~34×22×14, y≈18–40. Its own sub-group pivot so it can be pressed (moves −z ~3 mm). |
@@ -79,6 +82,10 @@ Never write outside your own directories (plus the two asset dirs the viewer own
 | `internals` | `ferrite_kb`, `ferrite_mouse` | ferrite | Shield plates under the coils, y≈10–12. |
 | `internals` | `dock_board` | pcb | Dock PCB under the cradle. |
 | `internals` | `keyboard_coil`, `mouse_coil` | copper | Receiver coils inside the keyboard / mouse. **These belong to groups `keyboard` / `mouse`** (so they move with them) but are flagged `internal: true`. |
+
+Overall display width ≈ 1214 mm (chord), outer edges ≈ 106 mm forward of the seam. Story: "the pixels of a 49-inch
+super-ultrawide (5120×1440) for the price of two good mainstream 27s; a dead panel is a cheap swap; your OS already knows
+what to do with two displays — snap a window to each half". The seam is part of the deal, so it is celebrated, not hidden.
 
 Internal parts (`internal: true`) are hidden in the `studio` style and shown in `xray`, `cad`(optional), exploded and section views.
 
@@ -139,8 +146,9 @@ Internal parts (`internal: true`) are hidden in the `studio` style and shown in 
   // dock_latch is a sub-group pivot: parts dock_latch + dock_latch_led move together under the name "dock_latch".
   "dims": [ { "id": "overall_w", "label": "1 474 mm", "a": [x,y,z], "b": [x,y,z], "dir": [0,1,0] } ],
   // dims: measured points (metres, stow pose) + "dir" = which way to offset the dimension line. Include at least:
-  // overall width, base depth, overall height, display active width, work offset 150 mm (pose "work"; add "pose": "work").
-  "screen": { "part": "display_screen", "radius_m": 1.8, "arc_m": 1.4, "height_m": 0.35, "axis": [0, 0, 1.738] },
+  // overall width, base depth, overall height, display width, one panel's active width, the seam, work offset 150 mm (pose "work"; add "pose": "work").
+  "screen": { "part": "display_screen", "layout": "dual", "panels": 2, "panel_inch": 27, "panel_active_mm": [596.7, 335.7],
+              "resolution_each": [2560, 1440], "seam_mm": 14, "toe_in_deg": 10, "seam_axis": [0, 0, -0.062] },
   "files": [
     { "id": "assembly-step", "group": null, "format": "STEP", "label": "Full assembly", "path": "files/night-array-assembly.step", "bytes": 0 },
     { "id": "assembly-glb",  "group": null, "format": "GLB",  "label": "Full assembly", "path": "model/station.glb", "bytes": 0 },
@@ -195,7 +203,7 @@ Bundle is a single classic (IIFE) script `viewer.js` (no ES-module script tags, 
 ### Stills (rendered by the viewer itself, headless Chromium, written to `android/app/src/main/assets/renders/`)
 JPEG, 1600×900 unless noted. The app must tolerate any of these being missing.
 `hero-work.jpg`, `hero-stow.jpg`, `hero-standalone.jpg`, `dock-align.jpg`, `dock-lower.jpg`, `dock-release.jpg`,
-`trays.jpg` (charging pockets close-up), `display.jpg`, `cad.jpg`, `xray.jpg`, `exploded.jpg`, `blueprint.jpg`, `section.jpg`,
+`trays.jpg` (charging pockets close-up), `display.jpg` (the dual panels + seam close-up), `cad.jpg`, `xray.jpg`, `exploded.jpg`, `blueprint.jpg`, `section.jpg`,
 `finish-titanium.jpg`, `finish-graphite.jpg`, `finish-oxblood.jpg`, `night.jpg` (cinematic), `amber-off.jpg`,
 and `part-<groupId>.jpg` (900×900, isolated group, studio style) for every group except `internals` (use xray style for that one).
 
