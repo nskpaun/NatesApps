@@ -168,7 +168,7 @@ def kb_insert():
     o = prism_y(kx[0] - c - w, kx[1] + c + w, kz[0] - c - w, kz[1] + c + w, fy, fy + i["h"], 6.0)
     o = cut(o, prism_y(kx[0] - c, kx[1] + c, kz[0] - c, kz[1] + c, fy - 1, fy + i["h"] + 1, 4.0))
     # Magic Tag relief at the left-rear (plug + folded flex)
-    o = cut(o, box(kx[0] - c - w - 1, kx[0] + 1, fy - 1, fy + 12, kz[0] + 12, kz[0] + 34))
+    o = cut(o, box(kx[0] - c - w - 1, kx[0] + 1, fy - 1, fy + i["h"] + 1, kz[0] + 12, kz[0] + 34))
     sx = i["split_x"]
     return compound([single(o.intersect(box(-2000, sx, -10, 200, -500, 500))),
                      single(o.intersect(box(sx, 2000, -10, 200, -500, 500)))])

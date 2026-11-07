@@ -41,7 +41,10 @@ SPINE = {
     "corner_r": 5.0, "inner_r": 12.0,
 }
 # ---------------------------------------------------------------- front bar
-FRONT_BAR = {"x": [-550.0, 550.0], "z": [133.0, 159.0]}
+FRONT_BAR = {"x": [-550.0, 550.0], "z": [133.0, 159.0],
+             # ballast tongues reaching back under the deck, clear of the Qi steel keep-outs (stability: front mass
+             # has the longest lever against a push to the rear, the governing case)
+             "tongues": [(-405.0, -305.0, 40.0), (-100.0, 150.0, 30.0)]}      # (x0, x1, z_back)
 # ---------------------------------------------------------------- posts / rails (ZYLtech)
 POST = {"w": 20.0, "d": 40.0, "len": S["post_len"], "centre_hole": 5.2, "mass_kg_m": 0.88}
 RAIL = {"w": 20.0, "len": 1200.0, "centre_hole": 5.0, "mass_kg_m": 0.50}
@@ -139,12 +142,21 @@ def front_bar_holes():
     return out
 
 
+def front_bar_outline_pts():
+    x0, x1 = FRONT_BAR["x"]
+    z0, z1 = FRONT_BAR["z"]
+    pts = [(x0, z1), (x1, z1), (x1, z0)]
+    for tx0, tx1, tz in sorted(FRONT_BAR["tongues"], key=lambda t: -t[0]):
+        pts += [(tx1, z0), (tx1, tz), (tx0, tz), (tx0, z0)]
+    pts.append((x0, z0))
+    return pts
+
+
 @lru_cache(None)
 def front_bar():
     y0 = Y_PLATE[1]
-    x0, x1 = FRONT_BAR["x"]
-    z0, z1 = FRONT_BAR["z"]
-    s = prism_y(x0, x1, z0, z1, y0, y0 + T_PLATE, 4.0)
+    s = poly_y(front_bar_outline_pts(), y0, y0 + T_PLATE)
+    s = fillet(s, 4.0, edges_where(s, lambda c, bb, e: (bb.ymax - bb.ymin) > 1), "front bar corners")
     return cut(s, *[cyl_y(x, z, d / 2, y0 - 1, y0 + T_PLATE + 1) for _, x, z, d in front_bar_holes()])
 
 
@@ -390,10 +402,8 @@ def flat_patterns():
         "slots": [], "bends": [], "t": T_PLATE, "material": "A36/1008 HRP-250 (1/4 in)", "qty": 1,
         "fillet": {"outer": SPINE["corner_r"], "inner": SPINE["inner_r"]},
     }
-    x0, x1 = FRONT_BAR["x"]
-    z0, z1 = FRONT_BAR["z"]
     out["NA-FRONTBAR-01"] = {
-        "outline": [(x0, -z0), (x1, -z0), (x1, -z1), (x0, -z1)],
+        "outline": [(x, -z) for x, z in front_bar_outline_pts()],
         "holes": [(x, -z, d) for kind, x, z, d in front_bar_holes()],
         "tapped": [(x, -z, "M5x0.8") for kind, x, z, d in front_bar_holes() if "tapped" in kind],
         "slots": [], "bends": [], "t": T_PLATE, "material": "A36/1008 HRP-250 (1/4 in)", "qty": 1,
@@ -523,7 +533,7 @@ _STEEL = "steel"
 PARTS = [
     PartDef("spine_plate", "structure", "Spine / ballast plate (1/4 in A36, U)", _STEEL, "metal", spine_plate,
             internal=True, bom="steel-spine-plate"),
-    PartDef("front_bar", "structure", "Front ballast bar (1/4 in A36)", _STEEL, "metal", front_bar, internal=True,
+    PartDef("front_bar", "structure", "Front ballast bar (1/4 in A36, with tongues)", _STEEL, "metal", front_bar, internal=True,
             bom="steel-front-bar"),
     PartDef("posts", "structure", "2040 posts (2 x 400 mm)", "aluminium", "metal", posts, internal=True,
             bom="extrusion-2040-400"),

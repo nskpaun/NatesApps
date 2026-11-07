@@ -154,3 +154,21 @@ POSES_MM = {
     "dock_lift_out": 160.0,
 }
 ANIMATED_GROUPS = {"laptop", "keyboard", "mouse"}
+
+
+def part_mass(pid, shape):
+    """(grams, density g/cm3, note) -- the ONE mass model (build.py, stability.py, scene.json all use it).
+    Purchased parts: research / manufacturer weight.  Printed: shell + infill model.  Metal / hardware: volume x
+    density of the material."""
+    from .common import FILAMENT, print_mass_g
+    p = BY_ID[pid]
+    vol = shape.Volume()
+    if p.mass_g is not None:
+        g = p.mass_g
+        return g, (g / (vol / 1000.0) if vol > 0 else 0.0), p.mass_note or "manufacturer / research weight"
+    if p.kind == "printed":
+        g = print_mass_g(vol, shape.Area(), p.print)
+        return g, g / (vol / 1000.0), (f"printed {FILAMENT[p.print.filament][2]}, {int(p.print.infill * 100)} % infill, "
+                                       f"{p.print.walls} walls (shell + infill model)")
+    dens = MATERIALS[p.material][4]
+    return vol / 1000.0 * dens, dens, None

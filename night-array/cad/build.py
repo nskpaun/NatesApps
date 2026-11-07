@@ -340,19 +340,7 @@ def to_cad_axes(shape):
 # ----------------------------------------------------------------------------
 
 def part_mass(pid, shape):
-    """(grams, density g/cm3, note).  Purchased parts carry the research weight; printed parts use the shell +
-    infill model (common.print_mass_g); metal and hardware use volume x density of their material."""
-    p = PARTDEF[pid]
-    vol = shape.Volume()
-    if p.mass_g is not None:
-        g = p.mass_g
-        return g, (g / (vol / 1000.0) if vol > 0 else 0.0), p.mass_note or "manufacturer / research weight"
-    if p.kind == "printed":
-        g = C.print_mass_g(vol, shape.Area(), p.print)
-        return g, g / (vol / 1000.0), (f"printed {C.FILAMENT[p.print.filament][2]}, {int(p.print.infill * 100)} % infill, "
-                                       f"{p.print.walls} walls (shell + infill model)")
-    dens = MATERIALS[p.material][4]
-    return vol / 1000.0 * dens, dens, None
+    return R.part_mass(pid, shape)
 
 
 def print_orient(shape, down):

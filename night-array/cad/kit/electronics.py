@@ -25,10 +25,10 @@ FLOOR_TOP = 4.5          # bay floors (printed hatch tops): electronics stand on
 
 STRIP_X0 = -P.STRIP["len"] / 2                      # strip centred on the seam: x -304.8 .. 304.8
 STRIP_FACE_Z = -87.0                                # outlet face (outlets point -z, toward the posts / neck)
-GAN_AT = (-605.0, -150.0)                           # min-x, min-z corner (rotated: 76.31 along x, 98.81 along z)
+GAN_AT = (-605.0, 8.0)                              # min-x, min-z corner (rotated: 76.31 along x, 98.81 along z)
 DOCK_AT = (420.0, 20.0)                             # min-x, rear face z
 BRICK_AT = (420.0, -158.0)
-DIMMER_KNOB = (-640.0, 25.0, 95.0)                  # knob axis exits the left end wall here (x, y, z)
+DIMMER_KNOB = (-640.0, 25.0, -75.0)                 # knob axis exits the left end wall here (x, y, z)
 
 BAYS = {
     # name: (x0, x1, y0, y1, z0, z1), what, clearances included
@@ -55,7 +55,7 @@ BAYS = {
     "dock_brick": ((BRICK_AT[0], BRICK_AT[0] + P.DOCK_BRICK["bay"][0], FLOOR_TOP, FLOOR_TOP + P.DOCK_BRICK["bay"][2],
                     BRICK_AT[1], BRICK_AT[1] + P.DOCK_BRICK["bay"][1]),
                    "130 W brick reservation 160 x 80 x 35 (size unpublished: measure); C13 cord to the strip"),
-    "lv_hub": ((-620.0, -430.0, FLOOR_TOP, 40.0, -20.0, 120.0),
+    "lv_hub": ((-625.0, -430.0, FLOOR_TOP, 40.0, -152.0, -56.0),
                "LV hub: WAGO 221 carrier, HUSB238 5807, 6032 + jack, Pololu 5 V, opto board, dimmer"),
     "chase_neck": ((-110.0, 110.0, 4.5, 50.0, -160.0, -88.0),
                    "cable chase from the base into the neck (between and around the posts)"),
@@ -99,7 +99,7 @@ ROUTES = {
               "what": "2 x HDMI/DP from the dock box rear -> under the middle rail -> neck chase -> monitors"},
     "dock_host": {"pts": [(722.0, 14.4, -60.0), (722.0, 14.4, -120.0), (660.0, 14.0, -120.0), (600.0, 12.0, 10.0)],
                   "d": 4.8, "what": "Newnex USB4 cable: cradle carriage -> base -> dock box host port (coil the spare)"},
-    "lv_12v": {"pts": [(-520.0, 20.0, 50.0), (-520.0, 20.0, 150.0), (0.0, 6.0, 150.0)], "d": 5.0,
+    "lv_12v": {"pts": [(-520.0, 20.0, -90.0), (-450.0, 12.0, 120.0), (0.0, 6.0, 150.0)], "d": 5.0,
                "what": "dimmed 12 V: LV hub -> under-glow halves (front) / neck bar (via the chase)"},
 }
 
@@ -143,24 +143,23 @@ def qi_pads():
 
 @lru_cache(None)
 def lv_hub():
-    """WAGO carrier + boards + dimmer as coarse envelopes inside the lv_hub bay; dimmer knob through the end wall."""
-    x0, y0 = -620.0, FLOOR_TOP
-    parts = []
-    parts.append(box(x0 + 40, x0 + 140, y0, y0 + 3, -10, 50))                       # carrier plate 100 x 60
+    """WAGO carrier + boards + dimmer as coarse envelopes inside the lv_hub bay (rear-left); the dimmer's knob comes
+    out through the left end wall (22 mm hole) at DIMMER_KNOB."""
+    y0 = FLOOR_TOP
+    parts = [box(-565.0, -465.0, y0, y0 + 3, -150.0, -90.0)]                         # carrier plate 100 x 60
     for i, k in enumerate(("221-415", "221-415", "221-413", "221-413", "221-412")):
         w, h, d = P.WAGO[k]
-        parts.append(box(x0 + 45 + i * 18, x0 + 45 + i * 18 + h, y0 + 3, y0 + 3 + d, 0, w))   # standing levers up
+        parts.append(box(-560.0 + i * 18, -560.0 + i * 18 + h, y0 + 3, y0 + 3 + d, -145.0, -145.0 + w))
     w, h, d = P.HUSB238_5807
-    parts.append(box(x0 + 45, x0 + 45 + w, y0 + 3, y0 + 3 + h, 30, 30 + d))
+    parts.append(box(-560.0, -560.0 + w, y0 + 3, y0 + 3 + h, -112.0, -112.0 + d))
     w, h, d = P.POLOLU_D36V6F5
-    parts.append(box(x0 + 75, x0 + 75 + w, y0 + 3, y0 + 3 + h, 32, 32 + d))
+    parts.append(box(-530.0, -530.0 + w, y0 + 3, y0 + 3 + h, -110.0, -110.0 + d))
     w, h, d = P.OPTO_BOARD
-    parts.append(box(x0 + 95, x0 + 95 + w, y0 + 3, y0 + 3 + h, 28, 28 + d))
+    parts.append(box(-510.0, -510.0 + w, y0 + 3, y0 + 3 + h, -112.0, -112.0 + d))
     w, h, d = P.PD_6032
-    parts.append(box(x0 + 140, x0 + 140 + w, y0, y0 + h, 60, 60 + d))
+    parts.append(box(-475.0, -475.0 + w, y0, y0 + h, -150.0, -150.0 + d))
     w, h, d = P.JACK_368
-    parts.append(box(x0 + 140, x0 + 140 + w, y0, y0 + h, 90, 90 + d))
-    # dimmer: knob axis along -x through the left wall at DIMMER_KNOB
+    parts.append(box(-475.0, -475.0 + w, y0, y0 + h, -118.0, -118.0 + d))
     dm = P.dimmer_local().mirror("YZ")          # knob now at -x
     bb = dm.BoundingBox()
     kx, ky, kz = DIMMER_KNOB

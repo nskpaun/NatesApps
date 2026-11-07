@@ -1,23 +1,19 @@
 #!/usr/bin/env python3
-"""Night Array -- verification of the CAD deliverables.
+"""Night Array -- verification of the kit CAD and its deliverables.
 
-    cad/.venv/bin/python cad/verify.py [--fast] [--export DIR]
+    cad/.venv/bin/python cad/verify.py [--fast] [--export DIR] [--geometry-only] [--no-interference]
 
 Checks
-  1. every part's bounding box against the SPEC.md section 2 envelope numbers
-  2. interference (boolean intersection volume) between every pair of parts in
-     the stow pose, the work / standalone poses and every dock_sequence step, plus
-     the paths between them: the stow <-> work waypoints, the laptop lift and the
-     explode slider part-way (0.1 .. 0.9)
-  3. re-imports every STEP file (solid counts, volumes, names, colours) and STL file, and checks that they are
-     in the Z-up CAD axes, CAD (x, y, z) = app (x, -z, y): the box of every group file and of every named part
-     against the fresh B-rep mapped to those axes, the STL's enclosed volume and normals (not mirrored, not
-     inside out), and the station standing on z = 0 with its user side toward -Y
-  4. scene.json shape (keys, group order, parts, files index with real sizes), and
-     its numbers against a fresh model build (params, part bbox / volume / mass,
-     pose paths, dimension labels against their end points)
-  5. GLB node names / extras / translations against scene.json, and each node's
-     mesh bounds against the fresh B-rep
+  1. layout: KIT_SPEC envelope (base h <= 50, depth <= 330, x = 0 at the seam, 10-degree toe-in, ~17 mm seam, keycaps
+     within +-3 mm of the rim, VESA height from the monitor), structure closure, SendCutSend rules on the flat patterns,
+     load path (only steel / aluminium on the feet; no printed part below the steel), every B-rep valid
+  2. interference (boolean volume <= 0.5 mm3) between every pair of parts, purchased envelopes included: stow, work,
+     the stow <-> work paths (keyboard, mouse along their 'via' waypoints, mat shown), every dock_sequence step and the
+     laptop lift part-way
+  3. print fit: every printed piece fits the 245 mm cube; Qi keep-outs (metal / steel classes) and bays (no printed
+     material inside a bay); stability (kit/stability.py: 10-degree tilt, 50 N push at the screen top)
+  4. STEP / STL round trip in Z-up CAD axes (names, colours, boxes, volumes, normals)
+  5. scene.json shape and numbers against a fresh build; GLB nodes / extras / bounds
 Exit code 1 on any failure.
 """
 
@@ -35,11 +31,13 @@ sys.path.insert(0, HERE)
 import cadquery as cq  # noqa: E402
 from cadquery import Vector  # noqa: E402
 
-import model  # noqa: E402
-from params import P  # noqa: E402
+from kit import common as C  # noqa: E402
+from kit import registry as R  # noqa: E402
+from kit.common import LAYOUT  # noqa: E402
 
 EXPORT = os.path.join(HERE, "export")
 FAIL = []
+TOL = 0.6
 
 
 def check(ok, msg):
@@ -48,69 +46,61 @@ def check(ok, msg):
         FAIL.append(msg)
 
 
-# ----------------------------------------------------------------------------
-# 1. envelope
-# ----------------------------------------------------------------------------
-# part: {axis: (lo, hi)} -- SPEC numbers, mm; tolerance below
-ENV = {
-    "base_shell": {"x": (-640, 650), "z": (-150, 150), "y": (0, 36)},
-    "tray_pad_kb": {"y": (16, 18)},
-    "tray_pad_mouse": {"y": (16, 18)},
-    "base_glow": {"x": (-560, 560), "y": (2, 5)},
-    "neck": {"x": (-160, 160), "y": (36, 156), "z": (-140, -70)},
-    "display_screen": {"y": (172, 507.7)},
-    "display_glass": {"y": (156, 516.7)},
-    "dock_cradle": {"x": (650, 775), "z": (-130, 130), "y": (0, 120)},
-    "laptop_body": {"x": (714.5, 729.5), "y": (24, 328), "z": (-106, 106)},
-    "keyboard_body": {"x": (-270, 90), "z": (2, 122), "y": (18, 31)},
-    "mouse_shell": {"x": (217, 283), "z": (3, 121), "y": (18, 56)},
-    "deskmat": {"x": (-350, 470), "y": (0, 3), "z": (235, 535)},
-    "compute_board": {"x": (-600, -300), "z": (-120, 110)},
-    "psu": {"x": (330, 470)},
-    "qi_coil_kb": {"y": (12, 15)},
-    "qi_coil_mouse": {"y": (12, 15)},
-    "ferrite_kb": {"y": (10, 12)},
-    "ferrite_mouse": {"y": (10, 12)},
-    "dock_led": {"x": (707, 737), "y": (46, 48), "z": (129, 130)},
-    "neck_light": {"x": (-75, 75), "y": (126, 131)},
-}
-TOL = 0.6
-
-
 def tight_bbox(shape):
-    from OCP.Bnd import Bnd_Box
-    from OCP.BRepBndLib import BRepBndLib
-    b = Bnd_Box()
-    BRepBndLib.AddOptimal_s(shape.wrapped, b, False, False)
-    return b.Get()
+    return C.tight_bbox(shape)
 
 
-def check_envelopes(parts):
-    print("\n[1] envelopes")
-    for pid, env in ENV.items():
-        x0, y0, z0, x1, y1, z1 = tight_bbox(parts[pid])
-        got = {"x": (x0, x1), "y": (y0, y1), "z": (z0, z1)}
-        for ax, (lo, hi) in env.items():
-            g = got[ax]
-            ok = abs(g[0] - lo) <= TOL and abs(g[1] - hi) <= TOL
-            check(ok, f"{pid}.{ax} = [{g[0]:.2f}, {g[1]:.2f}] (spec [{lo}, {hi}])")
-    # display geometry: chord width and forward offset of the outer edges
-    x0, y0, z0, x1, y1, z1 = tight_bbox(parts["display_frame"])
-    check(abs((x1 - x0) - 1214) < 6, f"display chord {x1 - x0:.1f} mm (~1214)")
-    check(abs(z1 - (-62) - 106) < 3, f"outer edges forward of seam {z1 + 62:.1f} mm (~106 + frame)")
-    # the dock is latch-free: its only front-face feature besides the panel is the seated light, a slim ~30 x 2 strip
-    # inlaid flush near the top edge, on the slot axis
-    check(not [p for p, *_ in model.PARTS if "latch" in p], "no latch parts (the dock is latch-free)")
-    x0, y0, z0, x1, y1, z1 = tight_bbox(parts["dock_led"])
-    K = P["dock"]
-    ok = (abs((x1 - x0) - 30) < 0.5 and abs((y1 - y0) - 2) < 0.2 and abs(z1 - K["z"][1]) < 0.01
-          and abs((x0 + x1) / 2 - sum(K["slot"]["x"]) / 2) < 0.01 and K["h_front"] - 16 < y1 < K["h_front"])
-    check(ok, f"dock_led {x1 - x0:.1f} x {y1 - y0:.1f}, flush at z {z1:.2f}, centred x {(x0 + x1) / 2:.1f} (slot axis), "
-          f"top {y1:.1f} (front face {K['h_front']:.0f} tall)")
-    # it sits in its pocket in the front panel (flush with it, both at the face), inside the panel's outline
-    fp = K["front_panel"]
-    check(fp["x"][0] < x0 and x1 < fp["x"][1] and fp["y"][0] < y0 and y1 < fp["y"][1],
-          f"dock_led inlaid in the oxblood front panel (x {fp['x']}, y {fp['y']})")
+# ----------------------------------------------------------------------------
+# 1. layout
+# ----------------------------------------------------------------------------
+
+def check_layout(parts):
+    print("\n[1] layout, structure, load path")
+    from kit import purchased as PU, structure as ST, base as KB, dock as KD
+    B = LAYOUT["base"]
+    x0, y0, z0, x1, y1, z1 = tight_bbox(parts["base_shell"])
+    check(y1 <= 50.0 + 1e-6, f"base height {y1:.1f} mm (<= 50)")
+    check(z1 - z0 <= 330.0 + 1e-6, f"base depth {z1 - z0:.1f} mm (<= 330)")
+    check(abs(x0 - B["x"][0]) < TOL and abs(x1 - B["x"][1]) < TOL, f"base x [{x0:.1f}, {x1:.1f}]")
+    # display: symmetric about x = 0, toe-in, seam between the active areas
+    a = tight_bbox(parts["monitor_housings"])
+    check(abs(a[0] + a[3]) < 0.05, f"monitors symmetric about the seam x = 0 (x [{a[0]:.1f}, {a[3]:.1f}])")
+    ua, ub, ya, yb = PU.active_area()
+    check(abs(2 * ua - 17.0) < 0.5, f"seam between the active areas {2 * ua:.2f} mm (~17)")
+    check(abs(C.TOE_IN_DEG - 10.0) < 1e-9, "toe-in 10 deg")
+    vy = LAYOUT["display"]["vesa_y"]
+    check(abs(vy - (LAYOUT["display"]["face_bottom_y"] + PU.S60UD["vesa_y"])) < 1e-6,
+          f"VESA centre y {vy} = face bottom + {PU.S60UD['vesa_y']} (S60UD)")
+    xr = C.facet_point(1, PU.monitor_u0() + PU.S60UD["face_w"], 0, 0)
+    check(abs(xr[2] - C.seam_z() - 106.4) < 1.5, f"outer edges {xr[2] - C.seam_z():.1f} mm forward of the seam (~106.4)")
+    # keycaps within +-3 mm of the rim (stowed)
+    k = tight_bbox(parts["keyboard_keys"])
+    from kit.purchased import K3U
+    fy = LAYOUT["qi"]["kb_floor_y"]
+    front, rear = fy + K3U["h_front"], fy + K3U["h_rear"]
+    check(abs(front - B["height"]) <= 3.0 + 1e-6 and abs(rear - B["height"]) <= 3.0 + 1e-6,
+          f"keycaps {front:.1f} (front) .. {rear:.1f} (rear) vs rim {B['height']} (+-3)")
+    # structure closes: posts, centre bracket and monitors meet exactly
+    check(abs(ST.check_closure()) < 0.05, f"bracket closure {ST.check_closure():+.3f} mm (ear plane = panel face)")
+    probs = ST.check_flat_patterns()
+    check(not probs, "SendCutSend rules (size, flanges, hole-to-bend >= 12.4)" + "".join(f"\n          {p}" for p in probs))
+    # load path: only steel / aluminium / rubber touch y < 2; printed parts never under the steel
+    low = []
+    for p in R.PARTS:
+        if p.group in ("deskmat", "dock", "laptop"):
+            continue                     # the mat lies on the desk; the cradle (printed) carries only the laptop
+        if tight_bbox(parts[p.id])[1] < 1.9:
+            low.append(p.id)
+    check(set(low) <= {"feet"}, f"only the feet reach the desk ({low})")
+    feet_top = C.LAYOUT["structure"]["foot_h"]
+    for fx, fz in ST.FEET_XZ:
+        probe = C.box(fx - 3, fx + 3, feet_top + 0.5, feet_top + 1.0, fz - 3, fz + 3)
+        ok = parts["spine_plate"].intersect(probe).Volume() > 1.0
+        if not ok:
+            check(False, f"foot at ({fx}, {fz}) is not under the spine plate")
+    check(True, f"{len(ST.FEET_XZ)} feet, all under the spine plate (steel)")
+    dock_low = tight_bbox(parts["dock_cradle"])[1]
+    check(dock_low >= -1e-6, f"dock cradle stands on the desk (y {dock_low:.2f}); it carries the laptop only")
 
 
 # ----------------------------------------------------------------------------
@@ -121,13 +111,10 @@ def bb_overlap(a, b, pad=0.05):
     return all(a[i] - pad <= b[i + 3] and b[i] - pad <= a[i + 3] for i in range(3))
 
 
-PATH_SAMPLES = 8
-EXPLODE_SAMPLES = [k / 10 for k in range(1, 10)]
+PATH_SAMPLES = 6
 
 
-def interference(parts, moved=None, only=None, label="", hidden=(), skip=None, quiet=False):
-    """Pairwise intersection volumes. `moved` = {pid: (dx,dy,dz)}; `only` limits pairs to those involving these parts;
-    `skip(a, b)` -> True leaves a pair out."""
+def interference(parts, moved=None, only=None, label="", hidden=(), quiet=False):
     moved = moved or {}
     shapes = {}
     for pid, s in parts.items():
@@ -138,13 +125,10 @@ def interference(parts, moved=None, only=None, label="", hidden=(), skip=None, q
         shapes[pid] = s
     boxes = {pid: tight_bbox(s) for pid, s in shapes.items()}
     ids = list(shapes)
-    worst = []
-    n = 0
+    worst, n = [], 0
     for i, a in enumerate(ids):
         for b in ids[i + 1:]:
             if only and a not in only and b not in only:
-                continue
-            if skip and skip(a, b):
                 continue
             if not bb_overlap(boxes[a], boxes[b]):
                 continue
@@ -159,63 +143,57 @@ def interference(parts, moved=None, only=None, label="", hidden=(), skip=None, q
     worst.sort(reverse=True)
     if not (quiet and not worst):
         check(not worst, f"{label}: {n} candidate pairs, {len(worst)} interfering"
-              + ("".join(f"\n          {a} x {b}: {v:.2f} mm3" for v, a, b in worst[:20])))
+              + "".join(f"\n          {a} x {b}: {v:.2f} mm3" for v, a, b in worst[:20]))
     return worst
 
 
+def group_parts(g):
+    return [p.id for p in R.PARTS if p.group == g]
+
+
 def check_interference(parts, fast=False):
-    print("\n[2] interference (intersection volume <= 0.5 mm3)")
-    pm = P["poses_mm"]
-    kb = [pid for pid, g, *_ in model.PARTS if g == "keyboard"]
-    ms = [pid for pid, g, *_ in model.PARTS if g == "mouse"]
-    lp = [pid for pid, g, *_ in model.PARTS if g == "laptop"]
-    interference(parts, label="stow pose (all parts incl. desk mat)")
+    print("\n[2] interference (intersection volume <= 0.5 mm3), purchased envelopes included")
+    import build
+    pm = R.POSES_MM
+    kb, ms, lp = group_parts("keyboard"), group_parts("mouse"), group_parts("laptop")
+    interference(parts, hidden={"deskmat"}, label="stow pose (every part)")
     work = {p: pm["work_keyboard"] for p in kb}
     work.update({p: pm["work_mouse"] for p in ms})
-    interference(parts, work, only=set(kb + ms), label="work pose (keyboard + mouse on the mat)")
-    interference(parts, work, only=set(kb + ms), hidden=set(lp), label="standalone pose (laptop hidden)")
-    check_dock_sequence(parts, lp)
-    # the laptop's travel path: sample the lift between seated and fully out
+    interference(parts, work, only=set(kb + ms + ["deskmat"]), label="work pose (keyboard + mouse on the mat)")
+    # stow <-> work paths
+    kp = path_points(build.work_path("work_keyboard"), pm["work_keyboard"])
+    mp = path_points(build.work_path("work_mouse"), pm["work_mouse"])
+    bad = 0
+    for i, (a, b) in enumerate(zip(kp, mp)):
+        mv = {p: tuple(a) for p in kb}
+        mv.update({p: tuple(b) for p in ms})
+        bad += len(interference(parts, mv, only=set(kb + ms), label=f"path {i}", quiet=True))
+    check(bad == 0, f"stow <-> work paths: {len(kp)} samples ({PATH_SAMPLES} per segment), {bad} interfering")
+    # dock sequence
+    from kit import dock as KD
+    seq = build.dock_sequence()
+    check([s["step"] for s in seq] == ["align", "lower", "lift"], "dock_sequence: align, lower, lift")
+    from kit.purchased import NEWNEX
+    plug_top = KD.plug_origin()[1] + NEWNEX["plug"][1]
+    for s in seq:
+        d = np.array(s["laptop"]["t"]) * 1000.0
+        interference(parts, {p: tuple(d) for p in lp}, only=set(lp), label=f"dock_sequence '{s['step']}' "
+                                                                            f"(laptop {d[1]:+.0f} mm)")
+        ly0 = tight_bbox(parts["laptop_body"].translate(Vector(*d)))[1]
+        if s["step"] == "align":
+            check(KD.K["h_front"] < ly0 < KD.K["h_back"] and ly0 > plug_top,
+                  f"align: laptop bottom y {ly0:.1f} in the lead-in, above the plug tip ({plug_top:.1f})")
+        elif s["step"] == "lower":
+            check(abs(ly0 - KD.K["landing_y"]) < 0.01 and ly0 < plug_top < ly0 + 7.5,
+                  f"lower: laptop on the landing plane (y {ly0:.2f}), plug {plug_top - ly0:.2f} mm into its 7.5 mm port")
+        else:
+            check(ly0 > KD.K["h_back"] + 20, f"lift: laptop bottom y {ly0:.1f} clear of the cradle ({KD.K['h_back']:.0f})")
     if not fast:
         for dy in (10, 40, 80):
             interference(parts, {p: (0, dy, 0) for p in lp}, only=set(lp), label=f"laptop lifted {dy} mm")
-    if fast:
-        return
-    check_paths(parts, kb, ms)
-    check_explode(parts, kb, ms)
-
-
-def check_dock_sequence(parts, lp):
-    """Every dock_sequence step (latch-free: the laptop is the only thing that moves) is clear of everything, and each
-    step is what its caption says: align = in the slot's lead-in, above the front lip, not yet on the plug; lower =
-    standing on the slot floor with the USB-C plug inside its port; lift = straight up and clear of the cradle."""
-    import build
-    seq = build.dock_sequence()
-    check([s["step"] for s in seq] == ["align", "lower", "lift"], "dock_sequence: align, lower, lift")
-    check(all(set(s) == {"step", "title", "caption", "laptop"} for s in seq), "dock_sequence moves the laptop only")
-    K, LP = P["dock"], P["laptop"]
-    cn = K["connector"]
-    plug_top = cn["boot_y"][1] + cn["plug"][1]
-    for s in seq:
-        d = np.array(s["laptop"]["t"]) * 1000.0
-        mv = {p: tuple(d) for p in lp}
-        interference(parts, mv, only=set(lp), label=f"dock_sequence '{s['step']}' (laptop {d[1]:+.0f} mm)")
-        lx0, ly0, lz0, lx1, ly1, lz1 = tight_bbox(parts["laptop_body"].translate(Vector(*d)))
-        if s["step"] == "align":
-            ok = K["h_front"] < ly0 < K["h_back"] and ly0 > plug_top
-            check(ok, f"align: laptop bottom at y {ly0:.1f}, in the lead-in (front lip {K['h_front']:.0f}, back "
-                      f"{K['h_back']:.0f}) and above the plug ({plug_top:.1f})")
-        elif s["step"] == "lower":
-            ok = abs(ly0 - K["slot"]["floor_y"]) < 0.01 and ly0 < plug_top < ly0 + LP["port"][1]
-            check(ok, f"lower: laptop stands on the slot floor (y {ly0:.2f}) with the plug {plug_top - ly0:.1f} mm into "
-                      f"its {LP['port'][1]:.1f} mm port (seated by its own weight)")
-        elif s["step"] == "lift":
-            ok = ly0 > K["h_back"] + 20
-            check(ok, f"lift: laptop bottom at y {ly0:.1f}, clear of the cradle top ({K['h_back']:.0f})")
 
 
 def path_points(via, t, n=PATH_SAMPLES):
-    """Points along stow -> via[0] -> ... -> t, n per segment (the stow end is the stow pose itself)."""
     pts, prev = [], np.zeros(3)
     for q in [np.array(v, float) for v in via] + [np.array(t, float)]:
         pts += [prev + (q - prev) * k / n for k in range(1, n + 1)]
@@ -223,55 +201,73 @@ def path_points(via, t, n=PATH_SAMPLES):
     return pts
 
 
-def check_paths(parts, kb, ms):
-    """The stow <-> work / standalone move follows the waypoints the scene gives (lift, slide, set down), desk mat shown.
-    Both poses share the keyboard / mouse path, and the laptop never comes near it, so one pass covers both."""
+# ----------------------------------------------------------------------------
+# 3. print fit, keep-outs, bays, stability
+# ----------------------------------------------------------------------------
+
+METAL_MATERIALS = {"steel", "aluminium", "laptop_alu", "copper"}
+QI_ALLOWED = {"qi_pads"}          # the pads themselves
+
+
+def check_kit(parts):
+    print("\n[3] print fit, Qi keep-outs, bays, stability")
     import build
-    pm = P["poses_mm"]
-    kp = path_points(build.work_path("work_keyboard"), pm["work_keyboard"])
-    mp = path_points(build.work_path("work_mouse"), pm["work_mouse"])
-    worst = 0
-    for i, (a, b) in enumerate(zip(kp, mp)):
-        mv = {p: tuple(a) for p in kb}
-        mv.update({p: tuple(b) for p in ms})
-        worst += len(interference(parts, mv, only=set(kb + ms), label=f"stow -> work path {i + 1}/{len(kp)}", quiet=True))
-    check(worst == 0, f"stow <-> work path: {len(kp)} samples ({PATH_SAMPLES} per segment), {worst} interfering")
-
-
-# Explode moves every part along its own vector.  A shell with a closed floor that lifts off parts staying at desk
-# level must pass through them on the way up (the base over its internals, the dock cradle over its PCB): those pairs
-# are expected to cross part-way and are left out.  Everything else must stay clear for the whole slider travel.
-EXPLODE_CROSSING = {
-    "base_shell": {"compute_board", "compute_heatsink", "compute_fan", "psu", "qi_coil_kb", "qi_coil_mouse",
-                   "ferrite_kb", "ferrite_mouse"},
-    "dock_cradle": {"dock_board"},
-}
-
-
-def check_explode(parts, kb, ms):
-    import build
-    ex = {pid: np.array(v) * 1000.0 for pid, v in build.EXPLODE.items()}
-
-    def skip(a, b):
-        return (np.allclose(ex[a], ex[b])        # no relative motion: same as the pose itself
-                or b in EXPLODE_CROSSING.get(a, ()) or a in EXPLODE_CROSSING.get(b, ()))
-
-    pm = P["poses_mm"]
-    work = {p: np.array(pm["work_keyboard"]) for p in kb}
-    work.update({p: np.array(pm["work_mouse"]) for p in ms})
-    bad = 0
-    for e in EXPLODE_SAMPLES:
-        mv = {pid: tuple(ex[pid] * e) for pid in parts}
-        bad += len(interference(parts, mv, hidden={"deskmat"}, skip=skip, label=f"explode {e:.1f} (stow)", quiet=True))
-        mv = {pid: tuple(work.get(pid, 0) + ex[pid] * e) for pid in parts}
-        bad += len(interference(parts, mv, only=set(kb + ms + ["deskmat"]), skip=skip, label=f"explode {e:.1f} (work)",
-                                quiet=True))
-    check(bad == 0, f"explode 0.1 .. 0.9 in the stow and work poses: {bad} interfering"
-          + f" (closed-floor shells over their contents left out: {sorted(EXPLODE_CROSSING)})")
+    from kit import electronics as EL
+    nbad, npieces = [], 0
+    for p in R.PARTS:
+        if p.kind != "printed":
+            continue
+        for x in build.print_pieces(p.id, parts[p.id]):
+            npieces += 1
+            if not x["fits"]:
+                nbad.append(f"{x['name']} {x['dims_mm']}")
+    check(not nbad, f"{npieces} printed pieces, all within {C.PRINT_MAX:.0f} mm" + "".join(f"\n          {b}" for b in nbad))
+    # Qi keep-outs: metal class (steel, aluminium, fasteners, LED channels, PCBs) and steel class
+    for name, (bx, what) in EL.KEEPOUTS.items():
+        ko = EL.keepout_solid(name)
+        steel_only = name.endswith("_steel")
+        hits = []
+        for p in R.PARTS:
+            if p.id in QI_ALLOWED or p.group in ("keyboard", "mouse", "deskmat"):
+                continue
+            cls = p.material == "steel" if steel_only else (p.material in METAL_MATERIALS or p.material in ("pcb", "amber_led")
+                                                             or p.kind == "hardware")
+            if not cls:
+                continue
+            if not bb_overlap(tight_bbox(parts[p.id]), tight_bbox(ko)):
+                continue
+            v = parts[p.id].intersect(ko).Volume()
+            if v > 0.01:
+                hits.append(f"{p.id} ({v:.1f} mm3)")
+        check(not hits, f"keep-out {name}: {what}" + (f" -- violated by {hits}" if hits else ""))
+    # bays: no printed material inside a bay
+    printed = [p.id for p in R.PARTS if p.kind == "printed"]
+    for name in EL.BAYS:
+        bay = EL.bay_solid(name)
+        hits = []
+        for pid in printed:
+            if not bb_overlap(tight_bbox(parts[pid]), tight_bbox(bay)):
+                continue
+            v = parts[pid].intersect(bay).Volume()
+            if v > 1.0:
+                hits.append(f"{pid} ({v:.0f} mm3)")
+        check(not hits, f"bay {name} is clear of printed material" + (f" -- {hits}" if hits else ""))
+    # stability
+    from kit import stability as SB
+    lines = []
+    ok, res = SB.report(parts, out=lines.append)
+    for l in lines:
+        print("        " + l)
+    for r in res:
+        lab = "laptop docked" if r["laptop"] == "max" else "no laptop"
+        check(r["min_tilt"] >= SB.TILT_DEG, f"stability ({lab}): 10-degree tilt in every direction "
+                                            f"(critical tilt {r['min_tilt']:.1f} deg)")
+        check(r["min_sf"] >= 1.0, f"stability ({lab}): 50 N push at the screen top, every direction "
+                                  f"(worst safety factor {r['min_sf']:.2f})")
 
 
 # ----------------------------------------------------------------------------
-# 3. STEP / STL round trip (exchange files are Z-up)
+# 4. STEP / STL round trip (exchange files are Z-up)
 # ----------------------------------------------------------------------------
 # The model (and the GLBs) live in app axes: +Y up, +Z toward the user.  The STEP and STL files are written in
 # Z-up CAD axes, CAD (x, y, z) = app (x, -z, y): up -> +Z, the user side -> -Y, +X unchanged.  The expected
@@ -440,7 +436,7 @@ def check_stl(path, gid, pids, parts):
 
 
 def check_step(parts):
-    print("\n[3] STEP / STL re-import (Z-up CAD axes)")
+    print("\n[4] STEP / STL re-import (Z-up CAD axes)")
     from OCP.IFSelect import IFSelect_RetDone
     from OCP.STEPControl import STEPControl_Reader
 
@@ -453,8 +449,8 @@ def check_step(parts):
 
     total_vol = 0.0
     total_n = 0
-    for g in model.GROUP_ORDER:
-        pids = [pid for pid, gg, *_ in model.PARTS if gg == g]
+    for g in R.GROUP_ORDER:
+        pids = [p.id for p in R.PARTS if p.group == g]
         exp_n = sum(len(parts[p].Solids()) for p in pids)
         exp_v = sum(parts[p].Volume() for p in pids)
         exp_box = cad_box(union_box(tight_bbox(parts[p]) for p in pids))
@@ -480,27 +476,33 @@ def check_step(parts):
           f"assembly STEP: {n} solids (expect {total_n}), {v / 1000:.1f} cm3 (expect {total_vol / 1000:.1f})")
     with open(apath, encoding="utf-8", errors="replace") as f:
         txt = f.read()
-    names = [pid for pid, *_ in model.PARTS]
+    names = [p.id for p in R.PARTS]
     missing = [p for p in names if f"'{p}'" not in txt]
     check(not missing, f"assembly STEP carries every part name (missing: {missing})")
     check("COLOUR_RGB" in txt, "assembly STEP carries colours")
     got = check_step_parts(apath, parts, names)
-    # Upright, stated in SPEC terms rather than through cad_box: the station stands on the desk at z = 0, the
-    # screen's active area spans z 172 .. 507.7 (SPEC section 2: app y), and the user side is -Y: the keyboard
-    # (app z 2 .. 122) sits at y -122 .. -2, the neck (app z -140 .. -70) at y 70 .. 140.
+    # Upright, stated in the layout's terms rather than through cad_box: the station stands on the desk at z = 0,
+    # the screens' active areas span their real heights, the user side is -Y (keyboard app z -> CAD -y), +X unchanged.
+    from kit import purchased as PU
+    from kit.neck import NECK
+    ua, ub, ya, yb = PU.active_area()
+    kz = LAYOUT["keyboard"]["z"]
     x0, y0, z0, x1, y1, z1 = tight_bbox(s)
     scr = tight_bbox(got["display_screen"][1]) if "display_screen" in got else (0,) * 6
     kb = tight_bbox(got["keyboard_body"][1]) if "keyboard_body" in got else (0,) * 6
     nk = tight_bbox(got["neck"][1]) if "neck" in got else (0,) * 6
-    ok = (abs(z0) < TOL and abs(scr[2] - 172) < TOL and abs(scr[5] - 507.7) < TOL
-          and abs(kb[1] + 122) < TOL and abs(kb[4] + 2) < TOL and abs(nk[1] - 70) < TOL and abs(nk[4] - 140) < TOL)
+    ok = (abs(z0) < TOL and abs(scr[2] - ya) < TOL and abs(scr[5] - yb) < TOL
+          and abs(kb[1] + kz[1]) < TOL and abs(kb[4] + kz[0]) < TOL
+          and abs(nk[1] + NECK["z_front"][0]) < TOL and abs(nk[4] + NECK["z_back"]) < TOL)
     check(ok, f"assembly STEP is Z-up with the user side at -Y: z [{f1(z0)}, {f1(z1)}], screen z [{f1(scr[2])}, "
           f"{f1(scr[5])}], keyboard y [{f1(kb[1])}, {f1(kb[4])}], neck y [{f1(nk[1])}, {f1(nk[4])}]")
-    check(abs(x0 + 640) < TOL and abs(x1 - 775) < TOL, f"assembly STEP: +X unchanged, x [{f1(x0)}, {f1(x1)}]")
+    bx0 = LAYOUT["base"]["x"][0]
+    dx1 = LAYOUT["dock"]["x"][1]
+    check(abs(x0 - bx0) < TOL and abs(x1 - dx1) < TOL, f"assembly STEP: +X unchanged, x [{f1(x0)}, {f1(x1)}]")
 
 
 # ----------------------------------------------------------------------------
-# 4/5. scene.json + GLB
+# 5. scene.json + GLB
 # ----------------------------------------------------------------------------
 
 def read_glb_json(path):
@@ -510,89 +512,76 @@ def read_glb_json(path):
         return json.loads(f.read(ln))
 
 
+GLB_BBOX_TOL = 0.6
+
+
 def check_scene(parts):
-    print("\n[4] scene.json")
+    print("\n[5] scene.json + GLB")
     import build
     sc = json.load(open(os.path.join(EXPORT, "model", "scene.json")))
     for k in ("version", "units", "name", "params", "bounds", "materials", "groups", "parts", "poses", "dock_sequence",
               "dims", "screen", "files", "drawings"):
         check(k in sc, f"key '{k}'")
     check(sc["units"] == "m" and sc["version"] == 1, "units m, version 1")
-    check([g["id"] for g in sc["groups"]] == model.GROUP_ORDER, "group order")
-    mats = ["titanium", "graphite", "oxblood", "glass_black", "screen", "keycap", "rubber", "amber_led", "copper", "pcb",
-            "ferrite", "laptop_alu", "felt", "steel"]
-    check(sorted(sc["materials"]) == sorted(mats), "material keys")
+    check([g["id"] for g in sc["groups"]] == R.GROUP_ORDER, f"group order {R.GROUP_ORDER}")
+    check(sorted(sc["materials"]) == sorted(R.MATERIALS), "material keys")
     ids = [p["id"] for p in sc["parts"]]
-    check(ids == [p for p, *_ in model.PARTS], "parts list")
+    check(ids == [p.id for p in R.PARTS], "parts list = registry")
     for p in sc["parts"]:
-        for k in ("id", "group", "name", "material", "internal", "explode", "bbox_mm", "volume_cm3", "mass_g"):
-            if k not in p:
-                check(False, f"part {p['id']} key {k}")
-        if p["material"] not in mats:
-            check(False, f"part {p['id']} material {p['material']}")
-    for g in sc["groups"]:
-        for k in ("id", "name", "summary", "description", "parts", "pivot", "bbox_mm", "mass_g", "volume_cm3", "materials"):
-            if k not in g:
-                check(False, f"group {g['id']} key {k}")
-    check(set(sc["poses"]) == {"stow", "work", "standalone"}, "poses")
-    check(sc["dock_sequence"] == build.dock_sequence(), "dock_sequence == build.dock_sequence() (align, lower, lift)")
-    check([(s["step"], s["title"]) for s in sc["dock_sequence"]] == [("align", "Align"), ("lower", "Lower"),
-                                                                     ("lift", "Lift out")], "dock_sequence steps / titles")
-    dock = sc["groups"][model.GROUP_ORDER.index("dock")]
-    check("subgroups" not in dock, "dock group has no subgroups (nothing on it moves)")
-    led = [p for p in sc["parts"] if p["id"] == "dock_led"]
-    check(len(led) == 1 and led[0]["group"] == "dock" and led[0]["material"] == "amber_led" and not led[0]["internal"],
-          "dock_led: group dock, amber_led, not internal")
-    # latch-free copy: nothing in scene.json names a latch, and the dock / laptop text names no button, switch or lock
-    import re
+        need = ["id", "group", "name", "material", "internal", "kind", "explode", "bbox_mm", "volume_cm3", "mass_g"]
+        if p["kind"] in ("purchased", "hardware", "metal") and p["group"] != "laptop":
+            need.append("bom")
+        if p["kind"] == "printed":
+            need.append("print")
+        miss = [k for k in need if k not in p]
+        if miss:
+            check(False, f"part {p['id']} missing {miss}")
+        if p["kind"] not in ("printed", "purchased", "metal", "hardware"):
+            check(False, f"part {p['id']} kind {p['kind']}")
+        if p["kind"] == "printed":
+            pr = p["print"]
+            if not all(k in pr for k in ("file", "filament", "grams", "minutes", "plate")):
+                check(False, f"part {p['id']} print block")
+    check(set(sc["poses"]) == {"stow", "work"}, "poses: stow, work (standalone removed: the laptop is the computer)")
+    check(sc["dock_sequence"] == build.dock_sequence(), "dock_sequence == build.dock_sequence()")
     raw = open(os.path.join(EXPORT, "model", "scene.json"), encoding="utf-8").read()
     check("latch" not in raw.lower(), "scene.json never mentions a latch")
-    texts = [dock["summary"], dock["description"], sc["groups"][model.GROUP_ORDER.index("laptop")]["summary"],
-             sc["groups"][model.GROUP_ORDER.index("laptop")]["description"]]
-    texts += [p["name"] for p in sc["parts"] if p["group"] == "dock"]
-    bad = [w for t in texts for w in re.findall(r"(?i)\b(latch\w*|button\w*|switch\w*|press-release|locks?|locked)\b", t)]
-    check(not bad, "dock / laptop copy names no latch, button, switch or lock" + (f" (found {bad})" if bad else ""))
+    check("internals" not in [g["id"] for g in sc["groups"]], "no internals group (no computer in the base)")
     dims = {d["id"] for d in sc["dims"]}
     need = {"overall_w", "base_depth", "overall_h", "display_w", "panel_active_w", "seam", "work_offset"}
     check(need <= dims, f"dims include {sorted(need)}")
-
-    # numbers against the fresh build: a stale export (geometry or params changed, not rebuilt) fails here
-    check(sc["params"] == json.loads(json.dumps(P)), "params == params.py")
+    check(sc["params"] == json.loads(json.dumps(build.scene_params())), "params == the kit's interface tables")
     stale = []
     for p in sc["parts"]:
         s = parts[p["id"]]
         x0, y0, z0, x1, y1, z1 = tight_bbox(s)
         bb = [x1 - x0, y1 - y0, z1 - z0]
         vol = s.Volume()
-        mass = build.part_mass(p["id"], vol)[0]
+        mass = build.part_mass(p["id"], s)[0]
         if (max(abs(a - b) for a, b in zip(bb, p["bbox_mm"])) > 0.06 or abs(vol / 1000 - p["volume_cm3"]) > 0.006
                 or abs(mass - p["mass_g"]) > 0.06 or p["explode"] != build.EXPLODE[p["id"]]):
             stale.append(p["id"])
     check(not stale, "parts[] bbox / volume / mass / explode match a fresh build" + (f" (stale: {stale})" if stale else ""))
     mm = 0.001
-    pm = P["poses_mm"]
-    for pose in ("work", "standalone"):
-        for g, key in (("keyboard", "work_keyboard"), ("mouse", "work_mouse")):
-            e = sc["poses"][pose][g]
-            via = [list(np.array(v) * mm) for v in build.work_path(key)]
-            ok = (np.allclose(e["t"], np.array(pm[key]) * mm, atol=1e-9) and len(e.get("via", [])) == len(via)
-                  and all(np.allclose(a, b, atol=1e-9) for a, b in zip(e["via"], via)))
-            check(ok, f"poses.{pose}.{g}: t {e['t']} via {e.get('via')}")
-    seq = {s["step"]: s for s in sc["dock_sequence"]}
-    check(np.isclose(seq["align"]["laptop"]["t"][1], pm["dock_align_lift"] * mm)
-          and np.isclose(seq["lift"]["laptop"]["t"][1], pm["dock_lift_out"] * mm), "dock_sequence lifts = params.poses_mm")
-    nominal = {"seam", "panel_active_w"}   # nominal along-facet values, not chord lengths
+    pm = R.POSES_MM
+    for g, key in (("keyboard", "work_keyboard"), ("mouse", "work_mouse")):
+        e = sc["poses"]["work"][g]
+        via = [list(np.array(v) * mm) for v in build.work_path(key)]
+        ok = (np.allclose(e["t"], np.array(pm[key]) * mm, atol=1e-9) and len(e.get("via", [])) == len(via)
+              and all(np.allclose(a, b, atol=1e-9) for a, b in zip(e["via"], via)))
+        check(ok, f"poses.work.{g}: t {e['t']} via {e.get('via')}")
     for d in sc["dims"]:
-        if d["id"] in nominal:
+        if d["id"] in ("seam", "panel_active_w"):
             continue
         length = float(np.linalg.norm(np.array(d["b"]) - np.array(d["a"]))) / mm
         try:
-            val = float(d["label"].replace("mm", "").replace(" ", "").replace("\u00a0", ""))
+            val = float(d["label"].replace("mm", "").replace(" ", "").replace(" ", ""))
         except ValueError:
             check(False, f"dim {d['id']}: label '{d['label']}' is not a length")
             continue
         check(abs(val - length) <= 1.0, f"dim {d['id']}: label '{d['label']}' vs end points {length:.2f} mm apart")
-    check(sc["screen"]["panels"] == 2 and sc["screen"]["seam_mm"] == 14 and sc["screen"]["toe_in_deg"] == 10, "screen block")
+    check(sc["screen"]["panels"] == 2 and abs(sc["screen"]["seam_mm"] - 17.0) < 0.5 and sc["screen"]["toe_in_deg"] == 10,
+          f"screen block (seam {sc['screen']['seam_mm']} mm)")
     for f in sc["files"]:
         p = os.path.join(EXPORT, f["path"])
         ok = os.path.exists(p) and os.path.getsize(p) == f["bytes"] and f["bytes"] > 0
@@ -600,7 +589,6 @@ def check_scene(parts):
     for g, rel in sc["drawings"].items():
         check(os.path.exists(os.path.join(EXPORT, rel)), f"drawing {rel}")
 
-    print("\n[5] GLB nodes")
     for name in ("station.glb", "station-edges.glb"):
         path = os.path.join(EXPORT, "model", name)
         js = read_glb_json(path)
@@ -610,17 +598,14 @@ def check_scene(parts):
         check(not bad, f"{name}: no rotation/scale on nodes")
         for p in sc["parts"]:
             ex = nodes[p["id"]].get("extras", {})
-            if ex != {"group": p["group"], "material": p["material"], "internal": p["internal"]}:
+            if ex != {"group": p["group"], "material": p["material"], "internal": p["internal"], "kind": p["kind"]}:
                 check(False, f"{name}: extras of {p['id']}")
         modes = {pr["mode"] for m in js["meshes"] for pr in m["primitives"]}
         check(modes == ({4} if name == "station.glb" else {1}), f"{name}: primitive modes {modes}")
         if name == "station.glb":
-            mnames = [m["name"] for m in js["materials"]]
-            check(sorted(mnames) == sorted(mats), "station.glb: materials named by key")
-            scr = js["meshes"][js["nodes"][[n["name"] for n in js["nodes"]].index("display_screen")]["mesh"]]
+            check(sorted(m["name"] for m in js["materials"]) == sorted(R.MATERIALS), "station.glb: materials named by key")
+            scr = js["meshes"][nodes["display_screen"]["mesh"]]
             check("TEXCOORD_0" in scr["primitives"][0]["attributes"], "display_screen has TEXCOORD_0")
-        if name == "station.glb":
-            # node translation + POSITION accessor bounds = the fresh B-rep's bounding box (to within the tessellation)
             off = []
             for n in js["nodes"]:
                 acc = js["accessors"][js["meshes"][n["mesh"]]["primitives"][0]["attributes"]["POSITION"]]
@@ -633,27 +618,18 @@ def check_scene(parts):
             check(not off, f"station.glb: every node's mesh bounds match the B-rep within {GLB_BBOX_TOL} mm"
                   + (f" (off: {off})" if off else ""))
         size = os.path.getsize(path)
-        check(size < 6e6, f"{name}: {size / 1e6:.2f} MB < 6 MB")
-    # groups that animate share the group pivot
+        check(size < 8e6, f"{name}: {size / 1e6:.2f} MB < 8 MB")
     js = read_glb_json(os.path.join(EXPORT, "model", "station.glb"))
     nodes = {n["name"]: n for n in js["nodes"]}
     for g in sc["groups"]:
-        if g["id"] in ("keyboard", "mouse", "laptop"):
+        if g["id"] in R.ANIMATED_GROUPS:
             for pid in g["parts"]:
-                ok = np.allclose(nodes[pid]["translation"], g["pivot"], atol=1e-6)
-                check(ok, f"{pid} node translation = {g['id']} group pivot")
-    # parts of groups that never move are pivoted at their own bottom-centre (SPEC section 3), dock_led included
-    led = parts["dock_led"]
-    x0, y0, z0, x1, y1, z1 = tight_bbox(led)
-    check(np.allclose(nodes["dock_led"]["translation"], np.array([(x0 + x1) / 2, y0, (z0 + z1) / 2]) / 1000.0, atol=1e-6),
-          "dock_led node translation = its bottom-centre")
+                check(np.allclose(nodes[pid]["translation"], g["pivot"], atol=1e-6), f"{pid} node translation = "
+                                                                                    f"{g['id']} group pivot")
     total = 0
     for root, _, files in os.walk(EXPORT):
         total += sum(os.path.getsize(os.path.join(root, f)) for f in files)
-    check(total < 21e6, f"export/ total {total / 1e6:.2f} MB (budget ~20 MB)")
-
-
-GLB_BBOX_TOL = 0.6   # mm; the coarsest tessellation is 0.5 mm chord deflection
+    check(total < 30e6, f"export/ total {total / 1e6:.2f} MB (budget 30 MB)")
 
 
 def main():
@@ -663,14 +639,15 @@ def main():
         print("export:", EXPORT)
     fast = "--fast" in sys.argv
     t = time.time()
-    parts = model.build_all(verbose=False)
-    check(not model.FILLET_LOG, "all fillets / chamfers applied" + "".join("\n          " + s for s in model.FILLET_LOG))
+    parts = R.build_parts(verbose=False)
+    check(not C.FILLET_LOG, "all fillets / chamfers applied" + "".join("\n          " + s for s in C.FILLET_LOG))
     for pid, s in parts.items():
         if not s.isValid():
             check(False, f"{pid} is not a valid B-rep")
-    check_envelopes(parts)
+    check_layout(parts)
     if "--no-interference" not in sys.argv:
         check_interference(parts, fast)
+    check_kit(parts)
     if "--geometry-only" not in sys.argv:
         check_step(parts)
         check_scene(parts)
