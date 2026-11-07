@@ -410,9 +410,19 @@ export class Stage {
     return rt.texture;
   }
 
+  /**
+   * Quality tier (and the drawing-buffer size the reflection follows). Called on every resize, so the key light's
+   * shadow map is only thrown away when its resolution really changes: it does not depend on the viewport, and with
+   * shadowMap.autoUpdate off a dropped map is not redrawn until something asks for it (the key light would sample
+   * an empty map and go fully shadowed). three r170 doesn't resize an existing map when mapSize changes, hence the
+   * dispose on a real change.
+   */
   setQuality(q, w, h) {
-    this.key.shadow.mapSize.set(q.shadow, q.shadow);
-    if (this.key.shadow.map) { this.key.shadow.map.dispose(); this.key.shadow.map = null; }
+    if (this.key.shadow.mapSize.x !== q.shadow || this.key.shadow.mapSize.y !== q.shadow) {
+      this.key.shadow.mapSize.set(q.shadow, q.shadow);
+      if (this.key.shadow.map) { this.key.shadow.map.dispose(); this.key.shadow.map = null; }
+      this.renderer.shadowMap.needsUpdate = true;
+    }
     this.reflection.setSize(w, h, q.reflect);
     this.reflection.uniforms.uReflectStrength.value = q.reflect > 0 ? this.reflectStrength : 0;
   }
@@ -421,10 +431,10 @@ export class Stage {
     if (this.reflection.scale > 0) this.reflection.setSize(w, h, this.reflection.scale);
   }
 
-  /** Per-frame passes that must run before the main render. */
-  prerender(scene, camera, stationRoot, contactExclude) {
+  /** Per-frame passes that must run before the main render. reflect = false keeps the last desk reflection. */
+  prerender(scene, camera, stationRoot, contactExclude, { reflect = true } = {}) {
     if (this.contact.dirty && this.contact.plane.visible) this.contact.update(this.renderer, stationRoot, contactExclude);
-    if (this.desk.visible && this.reflection.rt && this.reflection.uniforms.uReflectStrength.value > 0) {
+    if (reflect && this.desk.visible && this.reflection.rt && this.reflection.uniforms.uReflectStrength.value > 0) {
       this.reflection.render(this.renderer, scene, camera, [this.desk, this.contact.plane, ...this.pools, this.room]);
     }
   }

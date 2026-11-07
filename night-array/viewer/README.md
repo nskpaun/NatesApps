@@ -38,7 +38,9 @@ NA.dock(step)          // align | lower | release | lift | play | reset   ("play
 NA.frame(groupId)      // animated framing of one group
 ```
 
-All of them are safe to call before the model has loaded: calls are queued and applied before the first frame.
+All of them are safe to call before the model has loaded: calls are queued and applied before the first frame
+(they jump instead of animating). A queued `dock('play')` waits for the first frame: its steps, and their
+`dockStep` events, are timed from the moment the model is on screen.
 The initial state can also come from the URL: `index.html?state=<URL-encoded JSON>`.
 
 ViewerState (defaults in `src/state.js`; invalid values and unknown keys are ignored):
@@ -53,10 +55,10 @@ ViewerState (defaults in `src/state.js`; invalid values and unknown keys are ign
 | `section` | `null` or `{ axis: "x" \| "z", t: 0..1 }` | clipping plane across the bounds, with hatched caps |
 | `dims` | bool | scene.json dims as 3D dimension lines + labels |
 | `autorotate` | bool | |
-| `isolate` | `null` or group id | others fade out, the camera frames the group |
+| `isolate` | `null` or group id | others fade out along with the camera move that frames the group; a group the pose hides (the laptop in standalone, the desk mat in stow) is shown at its rest place |
 | `selected` | `null` or group id | highlight (rim glow / tint / amber edges, per style) |
-| `quality` | `high` `balanced` `battery` | pixel ratio + pixel budget, shadow map, MSAA, bloom, desk reflection |
-| `cinematic` | bool | slow orbiting camera, no picking (Night shift) |
+| `quality` | `high` `balanced` `battery` | pixel ratio + pixel budget, shadow map, MSAA, bloom, desk reflection; cross-fades once the new tier's shaders are compiled |
+| `cinematic` | bool | slow orbit around the middle of the station, no picking (Night shift); the distance follows the azimuth (in at the front and back, out at the sides) so the whole station stays in view all the way round, and re-fits when the page is resized |
 
 ## Events (JS -> Kotlin)
 
@@ -66,8 +68,19 @@ Sent with `window.NightArrayHost.post(JSON.stringify(evt))`, or `console.log` wh
 { "type": "ready" }                                  first frame with the model drawn
 { "type": "pick", "group": "keyboard" | null }       a tap (< 8 px, < 350 ms), never a drag; null = empty space
 { "type": "dockStep", "step": "align" | "lower" | "release" | "lift" | "done" }
-{ "type": "error", "message": "..." }                no WebGL2, model failed to load, context lost for good
+{ "type": "error", "message": "..." }                no WebGL2, no half-float render targets, model failed to load,
+                                                     context lost for good
 ```
+
+`dock('play')` posts `align` at 0 s, `lower` at 1.5 s, `release` at 3.05 s, `lift` at 3.9 s and `done` at 5.5 s, when
+the laptop starts going back into the cradle (that motion is not "lift" any more). The sequence itself runs until
+about 6.7 s: `NA.idle()` waits for it, and a step or `play` sent meanwhile simply takes over.
+
+Picking: a mouse or pen picks exactly what is under the pointer. A finger gets target expansion: when the exact ray
+finds nothing, or a group that is big on screen (the desk mat, the base), a group smaller than 44 dp on either axis
+(the mouse, the keyboard, the dock in a wide view) wins if the tap falls inside its screen box padded to 44 x 44 dp
+and a ray toward it really reaches it. A tap does not count as moving the camera: presets, isolate, explode and
+resizes keep re-framing after a pick; a drag, pinch or wheel past the 8 px tap slop takes the view over.
 
 Hooks for the tests and the stills tool (the app doesn't use them): `NA.on(fn)` listens to the same events in the
 page, `NA.idle(ms)` resolves once nothing is animating and a frame is drawn, `NA._capture(true)` stops the LED
@@ -113,11 +126,17 @@ node test/shots.mjs <outDir> [filter] [--portrait|--landscape]   # visual check 
 transparent until exactly one `ready`; `?state=` and calls made before load (setState, camera, dock, frame) are
 applied; every mode x style renders without console or page errors; the keyboard and mouse pass through
 scene.json's `via` waypoints (clear of the rim) both ways and land on their poses; explode, section (x and z),
-dims, isolate and frame for every group, finish, amber 0/1 and the quality tiers; a tap on the keyboard picks `keyboard`, empty
-space picks `null`, a drag or long press picks nothing; `dock play` emits align, lower, release, lift, done; all
-camera presets; the render loop goes quiet when idle (no renders, no rAF callbacks for 2 s) and while the page
-is hidden; context loss and restore; a phone (touch, `isMobile`, 390x844 at DPR 3) with finger taps, a one-finger
-orbit and a pinch; and the error paths (no WebGL2, model missing, no host).
+dims, isolate and frame for every group (also groups the pose hides), finish, amber 0/1 and the quality tiers (the
+HDR composer never allocates its second target); a tap on the keyboard picks `keyboard`, empty space picks `null`, a
+drag or long press picks nothing; `dock play` emits align, lower, release, lift, done ('done' as the reset motion
+starts), and a `play` queued before load starts at the first frame; all camera presets; the render loop goes quiet
+when idle (no renders, no rAF callbacks for 2 s) and while the page is hidden; context loss and restore; a phone
+(touch, `isMobile`, 390x844 at DPR 3) with finger taps (also 8-12 dp off the mouse), a tap that leaves the framing
+to the viewer, a one-finger orbit and a pinch; resizes (the key light keeps its shadow map, a style cross-fade drops
+its old-shape snapshot, Night shift re-fits its orbit); isolate keeping the framed group in view while the camera
+moves; the camera stopping short of the station; idle breathing frames skipping the desk reflection; shader
+programs compiled ahead (repeat fades, the first section cut and quality switches link next to nothing in a
+frame); and the error paths (no WebGL2, no half-float render targets, model missing, no host).
 
 `tools/render_stills.mjs` renders every still SPEC.md section 4 lists: `hero-work`, `hero-stow`,
 `hero-standalone`, `dock-align`, `dock-lower`, `dock-release`, `trays`, `display`, `cad`, `xray`, `exploded`,
@@ -138,14 +157,24 @@ Re-render the stills whenever the CAD export or the look changes.
 - Pixel budget per tier (2.4 / 1.5 / 0.9 MP) on top of the pixel-ratio cap (2 / 1.5 / 1), so a DPR-3 phone does
   not render 9x the pixels.
 - The shadow map (2048 PCF soft on `high`, 1024 on `balanced`, 512 PCF on `battery`) and the contact shadow are
-  redrawn only when the layout changes, never while orbiting.
+  redrawn only when the layout changes, never while orbiting or on a resize (the map is reallocated only when the
+  tier changes its size).
+- The stow breathing frames (15 fps) keep the last desk reflection: only frames where something moved redraw it.
+- One HDR target: the output pass doesn't swap, so the composer never allocates its second MSAA half-float target.
+  The composer lives for the whole session: `battery` parks it (frees its targets, keeps its passes), so switching
+  tiers never rebuilds the bloom programs.
+- Shader programs are compiled ahead, for the target the frame really draws into (the HDR target on the bloom tiers),
+  while the current frame stays on screen: style and quality switches (then a cross-fade), the first section cut
+  (then the sweep), and the transparent twins the fades use (compiled while idle after load and pooled, never
+  disposed, so later fades reuse their programs). three's `compile()` doesn't set up local clipping per material,
+  so with a cut active the clipped materials compile in a pass of their own (`Viewer.compileForOutput`).
 - Bloom (UnrealBloom) runs only in studio and x-ray, and not on `battery`. The desk reflection renders the station
   a second time into a reduced-size target (0.5x on `high`, 0.33x on `balanced`, off on `battery`).
 - B-rep edges from `station-edges.glb` are drawn as fat lines only in the cad, x-ray and blueprint styles.
 - `renderer.info.render` holds the totals of the last whole frame (it is reset once per frame, not per pass).
 
 Measured on a phone-sized page (390x844 CSS px, DPR 3, work mode, hero camera); the model is 41 meshes and
-98 k triangles, `viewer.js` is 865 KiB. "Layout" frames also redraw the shadow map and contact shadow.
+98 k triangles, `viewer.js` is 873 KiB. "Layout" frames also redraw the shadow map and contact shadow.
 SwiftShader times are CPU-rendered and only meaningful relative to each other.
 
 | style / quality | canvas | draw calls (orbit / layout) | triangles (orbit / layout) | SwiftShader ms per frame |
@@ -167,4 +196,12 @@ edge lines are what puts cad and blueprint above studio in triangles.
 - Section caps need watertight solids. The base, neck and display shells are hollow, so their caps are thin
   strips (tinted amber in studio so they still read).
 - The style cross-fade copies the canvas into a raw RGB8 texture handed to three via `renderer.properties`;
-  revisit if three is upgraded.
+  revisit if three is upgraded. So does the clipping primer in `compileForOutput` (it relies on three keeping the
+  plane count of the last material drawn).
+- The 3 mm LED strips (base under-glow, neck light) look beaded and stepped live on the bloom tiers, where the stills
+  show a smooth line: the composer resolves its MSAA in HDR and tone-maps afterwards, so every partly covered pixel
+  of a strip that bright still clips. A soft emission profile across the strip makes it worse at phone sizes (tried
+  and dropped). The real fix is a resolve in tone-compressed space (or anti-aliasing after tone mapping), which
+  touches the whole pipeline and the look.
+- Needs half-float render targets (`EXT_color_buffer_half_float` or `EXT_color_buffer_float`): without them the page
+  reports an error instead of a dark, broken frame.

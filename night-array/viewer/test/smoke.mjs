@@ -35,6 +35,17 @@ const groupPoint = (page, id, top = true) => page.evaluate(([id, top]) => {
   return { x: r.left + (c.x + 1) / 2 * r.width, y: r.top + (1 - c.y) / 2 * r.height };
 }, [id, top]);
 const picks = (page) => page.evaluate(() => window.__events.filter((e) => e.type === 'pick').map((e) => e.group));
+// Counts shader program links (each one a synchronous hitch on the frame that needs it).
+const LINKS = () => {
+  window.__links = 0;
+  const link = WebGL2RenderingContext.prototype.linkProgram;
+  WebGL2RenderingContext.prototype.linkProgram = function (p) { window.__links++; return link.call(this, p); };
+};
+// Timestamps every event the host receives (performance.now()).
+const HOST_T = () => {
+  window.__events = [];
+  window.NightArrayHost = { post: (s) => { const e = JSON.parse(s); e.t = performance.now(); window.__events.push(e); } };
+};
 
 async function open(browser, srv, { state = {}, init = [], route = null } = {}) {
   const page = await browser.newPage({ viewport: VIEW, deviceScaleFactor: 1 });
@@ -209,10 +220,16 @@ try {
     const picks2 = await page.evaluate(() => window.__events.filter((e) => e.type === 'pick').length);
     ok(picks2 === 2, 'drag does not emit pick');
 
-    await page.evaluate(() => window.NA.dock('play'));
+    await page.evaluate(() => {
+      // 'done' marks the start of the reset motion (the laptop going back in is not 'lift'); NA.idle() still waits for it
+      window.NA.on((e) => { if (e.type === 'dockStep' && e.step === 'done') window.__doneWhile = { playing: !!window.NA._viewer.dockPlay, step: window.NA._viewer.dockStep }; });
+      window.NA.dock('play');
+    });
     await page.waitForFunction(() => window.__events.some((e) => e.type === 'dockStep' && e.step === 'done'), null, { timeout: 60000, polling: 100 });
     const steps = await page.evaluate(() => window.__events.filter((e) => e.type === 'dockStep').map((e) => e.step));
     ok(steps.join(',') === 'align,lower,release,lift,done', `dock play emits ${steps.join(',')}`);
+    const doneWhile = await page.evaluate(() => window.__doneWhile);
+    ok(doneWhile && doneWhile.playing && doneWhile.step === null, `'done' comes as the reset motion starts, play still running ${JSON.stringify(doneWhile)}`);
     const latch = await page.evaluate(() => {
       window.NA.dock('release');
       window.NA._viewer.tweens.finishAll();
@@ -453,6 +470,24 @@ try {
       NA.setState({ isolate: null });
       fin();
       out.isoBack = [...v.model.groups.values()].filter((x) => x.node.visible).length >= v.sj.groups.length - 1;
+      // isolating a group the pose hides (laptop in standalone, desk mat in stow) still shows it, alone and framed
+      out.isoPoseHidden = {};
+      for (const [mode, id] of [['standalone', 'laptop'], ['stow', 'deskmat']]) {
+        NA.setState({ mode, isolate: null });
+        fin();
+        const hiddenByPose = !v.model.groups.get(id).node.visible;
+        NA.setState({ isolate: id });
+        NA.frame(id);
+        fin();
+        const vis = [...v.model.groups.values()].filter((x) => x.node.visible).map((x) => x.id);
+        const box = v.model.bounds([id]);
+        const framed = !box.isEmpty() && inView(box, 0.2);
+        NA.setState({ isolate: null });
+        fin();
+        out.isoPoseHidden[`${mode}:${id}`] = { hiddenByPose, alone: vis.length === 1 && vis[0] === id, inView: framed, hiddenAgain: !v.model.groups.get(id).node.visible };
+      }
+      NA.setState({ mode: 'work' });
+      fin();
       // frame every group (no isolate): the group's box lands inside the view
       out.frame = {};
       for (const g of v.sj.groups) {
@@ -490,7 +525,11 @@ try {
         NA.setState({ quality: q });
         fin();
         v.render();
-        out.quality[q] = { shadow: v.stage.key.shadow.mapSize.x, composer: !!v.output.composer, msaa: v.output.composer ? v.output.composer.renderTarget1.samples : 0, pr: v.renderer.getPixelRatio() };
+        const c = v.output.composer;
+        if (c) v.render(); // a second frame: the composer must not swap targets
+        // one HDR target: the output pass doesn't swap, so renderTarget1 is never bound (never allocated)
+        const single = !c || (c.readBuffer === c.renderTarget2 && v.renderer.properties.get(c.renderTarget1).__webglFramebuffer === undefined);
+        out.quality[q] = { shadow: v.stage.key.shadow.mapSize.x, composer: !!c, msaa: c ? c.renderTarget1.samples : 0, pr: v.renderer.getPixelRatio(), single };
       }
       NA.camera('hero');
       fin();
@@ -499,6 +538,8 @@ try {
     });
     const badCombos = r.combos.filter((c) => !c.ok);
     ok(badCombos.length === 0, `every mode x style renders (${r.combos.map((c) => `${c.mode}/${c.style}:${c.calls}`).join(' ')})`);
+    const badPH = Object.entries(r.isoPoseHidden).filter(([, x]) => !(x.hiddenByPose && x.alone && x.inView && x.hiddenAgain)).map(([k, x]) => `${k} ${JSON.stringify(x)}`);
+    ok(badPH.length === 0, `isolate shows a group its pose hides, framed, and Show all hides it again ${badPH.length ? 'FAILED: ' + badPH.join('; ') : Object.keys(r.isoPoseHidden).join(', ')}`);
     ok(r.explode1 && r.explodeHalf && r.explode0, `explode follows scene.json vectors (1 ${r.explode1}, 0.5 ${r.explodeHalf}, 0 ${r.explode0})`);
     const badVia = Object.entries(r.via).filter(([, x]) => !(x.waypoints && x.clearOfRim && x.lands)).map(([k, x]) => `${k} ${JSON.stringify(x)}`);
     ok(Object.keys(r.via).length === 4 && badVia.length === 0, `devices follow scene.json via waypoints, clear of the rim, both ways ${badVia.length ? 'FAILED: ' + badVia.join('; ') : Object.keys(r.via).join(', ')}`);
@@ -511,6 +552,7 @@ try {
     const Q = r.quality;
     ok(Q.battery.shadow < Q.balanced.shadow && Q.balanced.shadow < Q.high.shadow && !Q.battery.composer && Q.balanced.composer && Q.high.composer && Q.high.msaa > Q.balanced.msaa,
       `quality tiers scale shadows / bloom / MSAA ${JSON.stringify(Q)}`);
+    ok(Q.high.single && Q.balanced.single, `the HDR composer works in a single target (renderTarget1 never allocated) ${JSON.stringify({ high: Q.high.single, balanced: Q.balanced.single })}`);
 
     // a tap on the keyboard picks it, a tap on empty space picks null, a drag picks nothing
     await page.evaluate(() => window.NA.idle(30000));
@@ -556,6 +598,57 @@ try {
     await page.waitForTimeout(300);
     const p1 = (await picks(page)).slice(n0);
     ok(p1.length === 2 && p1[0] === 'keyboard' && p1[1] === null, `finger tap keyboard -> "keyboard", empty -> null (${JSON.stringify(p1)})`);
+    // a tap is not the user taking over the view: explode (and resizes, mode changes) keep re-framing after it
+    const tapFrame = await page.evaluate(async () => {
+      const NA = window.NA, v = NA._viewer;
+      const userMoved = v.userMoved;
+      NA.setState({ explode: 1 });
+      await NA.idle(60000);
+      let off = 0, n = 0;
+      for (const b of v.model.partBoxes(null, { includeInternal: true })) {
+        for (let i = 0; i < 8; i++) {
+          const p = b.min.clone().set(i & 1 ? b.max.x : b.min.x, i & 2 ? b.max.y : b.min.y, i & 4 ? b.max.z : b.min.z).project(v.camera);
+          n++;
+          if (Math.abs(p.x) > 1.001 || Math.abs(p.y) > 1.001) off++;
+        }
+      }
+      NA.setState({ explode: 0 });
+      await NA.idle(60000);
+      return { userMoved, off, n };
+    });
+    ok(!tapFrame.userMoved && tapFrame.off === 0, `taps leave the framing to the viewer: explode after a tap keeps every part in view (userMoved ${tapFrame.userMoved}, ${tapFrame.off}/${tapFrame.n} corners off-screen)`);
+    // finger taps a little off the small mouse still pick it; a tap on the open mat stays the mat
+    const scr = await page.evaluate(() => Object.fromEntries([...window.NA._viewer.groupScreenBoxes()]));
+    const mc = { x: (scr.mouse.x0 + scr.mouse.x1) / 2, y: (scr.mouse.y0 + scr.mouse.y1) / 2 };
+    const fingers = [[8, 0], [-8, 0], [0, 8], [12, 0], [-12, 0], [0, 12], [0, -12]].map(([dx, dy]) => [mc.x + dx, mc.y + dy]);
+    // a point on the open mat, well clear of every small group's padded (44 x 44 dp) target, nearest to 40 dp right of the keyboard
+    const matPt = await page.evaluate((scr) => {
+      const v = window.NA._viewer, m = scr.deskmat, k = scr.keyboard;
+      const small = Object.values(scr).filter((b) => b.x1 - b.x0 < 44 || b.y1 - b.y0 < 44);
+      const clear = (x, y) => small.every((b) => {
+        const px = Math.max(0, (44 - (b.x1 - b.x0)) / 2) + 8, py = Math.max(0, (44 - (b.y1 - b.y0)) / 2) + 8;
+        return x < b.x0 - px || x > b.x1 + px || y < b.y0 - py || y > b.y1 + py;
+      });
+      const want = [k.x1 + 40, (k.y0 + k.y1) / 2];
+      let best = null;
+      for (let x = m.x0; x <= m.x1; x += 3) {
+        for (let y = m.y0; y <= m.y1; y += 3) {
+          if (!clear(x, y) || v.rayGroup(x, y) !== 'deskmat') continue;
+          const d = Math.hypot(x - want[0], y - want[1]);
+          if (!best || d < best.d) best = { x, y, d };
+        }
+      }
+      return best ? [best.x, best.y] : [want[0], want[1]];
+    }, scr);
+    const exactMat = await page.evaluate(([x, y]) => window.NA._viewer.rayGroup(x, y), matPt);
+    const n1 = (await picks(page)).length;
+    for (const [x, y] of [...fingers, matPt]) {
+      await page.touchscreen.tap(x, y);
+      await page.waitForTimeout(250);
+    }
+    const p3 = (await picks(page)).slice(n1);
+    ok(p3.length === fingers.length + 1 && p3.slice(0, -1).every((g) => g === 'mouse'), `finger taps 8-12 dp off the mouse pick it (${p3.slice(0, -1).join(',')})`);
+    ok(exactMat === 'deskmat' && p3[p3.length - 1] === 'deskmat', `a finger tap on the open mat, clear of the small devices, stays "deskmat" (${exactMat} -> ${p3[p3.length - 1]} at ${matPt.map(Math.round)})`);
     // one-finger drag orbits, two-finger pinch zooms; neither picks
     const cdp = await ctx.newCDPSession(page);
     const touch = (type, pts) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: pts.map(([x, y], id) => ({ x, y, id })) });
@@ -575,7 +668,8 @@ try {
     const p2 = (await picks(page)).slice(n0);
     ok(moved > 0.05, `one-finger drag orbits the camera (${moved.toFixed(3)} m)`);
     ok(c2.d < c1.d * 0.95, `pinch zooms in (${c1.d.toFixed(2)} -> ${c2.d.toFixed(2)} m)`);
-    ok(p2.length === 2, `drag and pinch don't pick (${p2.length - 2} extra)`);
+    ok(p2.length === 2 + fingers.length + 1, `drag and pinch don't pick (${p2.length - 2 - fingers.length - 1} extra)`);
+    ok(await page.evaluate(() => window.NA._viewer.userMoved), 'a one-finger drag does take over the view (userMoved)');
     // quality tiers on a DPR-3 screen: pixel ratio steps down
     const prs = await page.evaluate(() => {
       const out = {};
@@ -586,6 +680,240 @@ try {
     ok(prs.high > prs.balanced && prs.balanced > prs.battery && prs.battery === 1, `pixel ratio per tier ${JSON.stringify(prs)}`);
     ok(errors.length === 0, `no page errors on the phone (${errors.slice(0, 3).join(' | ')})`);
     await ctx.close();
+  }
+
+  // 7. review fixes: resizes, the style cross-fade, Night shift, the camera vs the station, isolate framing,
+  //    idle breathing, shader programs compiled ahead of the frames that need them
+  {
+    const { page, errors } = await open(browser, srv, { state: { mode: 'work' }, init: [HOST, LINKS] });
+    await waitEvent(page, 'ready');
+    await page.evaluate(() => { window.NA._capture(true); return window.NA.idle(60000); });
+    const sizeIs = (w, h) => page.waitForFunction(([w, h]) => { const s = window.NA._viewer.size; return s.w === w && s.h === h; }, [w, h], { timeout: 30000, polling: 50 });
+    // a resize keeps the key light's shadow map: the frame equals one drawn after forcing a shadow pass
+    await page.setViewportSize({ width: 390, height: 440 });
+    await sizeIs(390, 440);
+    const sh = await page.evaluate(async () => {
+      const v = window.NA._viewer;
+      await window.NA.idle(60000);
+      const grab = () => {
+        v.render();
+        const c = document.createElement('canvas');
+        c.width = v.canvas.width;
+        c.height = v.canvas.height;
+        const g = c.getContext('2d');
+        g.drawImage(v.canvas, 0, 0); // same task as the render: the drawing buffer is intact
+        return g.getImageData(0, 0, c.width, c.height).data;
+      };
+      const map = !!v.stage.key.shadow.map;
+      const a = grab();
+      v.renderer.shadowMap.needsUpdate = true;
+      const b = grab();
+      let diff = 0;
+      for (let i = 0; i < a.length; i++) diff = Math.max(diff, Math.abs(a[i] - b[i]));
+      return { map, diff };
+    });
+    ok(sh.map && sh.diff <= 1, `a resize keeps the key-light shadow map (map ${sh.map}, max diff vs forced shadow pass ${sh.diff})`);
+
+    // a resize during a style cross-fade drops the old-shape snapshot instead of drawing it squeezed
+    const sf = await page.evaluate(async () => {
+      const NA = window.NA, v = NA._viewer;
+      NA._capture(false);
+      NA.setState({ style: 'cad' });
+      const during = { alpha: v.styleFade.alpha, fading: v.tweens.has('stylefade') || !!v.hold };
+      v.el.style.width = '300px';
+      v.resize();
+      const after = { alpha: v.styleFade.alpha, tween: v.tweens.has('stylefade'), hold: !!v.hold, snapshot: !!v.styleFade.tex };
+      v.el.style.width = '';
+      v.resize();
+      NA.setState({ style: 'studio' });
+      v.tweens.finishAll();
+      await NA.idle(60000);
+      NA._capture(true);
+      return { during, after };
+    });
+    ok(sf.during.alpha > 0.9 && sf.during.fading && sf.after.alpha === 0 && !sf.after.tween && !sf.after.hold && !sf.after.snapshot,
+      `a resize mid style-fade drops the snapshot ${JSON.stringify(sf)}`);
+
+    // isolate: the others fade along with the camera move, and the framed group stays in view all the way
+    await page.setViewportSize({ width: 393, height: 649 });
+    await sizeIs(393, 649);
+    const iso = await page.evaluate(() => {
+      const NA = window.NA, v = NA._viewer;
+      NA.camera('hero');
+      v.tweens.finishAll();
+      v.hidden = true;
+      v.stopLoop();
+      let T = 4e7;
+      const step = (ms) => { T += ms; v.tweens.update(T); };
+      NA.setState({ isolate: 'mouse' });
+      const cam = v.tweens.map.get('camera');
+      const fade = [...v.tweens.map.entries()].find(([k]) => k.startsWith('fade:'))[1];
+      step(0);
+      let worst = 0;
+      for (let ms = 0; ms <= cam.duration + 50; ms += 50) {
+        step(50);
+        v.camera.updateMatrixWorld();
+        const b = v.model.bounds(['mouse']);
+        for (let i = 0; i < 8; i++) {
+          const p = b.min.clone().set(i & 1 ? b.max.x : b.min.x, i & 2 ? b.max.y : b.min.y, i & 4 ? b.max.z : b.min.z).project(v.camera);
+          worst = Math.max(worst, Math.abs(p.x), Math.abs(p.y));
+        }
+      }
+      v.tweens.finishAll();
+      NA.setState({ isolate: null });
+      v.tweens.finishAll();
+      v.hidden = false;
+      v.requestRender();
+      return { camDur: cam.duration / 1000, fadeDur: fade.duration / 1000, fadeDelay: fade.delay / 1000, worst };
+    });
+    ok(iso.worst <= 1 && Math.abs(iso.fadeDur - 0.6 * iso.camDur) < 0.01 && Math.abs(iso.fadeDelay - 0.15) < 1e-9,
+      `isolate mouse: others fade with the camera move, the mouse stays in view throughout ${JSON.stringify(iso)}`);
+
+    // the camera can't move into the station: a move from in front of the display to behind it at the closest zoom
+    // stops short of the panels, while orbiting behind the display at a normal distance stays free
+    const col = await page.evaluate(async () => {
+      const NA = window.NA, v = NA._viewer;
+      NA.camera('hero');
+      v.tweens.finishAll();
+      const t = v.controls.target, d = v.controls.minDistance, D = Math.PI / 180;
+      const at = (az, el, dist) => t.clone().set(Math.sin(az * D) * Math.cos(el * D), Math.sin(el * D), Math.cos(az * D) * Math.cos(el * D)).multiplyScalar(dist).add(t);
+      const front = at(0, 15, d), back = at(180, 15, d);
+      v.camera.position.copy(back);
+      const blocked = v.avoidStation(front);
+      const stopped = v.camera.position.clone();
+      const again = !v.avoidStation(stopped.clone().addScaledVector(back.clone().sub(front).normalize(), -0.001)) || v.camera.position.distanceTo(stopped) < 0.002;
+      // behind the display at the 'back' preset's distance: a small orbit is a free move
+      NA.camera('back');
+      v.tweens.finishAll();
+      const p0 = v.camera.position.clone();
+      const sph = { r: p0.distanceTo(t) };
+      const moved = at(207 + 3, 19, sph.r);
+      v.camera.position.copy(moved);
+      const blockedBack = v.avoidStation(p0);
+      const free = v.camera.position.distanceTo(moved) < 1e-9;
+      v.requestRender();
+      const idle = await NA.idle(15000);
+      NA.camera('hero');
+      v.tweens.finishAll();
+      return { blocked, short: stopped.distanceTo(front) < front.distanceTo(back) - 0.02, again, blockedBack, free, idle };
+    });
+    ok(col.blocked && col.short && col.again && !col.blockedBack && col.free && col.idle, `the camera can't move into the station, and moves freely around it ${JSON.stringify(col)}`);
+
+    // Night shift started at one size and moved to a taller slot re-fits its orbit: the station never leaves the view
+    await page.evaluate(() => window.NA.setState({ cinematic: true }));
+    await page.setViewportSize({ width: 393, height: 851 });
+    await sizeIs(393, 851);
+    const cine = await page.evaluate(() => {
+      const NA = window.NA, v = NA._viewer, c = v.cine;
+      c.blend = null;
+      const pts = v.fitPointsFor({ all: true });
+      let worst = 0;
+      for (let t = 3; t <= 66; t += 1.5) {
+        v.updateCinematic(c.t0 + t * 1000);
+        v.camera.updateMatrixWorld();
+        for (const p of pts) {
+          const q = p.clone().project(v.camera);
+          worst = Math.max(worst, Math.abs(q.x), Math.abs(q.y));
+        }
+      }
+      NA.setState({ cinematic: false });
+      NA.camera('hero');
+      v.tweens.finishAll();
+      return { worst, range: [Math.min(...c.dists), Math.max(...c.dists)].map((x) => +x.toFixed(2)) };
+    });
+    ok(cine.worst <= 1, `Night shift orbit keeps the whole station in view after a resize (max |ndc| ${cine.worst.toFixed(3)}, distance ${cine.range.join('-')} m)`);
+    await page.setViewportSize(VIEW);
+    await sizeIs(VIEW.width, VIEW.height);
+
+    // breathing charge LEDs (stow, idle) redraw the frame but keep the last desk reflection
+    const br = await page.evaluate(async () => {
+      const NA = window.NA, v = NA._viewer;
+      NA.setState({ mode: 'stow' });
+      v.tweens.finishAll();
+      v.chargeAt = 0;
+      NA._capture(false);
+      await new Promise((r) => setTimeout(r, 800));
+      const refl = v.stage.reflection, render = v.render, reflRender = refl.render;
+      let frames = 0, reflections = 0;
+      v.render = function (o) { frames++; return render.call(this, o); };
+      refl.render = function (...a) { reflections++; return reflRender.apply(this, a); };
+      await new Promise((r) => setTimeout(r, 1500));
+      v.render = render;
+      refl.render = reflRender;
+      const breathing = v.breathing();
+      NA._capture(true);
+      NA.setState({ mode: 'work' });
+      v.tweens.finishAll();
+      await NA.idle(60000);
+      return { breathing, frames, reflections };
+    });
+    ok(br.breathing && br.frames >= 2 && br.reflections === 0, `idle breathing frames skip the desk-reflection pass ${JSON.stringify(br)}`);
+
+    // shader programs: fades reuse their transparent twins, the first section cut and a quality switch compile
+    // behind the current frame; the frames that follow link (almost) nothing
+    const sp = await page.evaluate(async () => {
+      const NA = window.NA, v = NA._viewer, out = {};
+      NA._capture(false);
+      let maxPer = 0;
+      const render = v.render;
+      v.render = function (o) { const a = window.__links; render.call(this, o); maxPer = Math.max(maxPer, window.__links - a); };
+      const settle = async () => { await new Promise((r) => setTimeout(r, 200)); await NA.idle(60000); };
+      const step = async (name, fn) => { maxPer = 0; const a = window.__links; fn(); await settle(); out[name] = { links: window.__links - a, frame: maxPer }; };
+      v.prewarmed = false;
+      await v.prewarm();
+      await step('iso1', () => NA.setState({ isolate: 'keyboard' }));
+      await step('isoOff1', () => NA.setState({ isolate: null }));
+      await step('iso2', () => NA.setState({ isolate: 'keyboard' }));
+      await step('isoOff2', () => NA.setState({ isolate: null }));
+      await step('cut', () => NA.setState({ section: { axis: 'x', t: 0.5 } }));
+      await step('uncut', () => NA.setState({ section: null }));
+      await step('battery', () => NA.setState({ quality: 'battery' }));
+      await step('high', () => NA.setState({ quality: 'high' }));
+      await step('battery2', () => NA.setState({ quality: 'battery' }));
+      await step('high2', () => NA.setState({ quality: 'high' }));
+      v.render = render;
+      NA._capture(true);
+      return out;
+    });
+    ok(sp.iso1.frame <= 3 && sp.iso2.links === 0 && sp.isoOff2.links === 0, `fades reuse their twins' programs (first isolate ${sp.iso1.frame} links in a frame, repeat ${sp.iso2.links})`);
+    ok(sp.cut.frame <= 4, `first section cut compiles ahead (${sp.cut.links} programs, ${sp.cut.frame} linked in a frame)`);
+    ok(sp.battery.frame <= 2 && sp.high.frame <= 2 && sp.battery2.links === 0 && sp.high2.links === 0,
+      `quality switches compile ahead and keep the bloom programs ${JSON.stringify({ battery: sp.battery, high: sp.high, battery2: sp.battery2.links, high2: sp.high2.links })}`);
+    ok(errors.length === 0, `no page errors (${errors.slice(0, 3).join(' | ')})`);
+    await page.close();
+  }
+
+  // 7b. dock('play') sent before load waits for the first frame: its steps (and events) are spaced from there
+  {
+    const { page, errors } = await open(browser, srv, {
+      state: { mode: 'stow' },
+      init: [HOST_T, () => { document.addEventListener('DOMContentLoaded', () => { window.NA.camera('dock'); window.NA.dock('play'); }); }],
+    });
+    await page.waitForFunction(() => (window.__events || []).some((e) => e.type === 'dockStep' && e.step === 'done'), null, { timeout: 180000, polling: 100 });
+    const ev = await page.evaluate(() => ({ list: window.__events.map((e) => [e.type === 'dockStep' ? e.step : e.type, Math.round(e.t)]), cam: window.NA._viewer.cameraName }));
+    const at = Object.fromEntries(ev.list);
+    const order = ev.list.map(([k]) => k).join(',');
+    ok(order === 'ready,align,lower,release,lift,done' && at.lower - at.align >= 700 && at.release - at.lower >= 700 && ev.cam === 'dock',
+      `queued dock play starts at the first frame (${ev.list.map(([k, t]) => `${k}@${t}`).join(' ')}, camera ${ev.cam})`);
+    ok(errors.length === 0, `no page errors (${errors.slice(0, 3).join(' | ')})`);
+    await page.close();
+  }
+
+  // 4b. WebGL2 without half-float render targets -> error event (the app keeps its stills), never 'ready'
+  {
+    const { page } = await open(browser, srv, {
+      init: [HOST, () => {
+        const hide = new Set(['EXT_color_buffer_float', 'EXT_color_buffer_half_float']);
+        const P = WebGL2RenderingContext.prototype, get = P.getExtension, list = P.getSupportedExtensions;
+        P.getExtension = function (n) { return hide.has(n) ? null : get.call(this, n); };
+        P.getSupportedExtensions = function () { return (list.call(this) || []).filter((n) => !hide.has(n)); };
+      }],
+    });
+    await waitEvent(page, 'error', 60000);
+    await page.waitForTimeout(500);
+    const r = await page.evaluate(() => ({ evt: window.__events.find((e) => e.type === 'error'), ready: window.__events.some((e) => e.type === 'ready'), msg: document.getElementById('msg').textContent }));
+    ok(r.evt && /GPU/.test(r.evt.message) && !r.ready && /floating-point/.test(r.msg), `no half-float targets -> error event "${r.evt && r.evt.message}", no ready`);
+    await page.close();
   }
 
   // 4. no WebGL2 -> error event + friendly message, page stays transparent

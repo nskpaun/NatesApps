@@ -101,8 +101,9 @@ export function sphericalOf(pos, target) {
 /**
  * Animated camera move: interpolates target linearly and (azimuth, elevation, distance) spherically,
  * taking the short way round, so the camera orbits instead of flying through the station.
+ * targetEase: its own easing for the target (the orbit keeps inOutCubic), e.g. outCubic to centre a framed group early.
  */
-export function cameraTween(camera, controls, toPos, toTarget, onUpdate) {
+export function cameraTween(camera, controls, toPos, toTarget, onUpdate, { targetEase = null } = {}) {
   const fromTarget = controls.target.clone();
   const a = sphericalOf(camera.position, fromTarget);
   const b = sphericalOf(toPos, toTarget);
@@ -111,15 +112,17 @@ export function cameraTween(camera, controls, toPos, toTarget, onUpdate) {
   while (daz < -180) daz += 360;
   const span = Math.abs(daz) + Math.abs(b.el - a.el) + Math.abs(Math.log(b.dist / Math.max(1e-3, a.dist))) * 40 + fromTarget.distanceTo(toTarget) * 60;
   const duration = clamp(0.7 + span / 160, 0.75, 1.6);
+  // Tweens applies the returned ease before calling fn; with a target ease fn gets linear time and eases both itself
   const fn = (t) => {
-    const tg = fromTarget.clone().lerp(toTarget, t);
-    const az = a.az + daz * t;
-    const el = lerp(a.el, b.el, t);
-    const dist = Math.exp(lerp(Math.log(a.dist), Math.log(b.dist), t));
+    const e = targetEase ? ease.inOutCubic(t) : t;
+    const tg = fromTarget.clone().lerp(toTarget, targetEase ? targetEase(t) : t);
+    const az = a.az + daz * e;
+    const el = lerp(a.el, b.el, e);
+    const dist = Math.exp(lerp(Math.log(a.dist), Math.log(b.dist), e));
     camera.position.copy(tg).addScaledVector(dirFrom(az, el), dist);
     controls.target.copy(tg);
     camera.lookAt(tg);
     if (onUpdate) onUpdate();
   };
-  return { fn, duration, ease: ease.inOutCubic };
+  return { fn, duration, ease: targetEase ? ease.linear : ease.inOutCubic };
 }

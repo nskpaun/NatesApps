@@ -29,9 +29,16 @@ const DOCK_PACE = {
   lift: { laptop: 1.1, latch: 0.32 },
   reset: { laptop: 1.1, latch: 0.25 },
 };
-// NA.dock('play'): when each step starts (ms); 'done' follows the reset motion
+// NA.dock('play'): when each step starts (ms); null = the reset motion, which posts 'done' as it starts
 const DOCK_PLAY = [['align', 0], ['lower', 1500], ['release', 3050], ['lift', 3900], [null, 5500]];
 const DOCK_PLAY_DONE = 5500 + DOCK_PACE.reset.laptop * 1000 + 80;
+// Night shift orbit: elevation range (min, mid, max degrees) and the breathing of its distance (+-)
+const CINE_EL = [8, 13, 18];
+const CINE_BREATH = 0.06;
+const CINE_STEP = 5; // degrees between the orbit-distance table's entries
+const TAP_SLOP = 8; // CSS px: a pointer that moves less than this (and lifts within 350 ms) is a tap
+// touch picking: groups smaller than this on screen (CSS px = dp in the WebView) get a padded target
+const TOUCH_TARGET = 44;
 
 export class Viewer {
   constructor(stageEl, initialState) {
@@ -57,8 +64,8 @@ export class Viewer {
     this.layoutEnd = null;
     this.chargeAt = 0;
     this.glow = { k: 1, flash: 0, seated: true };
-    this.compiledStyles = new Set();
-    this.holdFrames = false;
+    this.compiled = new Set(); // program sets compiled for the output target (programKey())
+    this.hold = null; // behindFrame(): the frame on screen stays up while new programs compile
   }
 
   // ------------------------------------------------------------------ boot
@@ -82,6 +89,14 @@ export class Viewer {
     renderer.info.autoReset = false; // reset once per frame in render()
     this.renderer = renderer;
     this.hdrOk = renderer.extensions.has('EXT_color_buffer_float') || renderer.extensions.has('EXT_color_buffer_half_float');
+    // Every tier needs half-float render targets: the PMREM environment (all tiers), the desk reflection and the
+    // bloom composer. Without them the framebuffers are incomplete and the frame comes out dark and wrong, so the app
+    // keeps its stills instead of getting a 'ready' for a broken image.
+    if (!this.hdrOk) {
+      renderer.dispose();
+      renderer.forceContextLoss();
+      throw Object.assign(new Error('this GPU cannot render to half-float targets'), { friendly: 'hdr' });
+    }
 
     // start the downloads first; paint the procedural set while they are in flight
     const T0 = performance.now();
@@ -144,18 +159,23 @@ export class Viewer {
     this.drainQueue(true);
     if (!this.cameraSet) this.setCamera('hero', { immediate: true, group: this.state.isolate && this.model.groups.has(this.state.isolate) ? this.state.isolate : null });
     this.tweens.finishAll();
-    try {
-      mark('state');
-      await renderer.compileAsync(this.scene, this.camera);
-      mark('compiled');
-    } catch (e) { /* compile lazily on first frame instead */ }
+    mark('state');
+    await this.compileForOutput(); // (a failure just compiles lazily on the first frame)
+    mark('compiled');
+    this.compiled.add(this.programKey());
     this.requestRender();
-    // paint the other modes' desktops while idle, so a mode change cross-fades without a hitch
-    this.compiledStyles.add(this.state.style);
-    setTimeout(() => {
+    // paint the other modes' desktops (so a mode change cross-fades without a hitch) and compile the fades' programs
+    // once the page is idle: not in the middle of an animation or a dock play, since on GPUs without parallel shader
+    // compilation both stall the main thread (and with it the dock sequence's timers)
+    const idleWork = (tries) => {
+      if (tries < 8 && (this.tweens.size || this.dockPlay || this.pendingPlay || this.hold)) {
+        setTimeout(() => idleWork(tries + 1), 1000);
+        return;
+      }
       if (this.screen) this.screen.prepaint(MODES_ALL);
       if (!this.capture) this.prewarm();
-    }, 2500);
+    };
+    setTimeout(() => idleWork(0), 2500);
   }
 
   /** World boxes of each group at rest (stow pose, nothing exploded), hidden groups included. */
@@ -179,12 +199,21 @@ export class Viewer {
     c.maxPolarAngle = 86 * DEG; // never below the desk
     c.autoRotateSpeed = 0.9;
     c.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN };
+    // OrbitControls fires 'start' on pointerdown, before anything moves, so a plain tap (every pick) must not count
+    // as the user taking over the view: only a 'change' during a real gesture does (a drag or pinch past the tap
+    // slop, or the wheel). Until then presets, isolate and resizes keep re-framing, and camera moves keep flying.
     c.addEventListener('start', () => {
-      this.userMoved = true;
-      this.tweens.cancel('camera');
+      this.interacting = true;
       this.requestRender();
     });
-    c.addEventListener('change', () => this.requestRender());
+    c.addEventListener('change', () => {
+      if (this.interacting && (!this.pointer || this.pointer.dragged)) {
+        this.userMoved = true;
+        this.tweens.cancel('camera');
+      }
+      this.requestRender();
+    });
+    c.addEventListener('end', () => { this.interacting = false; });
     return c;
   }
 
@@ -222,23 +251,35 @@ export class Viewer {
       this.renderer.shadowMap.needsUpdate = true;
       if (this.screen) this.screen.touch();
       this.firstFrameAfterRestore = true;
+      this.compiled.clear(); // every program is gone with the old context
+      if (this.hold) this.releaseHold(this.hold, false);
       this.requestRender();
     });
-    // tap (not drag) picking
-    let down = null;
+    // tap (not drag) picking. this.pointer is the gesture in progress; `dragged` once it is no longer a tap
+    // (moved TAP_SLOP or more, or a second finger came down). These listeners run before OrbitControls' pointermove
+    // (it adds its own on each pointerdown), so `dragged` is current when the controls report the change.
+    this.pointer = null;
     this.canvas.addEventListener('pointerdown', (e) => {
-      down = e.isPrimary ? { x: e.clientX, y: e.clientY, t: performance.now(), id: e.pointerId, multi: false } : down && { ...down, multi: true };
+      const down = this.pointer;
+      // event times, not handler times: a long frame between down and up must not turn a tap into a long press
+      if (e.isPrimary) this.pointer = { x: e.clientX, y: e.clientY, t: e.timeStamp || performance.now(), id: e.pointerId, multi: false, dragged: false };
+      else if (down) { down.multi = true; down.dragged = true; }
+    });
+    this.canvas.addEventListener('pointermove', (e) => {
+      const down = this.pointer;
+      if (down && e.pointerId === down.id && !down.dragged && Math.hypot(e.clientX - down.x, e.clientY - down.y) >= TAP_SLOP) down.dragged = true;
     });
     this.canvas.addEventListener('pointerup', (e) => {
+      const down = this.pointer;
       if (!down || e.pointerId !== down.id) return;
       const d = Math.hypot(e.clientX - down.x, e.clientY - down.y);
-      const dt = performance.now() - down.t;
+      const dt = (e.timeStamp || performance.now()) - down.t;
       const multi = down.multi;
-      down = null;
-      if (multi || d >= 8 || dt >= 350 || this.state.cinematic || !this.loaded) return; // a tap, not a drag
-      this.pick(e.clientX, e.clientY);
+      this.pointer = null;
+      if (multi || d >= TAP_SLOP || dt >= 350 || this.state.cinematic || !this.loaded) return; // a tap, not a drag
+      this.pick(e.clientX, e.clientY, e.pointerType);
     });
-    this.canvas.addEventListener('pointercancel', () => { down = null; });
+    this.canvas.addEventListener('pointercancel', () => { this.pointer = null; });
   }
 
   // ------------------------------------------------------------------ model extras
@@ -404,76 +445,197 @@ export class Viewer {
   applyQuality() {
     const q = { ...QUALITY[this.state.quality] };
     if (!this.hdrOk) q.bloom = false;
-    this.q = q;
-    this.renderer.shadowMap.type = q.shadowType;
-    this.renderer.shadowMap.needsUpdate = true;
-    this.resize(true);
-    if (this.screen && this.screen.setScale(q.screen) && this.screenMat) {
-      this.screenTo(this.state.mode, true);
-      this.screenMat.needsUpdate = true;
+    // shadow filter, tone mapping (composer or canvas) and pixel ratio change: every material gets new programs,
+    // compiled behind a snapshot of the current frame, which then cross-fades to the new tier
+    this.behindFrame(() => {
+      this.q = q;
+      this.renderer.shadowMap.type = q.shadowType;
+      this.renderer.shadowMap.needsUpdate = true;
+      this.resize(true);
+      if (this.screen && this.screen.setScale(q.screen) && this.screenMat) {
+        this.screenTo(this.state.mode, true);
+        this.screenMat.needsUpdate = true;
+      }
+      for (const m of this.materials ? this.materials.all() : []) m.needsUpdate = true;
+    }, { key: this.programKey(), snapshot: true, fade: 0.35 });
+  }
+
+  /** Names the set of shader programs a frame needs: per style, tier (shadow filter, output target) and clipping. */
+  programKey(section = !!(this.section && this.section.active)) {
+    return `${this.state.style}|${this.state.quality}|${section ? 'cut' : 'whole'}`;
+  }
+
+  canAnimate() {
+    return this.readySent && !this.hidden && !this.contextLost && !this.capture;
+  }
+
+  /**
+   * Compiles `root`'s programs (lit by this.scene) for the target the frame really draws into: the composer's HDR
+   * target on the bloom tiers (no tone mapping, linear output), the canvas on battery. Programs compiled with no
+   * target bound would be the canvas variants, which the bloom tiers never draw. compile() runs synchronously inside
+   * compileAsync and reads the bound target, so it is bound just for the call. Never rejects.
+   * While the section is active its materials compile in a pass of their own: three's compile() doesn't set up
+   * local clipping per material (it keeps the plane count of the last material drawn), so a no-op draw of a clipped
+   * material sets that count first (primeClipping) and only the section's materials are compiled under it.
+   */
+  compileForOutput(root = this.scene) {
+    const r = this.renderer, S = this.section;
+    const prev = r.getRenderTarget();
+    const jobs = [];
+    const compile = (obj) => {
+      r.setRenderTarget(this.output.sceneTarget());
+      jobs.push(r.compileAsync(obj, this.camera, this.scene).catch(() => {}));
+    };
+    try {
+      if (S && S.active) {
+        const cut = new THREE.Group(), whole = new THREE.Group();
+        root.traverseVisible((o) => {
+          const m = o.material;
+          if (!m || Array.isArray(m)) return;
+          const Kind = o.isMesh ? THREE.Mesh : o.isLineSegments ? THREE.LineSegments : o.isLine ? THREE.Line : o.isPoints ? THREE.Points : null;
+          if (Kind) (S.mats.has(m) ? cut : whole).add(new Kind(o.geometry, m)); // proxies: same geometry, same material
+        });
+        this.primeClipping(false);
+        compile(whole);
+        this.primeClipping(true);
+        compile(cut);
+        this.primeClipping(false);
+      } else compile(root);
+    } catch (e) {
+      /* compiles lazily on the next frame instead */
+    } finally {
+      r.setRenderTarget(prev);
     }
-    for (const m of this.materials ? this.materials.all() : []) m.needsUpdate = true;
+    return Promise.all(jobs);
+  }
+
+  /** Sets three's current clipping plane count (none, or the section plane) with a draw of nothing into 1 x 1. */
+  primeClipping(on) {
+    let P = this.clipPrime;
+    if (!P) {
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(9), 3));
+      geo.setDrawRange(0, 0); // three sets the program (and the clipping state) up, then finds nothing to draw
+      const mesh = new THREE.Mesh(geo);
+      mesh.frustumCulled = false;
+      const scene = new THREE.Scene();
+      scene.add(mesh);
+      P = this.clipPrime = {
+        mesh, scene, rt: new THREE.WebGLRenderTarget(1, 1),
+        on: new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false }), off: new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false }),
+      };
+    }
+    P.on.clippingPlanes = this.section.planes;
+    P.mesh.material = on ? P.on : P.off;
+    const r = this.renderer;
+    r.setRenderTarget(P.rt);
+    r.render(P.scene, this.camera);
+  }
+
+  /**
+   * A change that needs shader programs the GPU may not have yet (style, quality tier, the first section cut).
+   * `apply()` makes the change; the programs compile (in parallel where KHR_parallel_shader_compile exists) while the
+   * canvas keeps the current frame, for at most 4 s; then `start()` runs (a sweep, ...). With `snapshot` the current
+   * frame is captured first and cross-fades out over `fade` s. `key` names the program set (programKey()): a set that
+   * compiled before skips the hold. Changes that arrive during a hold join it.
+   */
+  behindFrame(apply, { key, snapshot = false, fade = 0.6, start = null } = {}) {
+    const animate = this.canAnimate();
+    if (animate && snapshot && !(this.hold && this.hold.snapshot)) {
+      this.render();
+      this.styleFade.capture();
+    }
+    apply();
+    if (!animate) {
+      if (snapshot) {
+        this.tweens.cancel('stylefade');
+        this.styleFade.cancel();
+      }
+      this.compiled.add(key); // compiled by the next frame anyway
+      if (start) start();
+      return;
+    }
+    const h = this.hold || { snapshot: false, redraw: false, starts: [], token: 0 };
+    h.starts.push({ start, snapshot, fade });
+    if (snapshot) {
+      this.tweens.cancel('stylefade');
+      h.snapshot = true;
+      h.redraw = true; // apply() may have resized (cleared) the canvas: the snapshot stands in for the old frame
+    }
+    if (this.compiled.has(key) && !this.hold) {
+      this.releaseHold(h);
+      return;
+    }
+    this.compiled.add(key);
+    this.hold = h;
+    const token = ++h.token;
+    const done = () => { if (this.hold === h && h.token === token) this.releaseHold(h); };
+    this.compileForOutput().then(done);
+    setTimeout(done, 4000); // never hold longer than this
+  }
+
+  /** Ends a hold: cross-fades from the snapshot (fade = false: drops it) and runs the waiting starts. */
+  releaseHold(h = this.hold, fade = true) {
+    if (!h) return;
+    if (this.hold === h) this.hold = null;
+    let dur = 0;
+    for (const x of h.starts) if (x.snapshot) dur = Math.max(dur, x.fade);
+    if (dur && fade) this.tweens.run('stylefade', dur, (t) => { this.styleFade.alpha = 1 - t; }, { ease: ease.inOutSine });
+    else if (!fade && h.snapshot) {
+      this.tweens.cancel('stylefade');
+      this.styleFade.release();
+    }
+    for (const x of h.starts) if (x.start) x.start();
+    this.requestRender();
   }
 
   /**
    * Style switch: cross-fades from a snapshot of the old style's last frame. The new style's shader programs are
-   * compiled first (in parallel where KHR_parallel_shader_compile exists) while the old frame stays on screen.
+   * compiled first (behindFrame) while the old frame stays on screen.
    */
   applyStyle(immediate) {
     const style = this.state.style;
-    const animate = !immediate && this.readySent && !this.hidden && !this.contextLost && !this.capture;
     this.fader.finishAll();
-    if (animate) {
-      this.render();
-      this.styleFade.capture();
-    }
-    this.styles.apply(style);
-    this.section.setStyle(style);
-    this.highlight.setStyle(style);
-    this.dims.setStyle(style);
-    this.stage.contact.dirty = true;
-    this.renderer.shadowMap.needsUpdate = true;
-    this.tweens.cancel('stylefade');
-    if (!animate) {
+    const apply = () => {
+      this.styles.apply(style);
+      this.section.setStyle(style);
+      this.highlight.setStyle(style);
+      this.dims.setStyle(style);
+      this.stage.contact.dirty = true;
+      this.renderer.shadowMap.needsUpdate = true;
+    };
+    if (immediate) {
+      apply();
+      this.tweens.cancel('stylefade');
       this.styleFade.cancel();
-      this.compiledStyles.add(style); // compiled by the next frame anyway
+      this.compiled.add(this.programKey());
       return;
     }
-    const token = (this.styleToken = (this.styleToken || 0) + 1);
-    let started = false;
-    const start = () => {
-      if (started || token !== this.styleToken) return;
-      started = true;
-      this.holdFrames = false;
-      this.tweens.run('stylefade', 0.6, (t) => { this.styleFade.alpha = 1 - t; }, { ease: ease.inOutSine });
-      this.requestRender();
-    };
-    if (this.compiledStyles.has(style)) return start();
-    this.compiledStyles.add(style);
-    this.holdFrames = true; // keep the old frame on the canvas until the programs are ready
-    this.renderer.compileAsync(this.scene, this.camera).catch(() => {}).then(start);
-    setTimeout(start, 4000); // never hold longer than this
+    this.behindFrame(apply, { key: this.programKey(), snapshot: true, fade: 0.6 });
   }
 
-  /** Transparent twins of the studio materials (used by fades) compile while the page is idle after load. */
+  /**
+   * Transparent twins of the studio materials (what fades draw with) compile while the page is idle after load,
+   * straight into the Fader's pool, so the first isolate / desk-mat / standalone fade finds its programs ready.
+   * Each twin is compiled on the real part geometry (brushed metals need its tangents: a different program) and
+   * for the target the frame draws into.
+   */
   prewarm() {
-    if (this.prewarmed || !this.loaded) return;
+    if (this.prewarmed || !this.loaded) return Promise.resolve();
     this.prewarmed = true;
     const root = new THREE.Group();
-    const geo = new THREE.BoxGeometry(0.001, 0.001, 0.001);
-    const clones = [];
-    for (const m of new Set([...this.model.parts.values()].map((p) => p.mesh.userData.studioMat))) {
-      const c = m.clone();
-      c.onBeforeCompile = m.onBeforeCompile;
-      c.customProgramCacheKey = m.customProgramCacheKey;
-      c.transparent = true;
-      clones.push(c);
-      root.add(new THREE.Mesh(geo, c));
-    }
-    root.position.set(0, -10, 0);
-    this.renderer.compileAsync(root, this.camera, this.scene).catch(() => {}).then(() => {
-      geo.dispose();
-      for (const c of clones) c.dispose();
+    const twins = new Map();
+    const add = (o) => {
+      if (!Fader.fadeable(o)) return;
+      let c = twins.get(o.material);
+      if (!c) twins.set(o.material, (c = this.fader.take(o.material)));
+      root.add(new THREE.Mesh(o.geometry, c));
+    };
+    for (const p of this.model.parts.values()) add(p.mesh);
+    for (const pool of this.stage.pools) add(pool);
+    return this.compileForOutput(root).then(() => {
+      for (const c of twins.values()) this.fader.give(c);
+      root.clear(); // the proxies share the parts' geometry: nothing to dispose
     });
   }
 
@@ -576,12 +738,16 @@ export class Viewer {
       const p1 = rest.clone().add(tg.t);
       const q1 = new THREE.Quaternion().setFromEuler(tg.r);
       const isolated = mv.isGroup && iso && iso !== id;
-      const visible = !tg.hidden && !isolated;
-      const lift = tg.hidden ? this.liftOut(id) : null;
+      // isolating a group the pose hides (the laptop in standalone, the desk mat in stow) shows it at its rest place:
+      // isolate means "show only this group", never an empty stage
+      const forced = mv.isGroup && iso === id && tg.hidden;
+      const poseHidden = tg.hidden && !forced;
+      const visible = !poseHidden && !isolated;
+      const lift = poseHidden ? this.liftOut(id) : null;
       if (lift) p1.add(lift);
       if (id === 'laptop') this.laptopSeat = rest.clone().add(restTargets.get(id).t);
       const shown = mv.shown ?? mv.node.visible;
-      plans.push({ id, mv, rest, p0: mv.node.position.clone(), q0: mv.node.quaternion.clone(), p1, q1, visible, shown, isolated, poseHidden: tg.hidden, lift });
+      plans.push({ id, mv, rest, p0: mv.node.position.clone(), q0: mv.node.quaternion.clone(), p1, q1, visible, shown, isolated, poseHidden, lift });
       mv.shown = visible;
     }
     this.layoutEnd = plans;
@@ -591,6 +757,14 @@ export class Viewer {
     const dirty = () => { this.stage.contact.dirty = true; this.renderer.shadowMap.needsUpdate = true; };
     const ex = s.explode;
     for (const p of M.parts.values()) p.mesh.visible = !p.internal || showInternal;
+
+    // keep the framing honest: a camera that sits on a preset (or an isolated group) re-frames the new layout.
+    // Framed first (on where everything will land), so an isolate's fade can follow the camera move.
+    let camDur = 0;
+    if (this.readySent && this.cameraSet && !s.cinematic) {
+      if (reframe === 'group' && iso) camDur = this.setCamera(null, { group: iso, immediate, endLayout: true });
+      else if (!this.userMoved && (reframe || iso)) camDur = this.setCamera(this.cameraName || 'hero', { immediate, group: iso, endLayout: true });
+    }
 
     if (immediate) {
       for (const k of this.layoutKeys) this.tweens.cancel(k);
@@ -662,13 +836,21 @@ export class Viewer {
           dur = 1.25;
           easing = ease.inOutCubic;
           this.fader.fade(node, 1, { duration: 0.55 });
+        } else if (vanish && pl.isolated && reframe === 'group' && camDur > 0) {
+          // isolate: the others fade along with the camera move, so the stage doesn't empty before the framed
+          // group has arrived in the middle of the view
+          this.fader.fade(node, 0, { duration: 0.6 * camDur, delay: 0.15 });
         } else if (vanish) {
-          // the desk mat waits for the devices to leave it; isolate fades the others at once
+          // the desk mat waits for the devices to leave it
           this.fader.fade(node, 0, { duration: 0.45, delay: pl.poseHidden && arcs.length ? Math.max(0, arcEnd - 0.3) : 0 });
         } else if (appear) {
           this.fader.fade(node, 1, { duration: 0.45 });
         }
-        if (pl.p0.distanceToSquared(pl.p1) < 1e-12 && Math.abs(pl.q0.dot(pl.q1)) > 1 - 1e-9) continue;
+        if (pl.p0.distanceToSquared(pl.p1) < 1e-12 && Math.abs(pl.q0.dot(pl.q1)) > 1 - 1e-9) {
+          // already where it belongs: a move still running from the previous layout must not carry it off
+          this.tweens.cancel(`mv:${pl.id}`);
+          continue;
+        }
         const p0 = pl.p0, q0 = pl.q0;
         run(`mv:${pl.id}`, dur, (t) => {
           if (path) path(t, node.position);
@@ -685,16 +867,13 @@ export class Viewer {
       // slider drags send many small steps: small changes follow quickly, big jumps take their time
       const exDur = clamp(0.3 + Math.abs(ex - (this.layoutExplode ?? ex)) * 0.9, 0.3, 0.9);
       if (parts.length) run('explode', exDur, (t) => { for (const x of parts) x.p.node.position.lerpVectors(x.a, x.b, t); dirty(); }, { ease: ease.inOutCubic });
+      else this.tweens.cancel('explode');
       dirty();
     }
     this.layoutKeys = keys;
     this.layoutExplode = ex;
     this.stage.setExplodeFade(ex);
-    // keep the framing honest: a camera that sits on a preset (or an isolated group) re-frames the new layout
-    if (this.readySent && this.cameraSet && !s.cinematic) {
-      if (reframe === 'group' && iso) this.setCamera(null, { group: iso, immediate });
-      else if (!this.userMoved && (reframe || iso)) this.setCamera(this.cameraName || 'hero', { immediate, group: iso });
-    }
+    this.targetBox = null; // clampTarget() bounds follow the layout
   }
 
   /**
@@ -726,9 +905,12 @@ export class Viewer {
     return false;
   }
 
-  /** Runs fn with every node where the running layout will leave it (framing must target where things land). */
-  withEndLayout(fn) {
-    if (!this.layoutEnd || (!this.layoutRunning() && !(this.fader && this.fader.active.size))) return fn();
+  /**
+   * Runs fn with every node where the running layout will leave it (framing must target where things land).
+   * force: even when nothing is animating yet (layout() frames before it starts its tweens).
+   */
+  withEndLayout(fn, force = false) {
+    if (!this.layoutEnd || (!force && !this.layoutRunning() && !(this.fader && this.fader.active.size))) return fn();
     const saved = [];
     for (const pl of this.layoutEnd) {
       const n = pl.mv.node;
@@ -775,11 +957,11 @@ export class Viewer {
       this.tweens.run('section', 0.5, (t) => S.place(S.axis, lerp(c0, c1, t), 1 - t), { ease: ease.inOutCubic, onDone: fin });
       return;
     }
-    const wasActive = S.active && !this.tweens.has('section-off');
+    const wasActive = S.active;
     S.bounds = this.sectionBounds();
-    S.setActive(true, style);
     const c1 = S.coordFor(sec.axis, sec.t);
     if (immediate) {
+      S.setActive(true, style);
       this.tweens.cancel('section');
       S.place(sec.axis, c1);
       return;
@@ -787,8 +969,19 @@ export class Viewer {
     // first cut (or a new axis) sweeps in from the edge; slider moves follow quickly
     const sweep = !wasActive || S.axis !== sec.axis;
     const c0 = sweep ? S.coordFor(sec.axis, 0) : S.c;
-    if (sweep) S.place(sec.axis, c0, 0);
-    this.tweens.run('section', sweep ? 0.8 : 0.22, (t) => S.place(sec.axis, lerp(c0, c1, t), sweep ? t : 1), { ease: sweep ? ease.inOutCubic : ease.outCubic });
+    const run = () => this.tweens.run('section', sweep ? 0.8 : 0.22, (t) => S.place(sec.axis, lerp(c0, c1, t), sweep ? t : 1), { ease: sweep ? ease.inOutCubic : ease.outCubic });
+    const cut = () => {
+      S.setActive(true, style);
+      if (sweep) S.place(sec.axis, c0, 0);
+    };
+    if (!wasActive) {
+      // the first cut gives every model material a clipping variant: compiled behind the current frame (which the
+      // plane at t = 0 doesn't change), then the sweep starts
+      this.behindFrame(cut, { key: this.programKey(true), start: run });
+      return;
+    }
+    cut();
+    run();
   }
 
   // ------------------------------------------------------------------ camera
@@ -891,16 +1084,20 @@ export class Viewer {
     return { pos: pose.pos.toArray(), target: pose.target.toArray(), fov: this.camera.fov };
   }
 
-  /** Animated (or immediate) move to a named preset, or to frame a group when `group` is given. */
-  setCamera(name, { immediate = false, group = null } = {}) {
-    if (!this.loaded) return;
-    if (!group && !PRESETS[name]) return;
+  /**
+   * Animated (or immediate) move to a named preset, or to frame a group when `group` is given.
+   * Returns the move's duration in seconds (0 when it jumps or doesn't happen).
+   */
+  setCamera(name, { immediate = false, group = null, endLayout = false } = {}) {
+    if (!this.loaded) return 0;
+    if (!group && !PRESETS[name]) return 0;
     if (!group) this.cameraName = name;
-    const pose = this.withEndLayout(() => (group ? this.groupPose(group) : this.presetPose(name)));
-    if (!pose) return;
+    const pose = this.withEndLayout(() => (group ? this.groupPose(group) : this.presetPose(name)), endLayout);
+    if (!pose) return 0;
     this.cameraSet = true;
     this.userMoved = false;
     this.updateLimits(pose.distance);
+    let duration = 0;
     if (immediate || !this.readySent) {
       this.tweens.cancel('camera');
       this.camera.position.copy(pose.pos);
@@ -908,10 +1105,13 @@ export class Viewer {
       this.camera.lookAt(pose.target);
       this.controls.update();
     } else {
-      const tw = cameraTween(this.camera, this.controls, pose.pos, pose.target, () => this.requestRender());
+      // framing a group: the view centre reaches it early, so it never drifts toward the edge while the camera closes in
+      const tw = cameraTween(this.camera, this.controls, pose.pos, pose.target, () => this.requestRender(), { targetEase: group ? ease.outCubic : null });
       this.tweens.run('camera', tw.duration, tw.fn, { ease: tw.ease, onDone: () => this.controls.update() });
+      duration = tw.duration;
     }
     this.requestRender();
+    return duration;
   }
 
   groupPose(groupId) {
@@ -944,13 +1144,20 @@ export class Viewer {
     this.controls.minDistance = Math.min(0.22, d * 0.6);
   }
 
-  /** Keeps the orbit target near the station and above the desk. */
+  /**
+   * Keeps the orbit target on the station (its scene.json bounds plus wherever the layout puts the visible parts:
+   * the desk mat and devices in work mode, explode) and above the desk; a pan can't wander off into the room.
+   */
   clampTarget() {
     const t = this.controls.target;
-    const b = this.model.sceneBounds();
-    const cx = clamp(t.x, b.min.x - 0.25, b.max.x + 0.25);
-    const cy = clamp(t.y, 0.01, b.max.y + 0.2);
-    const cz = clamp(t.z, b.min.z - 0.3, b.max.z + 0.5);
+    if (!this.targetBox) {
+      this.targetBox = this.withEndLayout(() => this.model.bounds(null, { includeInternal: true })).union(this.model.sceneBounds());
+      this.targetBox.expandByScalar(0.05);
+    }
+    const b = this.targetBox;
+    const cx = clamp(t.x, b.min.x, b.max.x);
+    const cy = clamp(t.y, 0.01, b.max.y);
+    const cz = clamp(t.z, b.min.z, b.max.z);
     if (cx !== t.x || cy !== t.y || cz !== t.z) {
       const d = new THREE.Vector3(cx - t.x, cy - t.y, cz - t.z);
       t.add(d);
@@ -959,22 +1166,116 @@ export class Viewer {
     if (this.camera.position.y < 0.03) this.camera.position.y = 0.03;
   }
 
+  /**
+   * Keeps the orbiting / zooming / panning camera out of the station: if its move this frame (from `prev`) would
+   * enter a visible part the section keeps, it stops 3 cm (the near plane's margin) short of that surface. Only
+   * camera.position changes; OrbitControls re-derives its orbit from it on the next update, so a drag pushing
+   * against a panel just stays there, and a zoom-out or an orbit the other way moves on. Moves through free space
+   * (orbiting behind the display at any normal distance) are untouched: unlike a target-to-camera test, this never
+   * pulls the camera in front of a part that merely sits between it and the orbit target.
+   */
+  avoidStation(prev) {
+    const cam = this.camera.position;
+    const len = cam.distanceTo(prev);
+    if (!(len > 1e-6)) return false;
+    const dir = new THREE.Vector3().subVectors(cam, prev).divideScalar(len);
+    const ray = this.avoidRay || (this.avoidRay = new THREE.Raycaster());
+    ray.set(prev, dir);
+    ray.near = 0;
+    ray.far = len + 0.03;
+    // only parts whose (slightly grown) box the move crosses get triangle tests
+    const box = new THREE.Box3(), at = new THREE.Vector3(), near = [];
+    for (const p of this.model.parts.values()) {
+      if (!isShown(p.mesh)) continue;
+      const g = p.mesh.geometry;
+      if (!g.boundingBox) g.computeBoundingBox();
+      box.copy(g.boundingBox).applyMatrix4(p.mesh.matrixWorld).expandByScalar(0.01);
+      if (box.containsPoint(prev) || (ray.ray.intersectBox(box, at) && at.distanceTo(prev) <= ray.far)) near.push(p.mesh);
+    }
+    if (!near.length) return false;
+    const n = new THREE.Vector3();
+    for (const h of ray.intersectObjects(near, false)) {
+      if (!h.face || !this.section.keeps(h.point)) continue;
+      n.copy(h.face.normal).transformDirection(h.object.matrixWorld);
+      if (n.dot(dir) >= 0) continue; // a back face: leaving a part, not entering one
+      cam.copy(prev).addScaledVector(dir, Math.max(0, Math.min(len, h.distance - 0.03)));
+      return true;
+    }
+    return false;
+  }
+
   startCinematic() {
-    const hero = this.presetPose('hero');
     const sph = sphericalOf(this.camera.position, this.controls.target);
-    this.cine = { t0: performance.now(), az0: sph.az, target: hero.target.clone(), dist: hero.distance * 0.92, from: { pos: this.camera.position.clone(), target: this.controls.target.clone() } };
+    this.cine = { t0: performance.now(), az0: sph.az, from: { pos: this.camera.position.clone(), target: this.controls.target.clone() } };
+    this.fitCinematic(true);
+  }
+
+  /**
+   * Night shift's orbit: around the middle of the station (not the hero target, which sits the station low under
+   * the app's top chrome: Night shift has a tagline at the bottom, and a centred orbit needs the least distance).
+   * The distance follows the azimuth, from a table where every entry keeps the whole station in view (the orbit's
+   * elevation range, its breathing at the closest) at every azimuth within 20 degrees, smoothed only inside that
+   * window: the camera dollies in gently at the front and back and out at the sides, and never clips the station.
+   * Refitted on resize (the WebView moves to the full-screen slot, a rotation), easing over 0.6 s.
+   */
+  fitCinematic(initial = false) {
+    const c = this.cine;
+    const { w, h } = this.viewSize();
+    const aspect = w / h;
+    const pts = this.withEndLayout(() => this.fitPointsFor(PRESETS.hero.fit, 'hero'));
+    const target = new THREE.Box3().setFromPoints(pts).getCenter(new THREE.Vector3());
+    const tv = Math.tan((fovFor(aspect) * DEG) / 2), th = tv * aspect;
+    const pad = 0.03;
+    const kv = tv * (1 - 2 * pad), kh = th * (1 - 2 * pad);
+    const r = new THREE.Vector3(), u = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0), q = new THREE.Vector3();
+    const N = 360 / CINE_STEP, need = [];
+    for (let i = 0; i < N; i++) {
+      let n = 0;
+      for (const el of CINE_EL) {
+        const dir = dirFrom(i * CINE_STEP, el);
+        r.crossVectors(up, dir).normalize();
+        u.crossVectors(dir, r).normalize();
+        for (const p of pts) {
+          q.copy(p).sub(target);
+          const along = q.dot(dir);
+          n = Math.max(n, along + Math.abs(q.dot(r)) / kh, along + Math.abs(q.dot(u)) / kv);
+        }
+      }
+      need.push(n);
+    }
+    // max over +-4 entries (20 deg), then two [1 2 1] passes (reach +-10 deg, inside the window, so still safe)
+    const at = (arr, i) => arr[((i % N) + N) % N];
+    let d = need.map((_, i) => { let m = 0; for (let k = -4; k <= 4; k++) m = Math.max(m, at(need, i + k)); return m; });
+    for (let pass = 0; pass < 2; pass++) d = d.map((x, i) => (at(d, i - 1) + 2 * x + at(d, i + 1)) / 4);
+    d = d.map((x) => (x * 1.02) / (1 - CINE_BREATH));
+    if (!initial && c.dists) c.blend = { t: performance.now(), target: c.target.clone(), dists: c.dists };
+    c.target = target;
+    c.dists = d;
+  }
+
+  /** Orbit distance at azimuth `az` (degrees) from a fitCinematic table. */
+  cineDist(dists, az) {
+    const N = dists.length, x = ((((az % 360) + 360) % 360) / CINE_STEP), i = Math.floor(x);
+    return lerp(dists[i % N], dists[(i + 1) % N], x - i);
   }
 
   updateCinematic(now) {
     const c = this.cine;
     const t = (now - c.t0) / 1000;
     const az = c.az0 + t * 5.5; // ~65 s per orbit
-    const el = 13 + 5 * Math.sin(t * 0.21);
-    const dist = c.dist * (1 + 0.06 * Math.sin(t * 0.13 + 1));
-    const pos = c.target.clone().addScaledVector(dirFrom(az, el), dist);
+    let target = c.target, base = this.cineDist(c.dists, az);
+    if (c.blend) {
+      const k = ease.inOutSine(clamp((now - c.blend.t) / 600, 0, 1));
+      target = c.blend.target.clone().lerp(c.target, k);
+      base = lerp(this.cineDist(c.blend.dists, az), base, k);
+      if (k >= 1) c.blend = null;
+    }
+    const el = CINE_EL[1] + (CINE_EL[2] - CINE_EL[1]) * Math.sin(t * 0.21);
+    const dist = base * (1 + CINE_BREATH * Math.sin(t * 0.13 + 1));
+    const pos = target.clone().addScaledVector(dirFrom(az, el), dist);
     const k = ease.inOutSine(clamp(t / 2.5, 0, 1)); // ease in from wherever the camera was
     this.camera.position.lerpVectors(c.from.pos, pos, k);
-    this.controls.target.lerpVectors(c.from.target, c.target, k);
+    this.controls.target.lerpVectors(c.from.target, target, k);
     this.camera.lookAt(this.controls.target);
   }
 
@@ -1023,40 +1324,111 @@ export class Viewer {
   }
 
   stopDockPlay() {
+    this.pendingPlay = false;
     if (this.dockPlay) {
       for (const t of this.dockPlay) clearTimeout(t);
       this.dockPlay = null;
     }
   }
 
-  /** align -> lower -> release -> lift -> reset, with dockStep events (the app highlights its cards from them). */
+  /**
+   * align -> lower -> release -> lift -> reset, with dockStep events (the app highlights its cards from them).
+   * 'done' is posted when the reset motion starts (the laptop going back into the cradle is not "lift" any more);
+   * dockPlay stays set until that motion ends, so NA.idle() still waits for it. Called before the first frame (a
+   * queued play), the sequence waits for it: its wall-clock steps and events start from the first visible frame.
+   */
   playDock() {
     this.stopDockPlay();
+    if (!this.readySent) {
+      this.pendingPlay = true;
+      return;
+    }
     const timers = [];
-    if (this.loaded && this.readySent && !this.state.cinematic && this.cameraName !== 'dock') this.setCamera('dock');
+    if (this.loaded && !this.state.cinematic && this.cameraName !== 'dock') this.setCamera('dock');
     for (const [step, at] of DOCK_PLAY) {
       timers.push(setTimeout(() => {
         this.setDockStep(step, false);
-        if (step) post({ type: 'dockStep', step });
+        post({ type: 'dockStep', step: step || 'done' });
       }, at));
     }
     timers.push(setTimeout(() => {
       this.dockPlay = null;
-      post({ type: 'dockStep', step: 'done' });
       this.requestRender();
     }, DOCK_PLAY_DONE));
     this.dockPlay = timers;
   }
 
-  pick(x, y) {
+  pick(x, y, pointerType = 'mouse') {
+    post({ type: 'pick', group: this.pickGroup(x, y, pointerType === 'touch') });
+  }
+
+  /** Group under a client point (null = empty space): the first hit on a shown part that the section keeps. */
+  rayGroup(x, y) {
     const r = this.canvas.getBoundingClientRect();
     const ndc = new THREE.Vector2(((x - r.left) / r.width) * 2 - 1, -((y - r.top) / r.height) * 2 + 1);
-    const ray = new THREE.Raycaster();
+    const ray = this.pickRay || (this.pickRay = new THREE.Raycaster());
     ray.setFromCamera(ndc, this.camera);
     const targets = this.model.meshes.filter((m) => isShown(m));
     // hits on the cut-away side of a section don't count
     const hit = ray.intersectObjects(targets, false).find((h) => this.section.keeps(h.point));
-    post({ type: 'pick', group: hit ? hit.object.userData.group : null });
+    return hit ? hit.object.userData.group : null;
+  }
+
+  /**
+   * Touch picking with target expansion. A fingertip lands several dp off, and in the phone's hero view the mouse is
+   * about 25 x 18 dp: a single exact ray often opens the desk mat instead. When the exact ray finds nothing, or a
+   * group that is big on screen (the mat, the base), a small group (under TOUCH_TARGET dp on either axis) whose
+   * screen box, padded to TOUCH_TARGET x TOUCH_TARGET, contains the tap wins, nearest box first, provided a ray
+   * toward it really reaches it (not hidden behind something). Taps on a big group well clear of a small one keep
+   * the big one. Mouse and pen keep the exact ray.
+   */
+  pickGroup(x, y, touch) {
+    const exact = this.rayGroup(x, y);
+    if (!touch) return exact;
+    const boxes = this.groupScreenBoxes();
+    const small = (b) => b.x1 - b.x0 < TOUCH_TARGET || b.y1 - b.y0 < TOUCH_TARGET;
+    if (exact && boxes.has(exact) && small(boxes.get(exact))) return exact;
+    const cands = [];
+    for (const [id, b] of boxes) {
+      if (id === exact || !small(b)) continue;
+      const px = Math.max(0, (TOUCH_TARGET - (b.x1 - b.x0)) / 2), py = Math.max(0, (TOUCH_TARGET - (b.y1 - b.y0)) / 2);
+      if (x < b.x0 - px || x > b.x1 + px || y < b.y0 - py || y > b.y1 + py) continue;
+      const qx = clamp(x, b.x0, b.x1), qy = clamp(y, b.y0, b.y1);
+      cands.push({ id, d: Math.hypot(x - qx, y - qy), b, qx, qy });
+    }
+    cands.sort((a, b) => a.d - b.d);
+    for (const { id, b, qx, qy } of cands) {
+      const cx = (b.x0 + b.x1) / 2, cy = (b.y0 + b.y1) / 2;
+      // the box centre (the body of a compact device), else the tap pulled halfway into the box
+      if (this.rayGroup(cx, cy) === id || this.rayGroup((qx + cx) / 2, (qy + cy) / 2) === id) return id;
+    }
+    return exact;
+  }
+
+  /** Client-space rectangles of every shown group's box (what the section keeps of it), in front of the camera. */
+  groupScreenBoxes() {
+    const out = new Map();
+    const rect = this.canvas.getBoundingClientRect();
+    const S = this.section;
+    const keep = new THREE.Box3(new THREE.Vector3(-Infinity, -Infinity, -Infinity), new THREE.Vector3(Infinity, Infinity, Infinity));
+    if (S.active) {
+      if (S.axis === 'x') keep.min.x = S.c;
+      else keep.max.z = S.c;
+    }
+    const p = new THREE.Vector3();
+    for (const id of this.model.groups.keys()) {
+      const box = this.model.bounds([id], { includeInternal: id === 'internals' || this.state.style === 'xray' });
+      if (box.isEmpty() || box.intersect(keep).isEmpty()) continue;
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity, behind = false;
+      for (let i = 0; i < 8 && !behind; i++) {
+        p.set(i & 1 ? box.max.x : box.min.x, i & 2 ? box.max.y : box.min.y, i & 4 ? box.max.z : box.min.z).project(this.camera);
+        if (p.z > 1) behind = true;
+        const sx = rect.left + ((p.x + 1) / 2) * rect.width, sy = rect.top + ((1 - p.y) / 2) * rect.height;
+        x0 = Math.min(x0, sx); x1 = Math.max(x1, sx); y0 = Math.min(y0, sy); y1 = Math.max(y1, sy);
+      }
+      if (!behind) out.set(id, { x0, y0, x1, y1 });
+    }
+    return out;
   }
 
   // ------------------------------------------------------------------ render loop
@@ -1070,6 +1442,8 @@ export class Viewer {
     if (w * h * pr * pr > budget) pr = Math.max(0.75, Math.sqrt(budget / (w * h)));
     if (this.forcePixelRatio) pr = this.forcePixelRatio; // stills tool: supersampling
     if (!force && this.size && this.size.w === w && this.size.h === h && this.size.pr === pr) return;
+    const reshaped = !!this.size && (this.size.w !== w || this.size.h !== h); // CSS size changed (not just the pixel ratio)
+    const resampled = !this.size || reshaped || this.size.pr !== pr; // the canvas is re-allocated (and cleared)
     this.size = { w, h, pr };
     this.renderer.setPixelRatio(pr);
     this.renderer.setSize(w, h, false);
@@ -1083,7 +1457,19 @@ export class Viewer {
     if (this.styles) this.styles.setResolution();
     if (this.section) this.section.setResolution(w, h);
     if (this.dims) this.dims.setResolution(w, h);
-    if (this.styleFade) this.styleFade.cancel(); // the snapshot no longer matches the canvas
+    if (this.styleFade && reshaped && (this.styleFade.alpha > 0 || this.tweens.has('stylefade') || this.hold)) {
+      // the old-style snapshot has the old shape: drop it (a running cross-fade would draw it squeezed) and stop
+      // holding the frame, so the resized canvas, which setSize cleared, renders at once
+      this.releaseHold(this.hold, false);
+      this.tweens.cancel('stylefade');
+      this.styleFade.release();
+    } else if (this.hold && resampled) {
+      // same shape, new pixel ratio (a quality switch): the snapshot stands in for the cleared canvas; a hold
+      // without one can't keep anything up
+      if (this.hold.snapshot && this.styleFade.tex) this.hold.redraw = true;
+      else this.releaseHold(this.hold, false);
+    }
+    if (this.loaded && this.state.cinematic && this.cine) this.fitCinematic();
     if (this.loaded && this.cameraSet && !this.userMoved && !this.state.cinematic && !this.tweens.has('camera')) {
       if (this.state.isolate && this.model.groups.has(this.state.isolate)) this.setCamera(null, { group: this.state.isolate, immediate: true });
       else this.setCamera(this.cameraName || 'hero', { immediate: true });
@@ -1138,19 +1524,29 @@ export class Viewer {
       this.updateCinematic(now);
       moving = true;
     } else if (!this.tweens.has('camera')) {
+      const prev = (this.camPrev || (this.camPrev = new THREE.Vector3())).copy(this.camera.position);
       moving = this.controls.update(dt);
       this.clampTarget();
+      if (moving) this.avoidStation(prev);
     }
     const breathing = this.breathing();
     this.updateLeds(now, breathing);
     const glowing = this.updateDockGlow(this.capture ? 10 : dt);
     const continuous = tweening || moving || glowing || this.controls.autoRotate || !!this.state.cinematic;
-    if (this.holdFrames) {
-      this.dirty = true; // the old style's frame stays up while the new programs compile
+    if (this.hold) {
+      // the old frame stays up while the new programs compile (no scene renders: they would compile them in place)
+      if (this.hold.redraw) {
+        this.hold.redraw = false;
+        this.styleFade.draw();
+      }
+      this.dirty = true;
       this.schedule(50);
       return;
     }
-    if (this.dirty || continuous || breathing) this.render();
+    // frames drawn only because the charge LEDs breathe keep the last desk reflection: the camera and the layout
+    // are still, and the pocket LEDs can't be seen in the mirror
+    if (this.dirty || continuous) this.render();
+    else if (breathing) this.render({ reflect: false });
     if (continuous) this.schedule(0);
     else if (breathing) this.schedule(66); // ~15 fps is plenty for a 3.2 s breath, and halves the idle GPU load in stow
     else if (this.state.mode === 'stow' && this.chargeAt > now && this.chargeAt < Infinity) this.schedule(Math.min(1000, this.chargeAt - now + 20));
@@ -1165,10 +1561,10 @@ export class Viewer {
     this.chargeMat.emissiveIntensity = base.emissiveIntensity * k;
   }
 
-  render() {
+  render({ reflect = true } = {}) {
     this.dirty = false;
     this.renderer.info.reset(); // info.render = totals for this frame (shadow, reflection, passes), not just the last pass
-    this.stage.prerender(this.scene, this.camera, this.model.root, this.contactExclude());
+    this.stage.prerender(this.scene, this.camera, this.model.root, this.contactExclude(), { reflect });
     this.output.render();
     this.styleFade.draw();
     this.dims.project(this.camera, this.size.w, this.size.h);
@@ -1177,6 +1573,7 @@ export class Viewer {
       this.readySent = true;
       this.el.classList.add('ready');
       post({ type: 'ready' });
+      if (this.pendingPlay) this.playDock(); // a dock('play') queued before load starts with the first visible frame
     } else if (this.firstFrameAfterRestore) {
       this.firstFrameAfterRestore = false;
       if (this.lostReported) {

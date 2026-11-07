@@ -31,17 +31,29 @@ function showMessage(title, body, { fade = false } = {}) {
   if (fade) setTimeout(() => msgEl.classList.add('fade'), 4500);
 }
 
+const FAILURES = {
+  webgl2: {
+    message: "WebGL2 isn't available on this device",
+    body: 'This device’s browser engine has no WebGL2, so the live 3D view can’t run here. The still renders still show every view.',
+  },
+  hdr: {
+    message: "this device's GPU can't run the live 3D view",
+    body: 'This device’s GPU can’t draw into the floating-point targets the live 3D view needs. The still renders still show every view.',
+  },
+  model: {
+    message: "the 3D model couldn't be loaded",
+    body: 'The 3D model didn’t load. The still renders still show every view.',
+  },
+};
+
 function fail(err) {
   if (failed) return;
   failed = err;
-  const webgl = err && err.friendly === 'webgl2';
-  const message = webgl ? "WebGL2 isn't available on this device" : "the 3D model couldn't be loaded";
+  const f = FAILURES[err && err.friendly] || FAILURES.model;
   console.error('[NightArray]', err);
-  post({ type: 'error', message });
+  post({ type: 'error', message: f.message });
   // In the app a still image sits underneath and the app shows its own notice: keep ours brief.
-  showMessage('Live view unavailable', webgl
-    ? 'This device’s browser engine has no WebGL2, so the live 3D view can’t run here. The still renders still show every view.'
-    : 'The 3D model didn’t load. The still renders still show every view.', { fade: hasHost() });
+  showMessage('Live view unavailable', f.body, { fade: hasHost() });
 }
 
 function call(type, payload) {
@@ -78,7 +90,7 @@ const NA = {
       const t0 = performance.now();
       const check = () => {
         const v = viewer;
-        const busy = !v || !v.readySent || v.tweens.size > 0 || v.dirty || v.raf || (v.dockPlay && v.dockPlay.length);
+        const busy = !v || !v.readySent || v.tweens.size > 0 || v.dirty || v.raf || (v.dockPlay && v.dockPlay.length) || v.pendingPlay;
         if (!busy || performance.now() - t0 > timeoutMs) resolve(!busy);
         else setTimeout(check, 50);
       };
