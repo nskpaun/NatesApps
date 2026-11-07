@@ -104,7 +104,11 @@ class ViewerHost(private val appContext: Context) {
         val o = try { JSONObject(raw) } catch (_: Exception) { return }
         events++
         when (o.optString("type")) {
-            "ready" -> { status = LiveStatus.Ready; errorMessage = null }
+            "ready" -> {
+                status = LiveStatus.Ready; errorMessage = null
+                // The page is evidently alive; make sure nothing is left waiting even if onPageFinished was missed.
+                if (!pageLoaded) onPageLoaded() else flush()
+            }
             "pick" -> {
                 if (state.cinematic) return
                 val g = if (o.isNull("group")) null else o.optString("group", "").ifBlank { null }
@@ -119,7 +123,7 @@ class ViewerHost(private val appContext: Context) {
             }
             "error" -> {
                 status = LiveStatus.Error
-                errorMessage = o.optString("message", "").ifBlank { "The live renderer stopped." }
+                errorMessage = o.optString("message", "").ifBlank { "the live renderer stopped" }
             }
         }
     }
@@ -154,6 +158,51 @@ class ViewerHost(private val appContext: Context) {
     }
 
     fun closeSheet() { picked = null; if (state.selected != null) select(null) }
+
+    /** Same as a pick event from the page, for picks made in Compose (the Parts list). */
+    fun pickLocal(group: String) {
+        picked = group
+        if (state.selected != group) select(group)
+        frame(group)
+    }
+
+    fun toggleIsolate(group: String) {
+        if (state.isolate == group) setIsolate(null) else { setIsolate(group); frame(group) }
+    }
+
+    // ---------- Night shift ----------
+    private var beforeNight: JSONObject? = null
+
+    /** Cinematic, slowly orbiting, no picking. The state before is restored by [exitNight]. */
+    fun enterNight() {
+        if (state.cinematic) return
+        beforeNight = JSONObject().put("autorotate", state.autorotate).put("style", state.style).put("explode", state.explode.toDouble())
+            .put("dims", state.dims).put("section", state.section()).put("isolate", state.isolate ?: JSONObject.NULL)
+        picked = null
+        state.cinematic = true; state.autorotate = false; state.style = "studio"; state.explode = 0f; state.dims = false
+        state.sectionOn = false; state.isolate = null; state.selected = null
+        push(JSONObject().put("cinematic", true).put("autorotate", false).put("style", "studio").put("explode", 0.0).put("dims", false)
+            .put("section", JSONObject.NULL).put("isolate", JSONObject.NULL).put("selected", JSONObject.NULL))
+    }
+
+    fun exitNight() {
+        if (!state.cinematic) return
+        state.cinematic = false
+        val b = beforeNight; beforeNight = null
+        val o = JSONObject().put("cinematic", false)
+        if (b != null) {
+            state.autorotate = b.optBoolean("autorotate"); state.style = b.optString("style", "studio")
+            state.explode = b.optDouble("explode", 0.0).toFloat(); state.dims = b.optBoolean("dims")
+            val sec = b.optJSONObject("section")
+            state.sectionOn = sec != null
+            if (sec != null) { state.sectionAxis = sec.optString("axis", "x"); state.sectionT = sec.optDouble("t", .5).toFloat() }
+            state.isolate = if (b.isNull("isolate")) null else b.optString("isolate")
+            o.put("autorotate", state.autorotate).put("style", state.style).put("explode", state.explode.toDouble()).put("dims", state.dims)
+                .put("section", state.section()).put("isolate", state.isolate ?: JSONObject.NULL)
+        }
+        push(o)
+        camera(lastCamera)
+    }
 
     /** Apply a "See it live" preset. */
     fun apply(p: Preset) {
@@ -199,16 +248,17 @@ class ViewerHost(private val appContext: Context) {
         main.post { flushPosted = false; flush() }
     }
 
-    /** Sends queued calls once the page has loaded (or immediately to a test evaluator). */
+    /** Sends queued calls, in order, once the page has loaded. Before that they wait in the queue. */
     fun flush() {
+        if (!pageLoaded || queue.isEmpty()) return
         val ev = evaluator
-        if (ev == null && (!pageLoaded || webView == null)) return
-        if (queue.isEmpty()) return
+        val wv = webView
+        if (ev == null && wv == null) return
         val items = ArrayList(queue); queue.clear()
         for (it in items) {
             val js = if (it is JSONObject) "NA.setState($it)" else it as String
-            val guarded = "(function(){try{if(window.NA){$js;}}catch(e){console.error(e);}})();"
-            if (ev != null) ev(js) else webView?.evaluateJavascript(guarded, null)
+            if (ev != null) ev(js)
+            else wv?.evaluateJavascript("(function(){try{if(window.NA){$js;}}catch(e){console.error(e);}})();", null)
         }
     }
 
@@ -226,21 +276,30 @@ class ViewerHost(private val appContext: Context) {
         return "https://${WebViewAssetLoader.DEFAULT_DOMAIN}/assets/viewer/index.html?state=" + URLEncoder.encode(json, "UTF-8").replace("+", "%20")
     }
 
-    private fun bundled(ctx: Context) = AssetIndex.exists(ctx, "viewer/index.html")
+    /** Tests set this to exercise the WebView path before the viewer bundle exists. */
+    var assumeBundled = false
+
+    private fun bundled(ctx: Context) = assumeBundled || AssetIndex.exists(ctx, "viewer/index.html")
+
+    /** The container currently showing the WebView (for tests and diagnostics). */
+    val attachedTo: ViewGroup? get() = webView?.parent as? ViewGroup
+    val slotCount: Int get() = slots.size
 
     @SuppressLint("SetJavaScriptEnabled")
     private fun ensureWebView(ctx: Context): WebView? {
         webView?.let { return it }
         if (destroyed) return null
         if (!bundled(ctx)) {
-            status = LiveStatus.Error; errorMessage = "The live renderer isn't bundled in this build."
+            status = LiveStatus.Error; errorMessage = "live renderer not in this build"
             return null
         }
         val wv = try { WebView(ctx) } catch (e: Throwable) {
             // e.g. WebView provider missing or being updated
-            status = LiveStatus.Error; errorMessage = "WebView is unavailable on this device."
+            status = LiveStatus.Error; errorMessage = "WebView unavailable on this device"
             Log.w(TAG, "WebView unavailable", e); return null
         }
+        // Let the viewer's developers inspect the page from Chrome in debuggable builds only.
+        if ((ctx.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0) runCatching { WebView.setWebContentsDebuggingEnabled(true) }
         val loader = WebViewAssetLoader.Builder()
             .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(ctx))
             .build()
@@ -270,18 +329,19 @@ class ViewerHost(private val appContext: Context) {
             }
 
             override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceErrorCompat) {
-                if (request.isForMainFrame && view === webView) { status = LiveStatus.Error; errorMessage = "The live renderer couldn't load." }
+                if (request.isForMainFrame && view === webView) { status = LiveStatus.Error; errorMessage = "the live renderer couldn't load" }
             }
 
             override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
                 // The renderer crashed or was killed to reclaim memory: drop this WebView, keep the app alive.
-                if (view === webView) discardWebView(view, "The live renderer stopped. Tap retry to restart it.")
+                if (view === webView) discardWebView(view, "the live renderer stopped")
                 else runCatching { (view.parent as? ViewGroup)?.removeView(view); view.destroy() }
                 return true
             }
         }
         webView = wv
         pageLoaded = false
+        if (!resumed) runCatching { wv.pauseTimers() } else runCatching { wv.resumeTimers() }
         status = LiveStatus.Loading; errorMessage = null
         // The full state travels in the URL, so drop queued state merges; keep commands (camera, dock, frame).
         queue.removeAll { it is JSONObject }
@@ -327,10 +387,20 @@ class ViewerHost(private val appContext: Context) {
         if (resumed) runCatching { wv.onResume() }
     }
 
-    fun onResume() { resumed = true; if (slots.isNotEmpty()) runCatching { webView?.onResume() } }
-    fun onPause() { resumed = false; runCatching { webView?.onPause() } }
+    fun onResume() {
+        resumed = true
+        webView?.let { wv -> runCatching { wv.resumeTimers() }; if (slots.isNotEmpty()) runCatching { wv.onResume() } }
+    }
+
+    fun onPause() {
+        resumed = false
+        // Single-WebView app: pausing timers stops the render loop and JS work entirely while we're in the background.
+        webView?.let { wv -> runCatching { wv.onPause() }; runCatching { wv.pauseTimers() } }
+    }
 
     val hasWebView: Boolean get() = webView != null
+    /** The live WebView, if one exists (tests check it is created once and re-parented, never duplicated). */
+    val currentWebView: WebView? get() = webView
     val isAttached: Boolean get() = webView?.parent != null
 
     fun destroy() {
@@ -360,12 +430,14 @@ fun ViewerSlot(host: ViewerHost, modifier: Modifier = Modifier) {
 }
 
 /** Candidate stills that match the current viewer state, best match first (SPEC.md §4 names). */
-fun stillsFor(s: ViewerState): List<String> = buildList {
+fun stillsFor(s: ViewerState, camera: String = "hero", dockStep: String? = null): List<String> = buildList {
     s.isolate?.let { add("part-$it.jpg") }
     if (s.cinematic) add("night.jpg")
+    when (dockStep) { "align" -> add("dock-align.jpg"); "lower" -> add("dock-lower.jpg"); "release", "lift" -> add("dock-release.jpg") }
     when (s.style) { "cad" -> add("cad.jpg"); "xray" -> add("xray.jpg"); "blueprint" -> add("blueprint.jpg") }
     if (s.sectionOn) add("section.jpg")
     if (s.explode > 0.25f) add("exploded.jpg")
+    if (s.style == "studio") when (camera) { "dock" -> add("dock-lower.jpg"); "trays" -> add("trays.jpg"); "display" -> add("display.jpg") }
     if (s.finish != "titanium") add("finish-${s.finish}.jpg")
     if (s.amber < 0.05f) add("amber-off.jpg")
     add("hero-${s.mode}.jpg")

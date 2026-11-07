@@ -3,6 +3,7 @@ package com.natesapps.nightarray
 import android.content.Context
 import android.graphics.BitmapFactory
 import android.util.LruCache
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -25,6 +26,10 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.*
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
@@ -142,26 +147,26 @@ fun LineButton(
             .background(if (filled) color.copy(alpha = .16f) else Color.Transparent)
             .border(1.dp, color.copy(alpha = if (enabled) .75f else .25f), shape)
             .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
-            .padding(horizontal = 18.dp, vertical = 11.dp),
+            .padding(horizontal = 16.dp, vertical = 11.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center,
     ) {
         if (leading != null) { leading(); Spacer(Modifier.width(8.dp)) }
-        Tracked(text, size = 11.sp, color = if (enabled) color else color.copy(alpha = .4f), weight = FontWeight.Normal, tracking = 0.22f, maxLines = 1)
+        Tracked(text, size = 11.sp, color = if (enabled) color else color.copy(alpha = .4f), weight = FontWeight.Normal, tracking = 0.17f, maxLines = 1)
     }
 }
 
 @Composable
-fun Chip(label: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier, leading: (@Composable () -> Unit)? = null) {
+fun Chip(label: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier, leading: (@Composable () -> Unit)? = null, compact: Boolean = false) {
     val shape = RoundedCornerShape(50)
     val bgc by animateColorAsState(if (selected) C.amberSoft else C.panel.copy(alpha = .7f), tween(220), label = "chip")
     val bc by animateColorAsState(if (selected) C.amber.copy(alpha = .8f) else C.line, tween(220), label = "chipb")
     Row(
         modifier.semantics { this.selected = selected }.clip(shape).background(bgc).border(1.dp, bc, shape)
-            .clickable(role = Role.Tab, onClick = onClick).padding(horizontal = 14.dp, vertical = 8.dp),
+            .clickable(role = Role.Tab, onClick = onClick).padding(horizontal = if (compact) 11.dp else 14.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (leading != null) { leading(); Spacer(Modifier.width(7.dp)) }
-        Tracked(label, size = 10.5.sp, color = if (selected) C.amber else C.ink.copy(alpha = .85f), weight = FontWeight.Normal, tracking = 0.16f, maxLines = 1)
+        Tracked(label, size = 10.5.sp, color = if (selected) C.amber else C.ink.copy(alpha = .85f), weight = FontWeight.Normal, tracking = if (compact) 0.05f else 0.16f, maxLines = 1)
     }
 }
 
@@ -289,7 +294,8 @@ fun firstExisting(ctx: Context, candidates: List<String>): String? = candidates.
 fun Still(
     names: List<String>, modifier: Modifier = Modifier, contentScale: ContentScale = ContentScale.Crop,
     alignment: Alignment = Alignment.Center, maxDim: Int = 1600, kenBurns: Boolean = false, description: String? = null,
-    sketchMode: String = "work",
+    sketchMode: String = "work", sketchHighlight: String? = null, sketchFinish: String = "titanium", animateSketch: Boolean = true,
+    sketchFocus: String? = null, sketchDockStep: String? = null,
 ) {
     val ctx = LocalContext.current
     val path = remember(names) { firstExisting(ctx, names.map { if (it.contains('/')) it else "renders/$it" }) }
@@ -298,16 +304,19 @@ fun Still(
         val bmp = img
         if (bmp != null) {
             val drift = if (kenBurns) kenBurnsDrift() else null
-            val fade by animateFloatAsState(1f, tween(500), label = "imgfade")
+            val fade = remember(bmp) { Animatable(if (Img.synchronous) 1f else 0f) }
+            LaunchedEffect(bmp) { fade.animateTo(1f, tween(480)) }
             Image(
                 bmp, description, contentScale = contentScale, alignment = alignment,
                 modifier = Modifier.fillMaxSize().graphicsLayer {
-                    alpha = fade
+                    alpha = fade.value
                     if (drift != null) { scaleX = drift.scale; scaleY = drift.scale; translationX = drift.dx * size.width; translationY = drift.dy * size.height }
                 },
             )
         } else if (path == null || Img.knownMissing(path)) {
-            StationSketch(Modifier.fillMaxSize(), mode = sketchMode)
+            val first = names.firstOrNull().orEmpty()
+            StationSketch(Modifier.fillMaxSize(), mode = sketchMode, highlight = sketchHighlight, finish = sketchFinish, animate = animateSketch,
+                focus = sketchFocus ?: stillFocus(first), dockStep = sketchDockStep ?: stillDockStep(first))
         }
     }
 }
@@ -368,78 +377,129 @@ fun DrawScope.grid(step: Float, color: Color = C.line.copy(alpha = .45f), major:
     while (y <= size.height) { drawLine(if (i % major == 0) color else color.copy(alpha = color.alpha * .45f), Offset(0f, y), Offset(size.width, y), 1f); y += step; i++ }
 }
 
-// ---------- the station, drawn (fallback art + decoration) ----------
-/**
- * Front elevation of the Night Array drawn from the SPEC envelope numbers (mm). Used wherever a
- * render is missing, so the app always shows the object, not an empty box.
- */
+
+// ---------- chrome ----------
 @Composable
-fun StationSketch(modifier: Modifier = Modifier, mode: String = "work", glow: Float = 1f) {
-    val inf = rememberInfiniteTransition(label = "sk")
-    val breathe by inf.animateFloat(.75f, 1f, infiniteRepeatable(tween(4200, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "br")
-    Canvas(modifier.background(Brush.verticalGradient(listOf(Color(0xFF14100D), C.bg, Color(0xFF110D0B))))) {
-        // model space: x ∈ [-720, 800] mm, y ∈ [-40, 560] mm
-        val x0 = -720f; val x1 = 800f; val y0 = -60f; val y1 = 580f
-        val s = minOf(size.width / (x1 - x0), size.height / (y1 - y0)) * 0.92f
-        val ox = size.width / 2 - (x0 + x1) / 2 * s
-        val oy = size.height / 2 + (y0 + y1) / 2 * s
-        fun X(x: Float) = ox + x * s
-        fun Y(y: Float) = oy - y * s
-        val a = glow * breathe
-        // desk + warm wash
-        drawRect(Brush.verticalGradient(listOf(Color.Transparent, C.amber.copy(alpha = .05f * a)), startY = Y(300f), endY = Y(0f)), Offset(0f, Y(300f)), Size(size.width, Y(0f) - Y(300f)))
-        drawLine(C.line, Offset(0f, Y(0f)), Offset(size.width, Y(0f)), 1.2f)
-        // under-glow reflection on the desk
-        for (k in 6 downTo 1) drawLine(C.amber.copy(alpha = .05f * a * k / 6f), Offset(X(-560f), Y(-k * 5f)), Offset(X(560f), Y(-k * 5f)), (k * 3f) * s.coerceAtLeast(.3f))
-        // display (front elevation, slight bow suggests the 1800R curve)
-        val top = Y(529f); val bot = Y(156f); val l = X(-692f); val r = X(692f)
-        val bow = 10f * s
-        val glass = Path().apply {
-            moveTo(l, top - bow); quadraticTo((l + r) / 2, top + bow * .6f, r, top - bow)
-            lineTo(r, bot + bow); quadraticTo((l + r) / 2, bot - bow * .6f, l, bot + bow); close()
-        }
-        drawPath(glass, Brush.verticalGradient(listOf(Color(0xFF17131A), Color(0xFF0B090B)), startY = top, endY = bot))
-        // dunes on the screen
-        clipPathCompat(glass) {
-            val d1 = Path().apply {
-                moveTo(l, Y(300f)); cubicTo(X(-350f), Y(380f), X(-120f), Y(250f), X(150f), Y(320f)); cubicTo(X(380f), Y(380f), X(560f), Y(300f), r, Y(330f))
-                lineTo(r, bot); lineTo(l, bot); close()
-            }
-            drawPath(d1, Brush.verticalGradient(listOf(Color(0xFF3A2C33), Color(0xFF120E11)), startY = Y(380f), endY = bot))
-            val ridge = Path().apply { moveTo(l, Y(300f)); cubicTo(X(-350f), Y(380f), X(-120f), Y(250f), X(150f), Y(320f)); cubicTo(X(380f), Y(380f), X(560f), Y(300f), r, Y(330f)) }
-            drawPath(ridge, Brush.horizontalGradient(listOf(Color.Transparent, C.amber.copy(alpha = .75f * a), C.amber.copy(alpha = .15f), Color.Transparent), startX = l, endX = r), style = Stroke(1.6f * s.coerceAtLeast(.6f)))
-            val d2 = Path().apply { moveTo(l, Y(240f)); cubicTo(X(-200f), Y(300f), X(200f), Y(220f), r, Y(270f)); lineTo(r, bot); lineTo(l, bot); close() }
-            drawPath(d2, Brush.verticalGradient(listOf(Color(0xFF231A1E), Color(0xFF0D0A0C)), startY = Y(300f), endY = bot))
-        }
-        drawPath(glass, Brush.horizontalGradient(listOf(C.titanium.copy(alpha = .9f), C.titanium.copy(alpha = .45f), C.titanium.copy(alpha = .9f)), startX = l, endX = r), style = Stroke(2.2f * s.coerceAtLeast(.5f)))
-        // neck
-        val neck = Path().apply { moveTo(X(-160f), Y(36f)); lineTo(X(160f), Y(36f)); lineTo(X(90f), Y(156f)); lineTo(X(-90f), Y(156f)); close() }
-        drawPath(neck, Brush.verticalGradient(listOf(Color(0xFF2B2826), Color(0xFF3E3A37)), startY = Y(156f), endY = Y(36f)))
-        drawPath(neck, C.titanium.copy(alpha = .25f), style = Stroke(1f))
-        for (k in 4 downTo 1) drawLine(C.amber.copy(alpha = .16f * a * k / 4f), Offset(X(-75f), Y(150f)), Offset(X(75f), Y(150f)), (k * 4f) * s.coerceAtLeast(.3f))
-        drawLine(C.amber.copy(alpha = .95f * a), Offset(X(-75f), Y(150f)), Offset(X(75f), Y(150f)), 4f * s.coerceAtLeast(.4f))
-        // base slab
-        drawRoundRect(Brush.verticalGradient(listOf(Color(0xFFCFC5B8), Color(0xFF8E8478), Color(0xFF5E564D)), startY = Y(36f), endY = Y(0f)), Offset(X(-640f), Y(36f)), Size(1290f * s, 36f * s), CornerRadius(8f * s))
-        drawLine(Color(0xFFEDE4D8).copy(alpha = .8f), Offset(X(-630f), Y(35f)), Offset(X(640f), Y(35f)), 1.2f)
-        // pockets / devices
-        if (mode != "work") {
-            drawRoundRect(Color(0xFF1C1A19), Offset(X(-268f), Y(31f)), Size(356f * s, 9f * s), CornerRadius(3f * s))
-            drawRoundRect(Color(0xFF1C1A19), Offset(X(217f), Y(48f)), Size(66f * s, 22f * s), CornerRadius(10f * s))
-            drawLine(C.amber.copy(alpha = .9f * a), Offset(X(235f), Y(30f)), Offset(X(265f), Y(30f)), 2.5f * s.coerceAtLeast(.4f))
-        }
-        drawLine(C.amber.copy(alpha = .95f * a), Offset(X(-105f), Y(6f)), Offset(X(-75f), Y(6f)), 2f * s.coerceAtLeast(.4f))
-        // under-glow strip
-        drawLine(C.amber.copy(alpha = a), Offset(X(-560f), Y(2.5f)), Offset(X(560f), Y(2.5f)), 2f * s.coerceAtLeast(.4f))
-        // dock wing + laptop
-        if (mode != "standalone") drawRoundRect(Brush.horizontalGradient(listOf(Color(0xFFD7CEC2), Color(0xFF9C9286)), startX = X(714f), endX = X(730f)), Offset(X(714.5f), Y(328f)), Size(15f * s, 304f * s), CornerRadius(5f * s))
-        val cradle = Path().apply { moveTo(X(650f), Y(0f)); lineTo(X(650f), Y(60f)); quadraticTo(X(700f), Y(66f), X(712f), Y(120f)); lineTo(X(775f), Y(120f)); lineTo(X(775f), Y(0f)); close() }
-        drawPath(cradle, Brush.verticalGradient(listOf(Color(0xFFC9BFB2), Color(0xFF6E655B)), startY = Y(120f), endY = Y(0f)))
-        drawRect(Brush.verticalGradient(listOf(Color(0xFF8E3A33), Color(0xFF4E1B18)), startY = Y(118f), endY = Y(0f)), Offset(X(745f), Y(118f)), Size(30f * s, 118f * s))
-        drawRoundRect(Color(0xFF2E2B29), Offset(X(735f), Y(40f)), Size(34f * s, 22f * s), CornerRadius(3f * s))
-        drawLine(C.amber.copy(alpha = a), Offset(X(739f), Y(41f)), Offset(X(765f), Y(41f)), 2f * s.coerceAtLeast(.4f))
+fun IconCircle(
+    icon: ImageVector, description: String, onClick: () -> Unit, modifier: Modifier = Modifier, tint: Color = C.ink,
+    size: Dp = 42.dp, background: Color = C.bg.copy(alpha = .6f), border: Color = C.ink.copy(alpha = .14f),
+) {
+    Box(
+        modifier.size(size).clip(CircleShape).background(background).border(1.dp, border, CircleShape)
+            .clickable(role = Role.Button, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) { Icon(icon, description, tint = tint, modifier = Modifier.size(size * 0.46f)) }
+}
+
+@Composable
+fun BackButton(onClick: () -> Unit, modifier: Modifier = Modifier) =
+    IconCircle(Icons.AutoMirrored.Outlined.ArrowBack, "Back", onClick, modifier)
+
+/** Title block for tab roots: amber dash + kicker, thin wide-tracked title, optional muted line. */
+@Composable
+fun ScreenTitle(kicker: String, title: String, sub: String? = null, modifier: Modifier = Modifier) {
+    Column(modifier) {
+        Row(verticalAlignment = Alignment.CenterVertically) { AmberDash(22.dp); Spacer(Modifier.width(10.dp)); Kicker(kicker) }
+        Spacer(Modifier.height(14.dp))
+        Tracked(title, size = 25.sp, tracking = .2f)
+        if (sub != null) { Spacer(Modifier.height(10.dp)); Text(sub, color = C.muted, fontSize = 14.5.sp, lineHeight = 22.sp) }
     }
 }
 
-private inline fun DrawScope.clipPathCompat(p: Path, block: DrawScope.() -> Unit) {
-    drawContext.canvas.save(); drawContext.canvas.clipPath(p); block(); drawContext.canvas.restore()
+@Composable
+fun Hairline(modifier: Modifier = Modifier, color: Color = C.line) = Box(modifier.fillMaxWidth().height(1.dp).background(color))
+
+/** Thin on/off switch: a line track with an amber knob. */
+@Composable
+fun ToggleRow(label: String, checked: Boolean, onChange: (Boolean) -> Unit, modifier: Modifier = Modifier, sub: String? = null) {
+    val t by animateFloatAsState(if (checked) 1f else 0f, tween(220), label = "tg")
+    Row(
+        modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).toggleable(checked, role = Role.Switch, onValueChange = onChange)
+            .padding(vertical = 9.dp, horizontal = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Tracked(label, size = 10.5.sp, color = C.ink.copy(alpha = .9f), weight = FontWeight.Normal, tracking = .18f)
+            if (sub != null) Text(sub, color = C.muted, fontSize = 12.sp, lineHeight = 16.sp, modifier = Modifier.padding(top = 3.dp))
+        }
+        Box(
+            Modifier.size(40.dp, 22.dp).clip(RoundedCornerShape(50)).background(lerp(C.panel2, C.amberSoft, t))
+                .border(1.dp, lerp(C.line, C.amber.copy(alpha = .7f), t), RoundedCornerShape(50)).padding(3.dp),
+        ) { Box(Modifier.offset { androidx.compose.ui.unit.IntOffset((18.dp.toPx() * t).toInt(), 0) }.size(16.dp).clip(CircleShape).background(lerp(C.muted, C.amber, t))) }
+    }
 }
+
+/** Slider with a hairline track and an amber knob. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun NaSlider(value: Float, onChange: (Float) -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, range: ClosedFloatingPointRange<Float> = 0f..1f) {
+    val src = remember { MutableInteractionSource() }
+    Slider(
+        value = value, onValueChange = onChange, modifier = modifier.height(34.dp), enabled = enabled, valueRange = range, interactionSource = src,
+        thumb = {
+            Box(Modifier.size(18.dp).clip(CircleShape).background(if (enabled) C.amber else C.muted.copy(alpha = .5f)).border(4.dp, C.bg.copy(alpha = .35f), CircleShape))
+        },
+        track = { st ->
+            val f = ((st.value - st.valueRange.start) / (st.valueRange.endInclusive - st.valueRange.start)).coerceIn(0f, 1f)
+            Canvas(Modifier.fillMaxWidth().height(18.dp)) {
+                val y = size.height / 2
+                drawLine(C.line, Offset(0f, y), Offset(size.width, y), 2.dp.toPx(), StrokeCap.Round)
+                drawLine(if (enabled) C.amber else C.muted.copy(alpha = .4f), Offset(0f, y), Offset(size.width * f, y), 2.dp.toPx(), StrokeCap.Round)
+            }
+        },
+    )
+}
+
+@Composable
+fun LabeledSlider(label: String, value: Float, onChange: (Float) -> Unit, valueText: String, modifier: Modifier = Modifier, enabled: Boolean = true, sliderTag: String? = null) {
+    Column(modifier) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Tracked(label, Modifier.weight(1f), size = 10.5.sp, color = if (enabled) C.ink.copy(alpha = .9f) else C.muted, weight = FontWeight.Normal, tracking = .18f)
+            Text(valueText, color = if (enabled) C.amber else C.muted, fontSize = 12.5.sp)
+        }
+        NaSlider(value, onChange, Modifier.fillMaxWidth().then(if (sliderTag != null) Modifier.testTag(sliderTag) else Modifier), enabled)
+    }
+}
+
+@Composable
+fun PageDots(count: Int, current: Int, modifier: Modifier = Modifier) {
+    Row(modifier, horizontalArrangement = Arrangement.spacedBy(7.dp), verticalAlignment = Alignment.CenterVertically) {
+        repeat(count) { i ->
+            val w by animateDpAsState(if (i == current) 18.dp else 6.dp, tween(260), label = "dot")
+            Box(Modifier.width(w).height(2.dp).clip(RoundedCornerShape(1.dp)).background(if (i == current) C.amber else C.ink.copy(alpha = .3f)))
+        }
+    }
+}
+
+@Composable
+fun FormatBadge(format: String, modifier: Modifier = Modifier) {
+    val shape = RoundedCornerShape(6.dp)
+    Box(modifier.widthIn(min = 46.dp).clip(shape).background(C.panel2).border(1.dp, C.line, shape).padding(horizontal = 8.dp, vertical = 5.dp), contentAlignment = Alignment.Center) {
+        Tracked(format, size = 10.sp, color = C.titanium, weight = FontWeight.Normal, tracking = .16f, maxLines = 1)
+    }
+}
+
+/** A small rounded notice: dot + text (+ optional action). */
+@Composable
+fun Notice(text: String, modifier: Modifier = Modifier, dot: Color = C.amber, action: String? = null, small: Boolean = false, onAction: () -> Unit = {}) {
+    val shape = RoundedCornerShape(50)
+    Row(
+        modifier.clip(shape).background(C.bg.copy(alpha = .8f)).border(1.dp, C.line, shape)
+            .padding(start = 12.dp, end = if (action != null) 4.dp else 14.dp, top = if (small) 2.dp else 4.dp, bottom = if (small) 2.dp else 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(Modifier.size(6.dp).clip(CircleShape).background(dot))
+        Spacer(Modifier.width(9.dp))
+        Text(text, color = C.ink.copy(alpha = .84f), fontSize = if (small) 11.sp else 12.sp, lineHeight = 15.sp, maxLines = 2,
+            modifier = Modifier.weight(1f, fill = false).padding(vertical = 5.dp))
+        if (action != null) {
+            Spacer(Modifier.width(8.dp))
+            Box(Modifier.clip(shape).clickable(role = Role.Button, onClick = onAction).padding(horizontal = 12.dp, vertical = 6.dp)) {
+                Tracked(action, size = 10.sp, color = C.amber, weight = FontWeight.Normal, tracking = .2f)
+            }
+        }
+    }
+}
+
+/** Centres content and caps its width for tablets / landscape. */
+fun Modifier.readable(max: Dp = 760.dp): Modifier = this.fillMaxWidth().wrapContentWidth(Alignment.CenterHorizontally).widthIn(max = max).fillMaxWidth()

@@ -14,6 +14,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Explore
@@ -23,6 +24,8 @@ import androidx.compose.material.icons.outlined.ViewInAr
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.listSaver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -46,11 +49,15 @@ class MainActivity : ComponentActivity() {
             navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
         )
         super.onCreate(savedInstanceState)
-        setContent { AppTheme { App(remember { AppState(applicationContext) }) } }
+        setContent {
+            // The back stack survives recreation and process death; everything else is cheap to rebuild.
+            val app = rememberSaveable(saver = appStateSaver(applicationContext)) { AppState(applicationContext) }
+            AppTheme { App(app) }
+        }
     }
 }
 
-/** Back stack of string routes: explore, story/<id>, board, studio, files, group/<id>, specs[/<section>]. */
+/** Back stack of string routes: explore, story/<id>, board, studio, files, group/<id>, drawing/<id>, specs[/<section>]. */
 class Nav(start: String = "explore") {
     val stack = mutableStateListOf(start)
     var forward by mutableStateOf(true); private set
@@ -81,7 +88,7 @@ val TABS = listOf(
 
 fun tabOf(route: String): String = when (route.substringBefore('/')) {
     "studio" -> "studio"
-    "files", "group" -> "files"
+    "files", "group", "drawing" -> "files"
     "specs" -> "specs"
     else -> "explore"
 }
@@ -90,16 +97,47 @@ fun tabOf(route: String): String = when (route.substringBefore('/')) {
 class AppState(ctx: Context, start: String = "explore") {
     val nav = Nav(start)
     val host = ViewerHost(ctx.applicationContext)
-    var nightShift by mutableStateOf(false)
+    var nightShift by mutableStateOf(false); private set
     var toast by mutableStateOf<String?>(null)
+    /** Which Studio control tab is open (null = collapsed). Survives navigation. */
+    var studioPanel by mutableStateOf<String?>(null)
+    /** Scroll positions that should survive a trip into a detail screen and back. */
+    val exploreList = LazyListState()
+    val filesList = LazyListState()
+    /** Specs tab + the desk you entered in Desk fit (cm). */
+    var specsTab by mutableStateOf("sheet")
+    var deskW by mutableIntStateOf(160)
+    var deskD by mutableIntStateOf(80)
 
     /** Opens the Studio, optionally with a preset. Pushes so Back returns to where you were. */
     fun openStudio(p: Preset? = null) {
-        p?.let { host.apply(it) }
+        if (p != null) {
+            host.apply(p)
+            studioPanel = when {
+                p.dock != null -> "dock"
+                p.finish != null || p.amber != null -> "finish"
+                p.isolate != null -> null
+                else -> studioPanel
+            }
+        }
         if (nav.top == "studio") return
         if (tabOf(nav.top) == "studio") nav.tab("studio") else nav.go("studio")
     }
+
+    init {
+        // Lighter rendering on low-memory phones; the user can still pick High in Tools.
+        val am = ctx.getSystemService(Context.ACTIVITY_SERVICE) as? android.app.ActivityManager
+        if (am?.isLowRamDevice == true) host.state.quality = "balanced"
+    }
+
+    fun startNight() { if (!nightShift) { host.enterNight(); nightShift = true } }
+    fun stopNight() { if (nightShift) { nightShift = false; host.exitNight() } }
 }
+
+fun appStateSaver(ctx: Context) = listSaver<AppState, String>(
+    save = { it.nav.stack.toList() },
+    restore = { routes -> AppState(ctx).apply { if (routes.isNotEmpty()) { nav.stack.clear(); nav.stack.addAll(routes) } } },
+)
 
 @Composable
 fun App(app: AppState) {
@@ -164,6 +202,7 @@ private fun Routes(app: AppState, scene: Scene, route: String, modifier: Modifie
             "studio" -> StudioScreen(app, scene)
             "files" -> FilesScreen(app, scene)
             "group" -> GroupScreen(app, scene, parts.getOrElse(1) { "" })
+            "drawing" -> DrawingScreen(app, scene, parts.getOrElse(1) { "" })
             "specs" -> SpecsScreen(app, scene, parts.getOrNull(1))
             else -> ExploreScreen(app, scene)
         }

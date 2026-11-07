@@ -20,7 +20,22 @@ data class Part(
 data class CadFile(val id: String, val group: String?, val format: String, val label: String, val path: String, val bytes: Long)
 data class DockStep(val step: String, val title: String, val caption: String)
 data class Dim(val id: String, val label: String, val pose: String?)
-data class ScreenInfo(val radiusM: Double, val arcM: Double, val heightM: Double)
+/** scene.json `screen` block: the dual 27" layout (SPEC.md §2/§3). */
+data class ScreenInfo(
+    val layout: String, val panels: Int, val panelInch: Double, val activeMm: List<Double>, val resEach: List<Int>,
+    val seamMm: Double, val toeInDeg: Double,
+) {
+    val canvasW: Int get() = resEach[0] * panels
+    val canvasH: Int get() = resEach[1]
+    /** Pixels per inch of one panel. */
+    val ppi: Double get() = resEach[0] / (activeMm[0] / 25.4)
+    /** Active width of all panels together (mm). */
+    val activeTotalMm: Double get() = activeMm[0] * panels
+
+    companion object {
+        val DEFAULT = ScreenInfo("dual", 2, 27.0, listOf(596.7, 335.7), listOf(2560, 1440), 14.0, 10.0)
+    }
+}
 
 class Scene(
     val name: String,
@@ -37,7 +52,22 @@ class Scene(
     val poses: JSONObject,
     /** True when parsed from the real model/scene.json, false when using the built-in fallback. */
     val fromFile: Boolean,
+    /** Material key → one-line spec ("Grade 5 titanium, bead-blasted and brushed"), when scene.json has it. */
+    val materialSpecs: Map<String, String> = emptyMap(),
+    val massNote: String = "",
 ) {
+    /** Any value in params by dot path, e.g. "base.kb_pocket.size". */
+    fun param(path: String): Any? {
+        var cur: Any? = params
+        for (k in path.split('.')) cur = (cur as? JSONObject)?.opt(k) ?: return null
+        return cur
+    }
+    fun num(path: String): Double? = (param(path) as? Number)?.toDouble()?.takeIf { !it.isNaN() }
+    fun nums(path: String): List<Double>? = (param(path) as? JSONArray)?.let { a -> (0 until a.length()).map { a.optDouble(it) } }?.takeIf { l -> l.isNotEmpty() && l.none { it.isNaN() } }
+    fun text(path: String): String? = (param(path) as? String)?.takeIf { it.isNotBlank() }
+    /** Span of a [lo, hi] param range, e.g. dock.slot.x → 20. */
+    fun span(path: String): Double? = nums(path)?.takeIf { it.size == 2 }?.let { it[1] - it[0] }
+
     fun group(id: String?): Group? = groups.firstOrNull { it.id == id }
     fun partsOf(groupId: String): List<Part> = parts.filter { it.group == groupId }
     fun filesOf(groupId: String?): List<CadFile> = files.filter { it.group == groupId }
@@ -65,6 +95,12 @@ class Scene(
     fun hiddenIn(pose: String, group: String): Boolean = poses.optJSONObject(pose)?.optJSONObject(group)?.optBoolean("hidden", false) == true
 
     val stationMassG: Double get() = groups.filter { it.id !in setOf("laptop", "deskmat") }.sumOf { it.massG }
+
+    /** Display width across both facets (mm): the display group's bbox, else derived from the screen block. */
+    val displayWidthMm: Double get() = group("display")?.bboxMm?.getOrNull(0)?.takeIf { it > 100 } ?: chordFromScreen(screen)
+
+    /** Group bbox [w, h, d] in mm or null when unknown. */
+    fun bbox(groupId: String): List<Double>? = group(groupId)?.bboxMm?.takeIf { it.size == 3 && it.all { v -> v > 0 } }
 }
 
 val MATERIAL_LABELS = mapOf(
@@ -110,7 +146,13 @@ object SceneParser {
         val bmax = b?.optJSONArray("max")?.let { doubles(it, 3) } ?: fb.boundsMax
 
         val mats = LinkedHashMap<String, String>()
-        o.optJSONObject("materials")?.let { m -> m.keys().forEach { k -> mats[k] = m.optJSONObject(k)?.str("label")?.ifBlank { null } ?: MATERIAL_LABELS[k] ?: k } }
+        val matSpecs = LinkedHashMap<String, String>()
+        o.optJSONObject("materials")?.let { m ->
+            m.keys().forEach { k ->
+                mats[k] = m.optJSONObject(k)?.str("label")?.ifBlank { null } ?: MATERIAL_LABELS[k] ?: k
+                m.optJSONObject(k)?.str("spec")?.takeIf { it.isNotBlank() }?.let { matSpecs[k] = it }
+            }
+        }
 
         val partsArr = o.optJSONArray("parts") ?: JSONArray()
         val parts = (0 until partsArr.length()).mapNotNull { i ->
@@ -155,7 +197,17 @@ object SceneParser {
         }
 
         val scr = o.optJSONObject("screen")
-        val screen = if (scr != null) ScreenInfo(scr.optDouble("radius_m", 1.8).orElse(1.8), scr.optDouble("arc_m", 1.4).orElse(1.4), scr.optDouble("height_m", 0.35).orElse(0.35)) else fb.screen
+        val screen = if (scr == null) fb.screen else {
+            val d = ScreenInfo.DEFAULT
+            val active = doubles(scr.optJSONArray("panel_active_mm")).takeIf { it.size >= 2 && it[0] > 0 && it[1] > 0 } ?: d.activeMm
+            val res = doubles(scr.optJSONArray("resolution_each")).map { it.roundToInt() }.takeIf { it.size >= 2 && it[0] > 0 && it[1] > 0 } ?: d.resEach
+            ScreenInfo(
+                scr.str("layout", d.layout).ifBlank { d.layout }, scr.optInt("panels", d.panels).takeIf { it in 1..8 } ?: d.panels,
+                scr.optDouble("panel_inch", d.panelInch).orElse(d.panelInch), active.take(2), res.take(2),
+                scr.optDouble("seam_mm", d.seamMm).let { if (it.isNaN() || it < 0) d.seamMm else it },
+                scr.optDouble("toe_in_deg", d.toeInDeg).let { if (it.isNaN() || it < 0 || it > 45) d.toeInDeg else it },
+            )
+        }
 
         val seqArr = o.optJSONArray("dock_sequence")
         val steps = if (seqArr == null) fb.dockSteps else (0 until seqArr.length()).mapNotNull { i ->
@@ -170,6 +222,7 @@ object SceneParser {
             groups.ifEmpty { fb.groups }, parts.ifEmpty { fb.parts },
             files.ifEmpty { fb.files }, drawings.ifEmpty { fb.drawings }, dims, screen, steps,
             o.optJSONObject("poses") ?: fb.poses, fromFile = true,
+            materialSpecs = matSpecs, massNote = o.str("mass_note"),
         )
     }
 
@@ -185,9 +238,10 @@ object Fallback {
         Group(id, name, summary, description, parts.map { it.first }, pivot, bbox, 0.0, 0.0, parts.map { it.second }.distinct())
 
     private val groupDefs = listOf(
-        g("display", "Superwide display", "57-inch class 4:1 panel, 1800R, 7680 × 1920.",
-            "A single curved panel, concave toward you on an 1800 mm radius. Cover glass runs edge to edge; a thin titanium rim protects the edge, and the electronics sit in a slim graphite housing behind.",
-            listOf("display_glass" to "glass_black", "display_screen" to "screen", "display_frame" to "titanium", "display_back" to "graphite"), listOf(1384.0, 373.0, 180.0), listOf(0.0, 0.156, -0.08)),
+        g("display", "Dual 27-inch display", "Two off-the-shelf 27\u2033 QHD panels in one titanium shroud, 5120 × 1440.",
+            "Two mainstream 27-inch QHD IPS monitors, stripped of their housings and mounted side by side on a steel spine, each toed in 10°. A 4 mm titanium mullion covers the 14 mm seam between them; a shared titanium rim and graphite rear shroud make them one object.",
+            listOf("display_screen" to "screen", "display_glass" to "glass_black", "display_seam" to "titanium", "display_frame" to "titanium", "display_back" to "graphite", "display_spine" to "steel", "display_boards" to "pcb"),
+            listOf(1213.0, 361.0, 196.0), listOf(0.0, 0.156, -0.062)),
         g("stand", "Neck", "Trapezoid graphite neck with the amber status bar.",
             "Carries the display 156 mm above the desk and leans slightly back. The light bar on its top edge shows the display is awake; the NIGHT ARRAY lettering is inlaid titanium.",
             listOf("neck" to "graphite", "neck_light" to "amber_led", "neck_badge" to "titanium"), listOf(320.0, 120.0, 70.0), listOf(0.0, 0.036, -0.105)),
@@ -216,13 +270,14 @@ object Fallback {
             listOf(1100.0, 22.0, 240.0), listOf(-0.1, 0.004, 0.0)),
     )
 
-    private val internalParts = setOf("compute_board", "compute_heatsink", "compute_fan", "psu", "qi_coil_kb", "qi_coil_mouse", "ferrite_kb", "ferrite_mouse", "dock_board", "keyboard_coil", "mouse_coil")
+    private val internalParts = setOf("display_spine", "display_boards", "compute_board", "compute_heatsink", "compute_fan", "psu", "qi_coil_kb", "qi_coil_mouse", "ferrite_kb", "ferrite_mouse", "dock_board", "keyboard_coil", "mouse_coil")
 
     val scene: Scene by lazy {
         val parts = groupDefs.flatMap { g -> g.parts.mapIndexed { i, pid -> Part(pid, g.id, prettyId(pid), g.materials.getOrElse(i) { g.materials.first() }, pid in internalParts, emptyList(), 0.0, 0.0) } }
         // material per part from the definition pairs
         val matOf = mapOf(
-            "display_glass" to "glass_black", "display_screen" to "screen", "display_frame" to "titanium", "display_back" to "graphite",
+            "display_glass" to "glass_black", "display_screen" to "screen", "display_seam" to "titanium", "display_frame" to "titanium", "display_back" to "graphite",
+            "display_spine" to "steel", "display_boards" to "pcb",
             "neck" to "graphite", "neck_light" to "amber_led", "neck_badge" to "titanium", "base_shell" to "titanium", "tray_pad_kb" to "graphite",
             "tray_pad_mouse" to "graphite", "base_glow" to "amber_led", "kb_charge_led" to "amber_led", "mouse_charge_led" to "amber_led", "base_feet" to "rubber",
             "dock_cradle" to "titanium", "dock_panels" to "oxblood", "dock_latch" to "graphite", "dock_latch_led" to "amber_led", "dock_connector" to "steel",
@@ -243,8 +298,8 @@ object Fallback {
         }
         val poses = JSONObject("""{"stow":{"deskmat":{"hidden":true}},"work":{"keyboard":{"t":[0,-0.015,0.298]},"mouse":{"t":[0.04,-0.015,0.298]}},"standalone":{"keyboard":{"t":[0,-0.015,0.298]},"mouse":{"t":[0.04,-0.015,0.298]},"laptop":{"hidden":true}}}""")
         Scene(
-            "Night Array — Work & Stow", JSONObject(), listOf(-0.692, 0.0, -0.15), listOf(0.775, 0.529, 0.15), MATERIAL_LABELS,
-            groupDefs, fixedParts, files, groupDefs.associate { it.id to "drawings/${it.id}.png" }, emptyList(), ScreenInfo(1.8, 1.4, 0.35),
+            "Night Array — Work & Stow", JSONObject(), listOf(-0.640, 0.0, -0.15), listOf(0.775, 0.520, 0.15), MATERIAL_LABELS,
+            groupDefs, fixedParts, files, groupDefs.associate { it.id to "drawings/${it.id}.png" }, emptyList(), ScreenInfo.DEFAULT,
             listOf(
                 DockStep("align", "Align", "Guide into the open cradle"),
                 DockStep("lower", "Lower", "Seat the laptop onto the connector"),
@@ -265,7 +320,8 @@ object Repo {
     fun load(ctx: Context): Scene = try {
         val text = ctx.assets.open("model/scene.json").bufferedReader().use { it.readText() }
         SceneParser.parse(text)
-    } catch (_: Exception) {
+    } catch (e: Exception) {
+        if (e !is java.io.FileNotFoundException) android.util.Log.w("NightArray", "model/scene.json unreadable; using the built-in envelope", e)
         Fallback.scene
     }
 
@@ -310,6 +366,7 @@ fun fmtBytes(b: Long): String = when {
 
 fun fmtMass(g: Double): String = when {
     g <= 0 -> "—"
+    g < 1 -> "< 1 g"
     g < 1000 -> "${g.roundToInt()} g"
     else -> String.format(Locale.US, "%.2f kg", g / 1000.0)
 }
