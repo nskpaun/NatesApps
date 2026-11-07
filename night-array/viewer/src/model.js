@@ -154,6 +154,16 @@ export class Model {
     return out;
   }
 
+  /**
+   * scene.json "via" waypoints of a movable for a mode pose (deltas in the same frame as "t", stow -> pose order).
+   * The stow pose is the CAD pose itself and has none.
+   */
+  via(mode, id) {
+    const d = ((this.sj.poses || {})[mode] || {})[id];
+    if (!d || !Array.isArray(d.via)) return [];
+    return d.via.filter((w) => Array.isArray(w) && w.length === 3 && w.every(Number.isFinite)).map(v3);
+  }
+
   /** Bounding box (world) of the visible, non-internal meshes of the given groups (all when null). */
   bounds(groupIds = null, { includeInternal = false, includeHidden = false } = {}) {
     const box = new THREE.Box3();

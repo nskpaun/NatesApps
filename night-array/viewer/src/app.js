@@ -79,6 +79,7 @@ export class Viewer {
     renderer.shadowMap.needsUpdate = true;
     renderer.setClearColor(BG, 1);
     renderer.localClippingEnabled = true; // section view clips the model's materials only
+    renderer.info.autoReset = false; // reset once per frame in render()
     this.renderer = renderer;
     this.hdrOk = renderer.extensions.has('EXT_color_buffer_float') || renderer.extensions.has('EXT_color_buffer_half_float');
 
@@ -546,7 +547,8 @@ export class Viewer {
 
   /**
    * Visibility + transforms for mode pose, dock step, explode and isolate, choreographed:
-   *  - devices (keyboard, mouse) travel lift -> arc -> lower between their pockets and the desk mat, staggered
+   *  - devices (keyboard, mouse) travel between their pockets and the desk mat through scene.json's "via" waypoints
+   *    (lift clear of the rim, slide, set down), both on the same timing; poses without waypoints get a computed arc
    *  - the desk mat fades in before they land and out after they leave
    *  - the laptop lifts out and fades for standalone (and comes back down the same way)
    *  - dock steps move the laptop / latch at their own pace; isolate fades the other groups
@@ -602,18 +604,37 @@ export class Viewer {
       this.chargeAt = s.mode === 'stow' ? 0 : Infinity;
       dirty();
     } else {
-      // devices that change place between modes (pocket <-> desk mat) take the arc
+      // devices that change place between modes (pocket <-> desk mat): through scene.json's "via" waypoints when the
+      // pose has them (lift clear of the rim, slide out, set down; reversed going back), else on a computed arc
       const arcs = plans.filter((pl) => pl.visible && pl.shown && pl.mv.isGroup && Math.hypot(pl.p1.x - pl.p0.x, pl.p1.z - pl.p0.z) > 0.05 && modeChanged);
       const obstacle = M.bounds(['base'], { includeHidden: true }).max.y;
       let arcEnd = 0;
+      for (const pl of arcs) pl.route = this.viaRoute(pl, fromMode, s.mode);
+      // segment timing is shared by every device on a route with the same number of legs (SPEC: same timing for both)
+      const legDurs = new Map();
+      for (const pl of arcs) {
+        if (!pl.route) continue;
+        const n = pl.route.length - 1;
+        const d = legDurs.get(n) || new Array(n).fill(0);
+        for (let k = 0; k < n; k++) d[k] = Math.max(d[k], 0.24 + 1.5 * pl.route[k].distanceTo(pl.route[k + 1]));
+        legDurs.set(n, d);
+      }
       arcs.forEach((pl, i) => {
         const returning = pl.p1.distanceTo(pl.rest) < pl.p0.distanceTo(pl.rest);
-        const delay = (returning ? 0 : 0.22) + i * 0.16;
-        const dur = 1.35 - i * 0.08;
+        let path, dur, delay;
+        if (pl.route) {
+          const durs = legDurs.get(pl.route.length - 1);
+          dur = durs.reduce((a, b) => a + b, 0);
+          delay = returning ? 0 : 0.22; // leaving the pockets waits for the mat to start fading in
+          path = waypointPath(pl.route, durs, pl.q0, pl.q1);
+        } else {
+          delay = (returning ? 0 : 0.22) + i * 0.16;
+          dur = 1.35 - i * 0.08;
+          const bottom = M.bounds([pl.id], { includeHidden: true }).min.y - pl.mv.node.getWorldPosition(new THREE.Vector3()).y;
+          const apex = Math.max(obstacle + 0.018 - bottom, Math.max(pl.p0.y, pl.p1.y) + 0.03);
+          path = arcPath(pl.p0, pl.p1, apex, pl.q0, pl.q1);
+        }
         arcEnd = Math.max(arcEnd, delay + dur);
-        const bottom = M.bounds([pl.id], { includeHidden: true }).min.y - pl.mv.node.getWorldPosition(new THREE.Vector3()).y;
-        const apex = Math.max(obstacle + 0.018 - bottom, Math.max(pl.p0.y, pl.p1.y) + 0.03);
-        const path = arcPath(pl.p0, pl.p1, apex, pl.q0, pl.q1);
         run(`mv:${pl.id}`, dur, (t) => { path(t, pl.mv.node.position, pl.mv.node.quaternion); dirty(); }, { delay, ease: ease.linear });
         pl.done = true;
       });
@@ -674,6 +695,30 @@ export class Viewer {
       if (reframe === 'group' && iso) this.setCamera(null, { group: iso, immediate });
       else if (!this.userMoved && (reframe || iso)) this.setCamera(this.cameraName || 'hero', { immediate, group: iso });
     }
+  }
+
+  /**
+   * Positions (parent space) a device passes through from where it is now (p0) to its new pose: the old pose's
+   * "via" waypoints reversed (back toward stow), then the new pose's in order. A move that interrupts another joins
+   * the route at its nearest leg, so it never doubles back through a waypoint it has already passed.
+   * Null when neither pose has waypoints.
+   */
+  viaRoute(pl, fromMode, toMode) {
+    const M = this.model;
+    const back = fromMode === toMode ? [] : M.via(fromMode, pl.id).reverse();
+    const out = M.via(toMode, pl.id);
+    if (!back.length && !out.length) return null;
+    const from = pl.rest.clone().add(M.targets(fromMode, null).get(pl.id).t);
+    const full = [from, ...[...back, ...out].map((d) => pl.rest.clone().add(d)), pl.p1.clone()];
+    let best = 0, bestD = Infinity;
+    const seg = new THREE.Line3(), q = new THREE.Vector3();
+    for (let k = 0; k < full.length - 1; k++) {
+      seg.set(full[k], full[k + 1]);
+      const d = seg.closestPointToPoint(pl.p0, true, q).distanceToSquared(pl.p0);
+      if (d < bestD - 1e-12) { bestD = d; best = k; }
+    }
+    const route = [pl.p0.clone(), ...full.slice(best + 1)];
+    return route.filter((p, k) => k === 0 || p.distanceToSquared(route[k - 1]) > 1e-10);
   }
 
   layoutRunning() {
@@ -759,7 +804,7 @@ export class Viewer {
     else {
       boxes = [];
       if (spec.groups) {
-        const own = M.partBoxes(spec.groups);
+        const own = M.partBoxes(spec.groups, { includeInternal: !!spec.internal });
         boxes.push(...own);
         if (spec.reach) boxes.push(...this.dockReach(spec.groups));
       }
@@ -775,6 +820,14 @@ export class Viewer {
       }
     }
     if (!boxes.length) boxes = M.partBoxes(null);
+    if (spec && spec.section && this.section && this.section.active) {
+      // only what the section keeps, within `section` metres of the cut (stills of the cut face)
+      const S = this.section, d = typeof spec.section === 'number' ? spec.section : Infinity;
+      const lim = new THREE.Box3(new THREE.Vector3(-Infinity, -Infinity, -Infinity), new THREE.Vector3(Infinity, Infinity, Infinity));
+      if (S.axis === 'x') { lim.min.x = S.c; lim.max.x = S.c + d; } else { lim.max.z = S.c; lim.min.z = S.c - d; }
+      const kept = boxes.map((b) => b.clone().intersect(lim)).filter((b) => !b.isEmpty());
+      if (kept.length) boxes = kept;
+    }
     const pts = [];
     for (const b of boxes) boxCorners(b, pts);
     return pts;
@@ -802,17 +855,40 @@ export class Viewer {
     return out;
   }
 
-  presetPose(name) {
-    const P = PRESETS[name] || PRESETS.hero;
+  /** Camera pose for a preset; `over` replaces any of its fields (the stills tool also passes fov / minDistance). */
+  presetPose(name, over = null) {
+    const P = over ? { ...(PRESETS[name] || PRESETS.hero), ...over } : PRESETS[name] || PRESETS.hero;
     const { w, h } = this.viewSize();
     const aspect = w / h;
     const pts = this.fitPointsFor(P.fit, name);
     const dir = dirFrom(P.az, P.el);
     const portrait = aspect < 1;
     const pad = portrait ? (P.ppad ?? P.pad * 0.7) : P.pad;
-    const fit = fitPoints(pts, dir, fovFor(aspect), aspect, pad, P.lift * (portrait ? 1.15 : 1));
-    const distance = Math.max(fit.distance, 0.34); // a lone small group (isolate) must not fill the view
-    return { pos: fit.target.clone().addScaledVector(dir, distance), target: fit.target, distance };
+    const fit = fitPoints(pts, dir, P.fov || fovFor(aspect), aspect, pad, P.lift * (portrait ? 1.15 : 1), P.shift || 0);
+    const distance = Math.max(fit.distance, P.minDistance ?? 0.34); // a lone small group (isolate) must not fill the view
+    return { pos: fit.target.clone().addScaledVector(dir, distance), target: fit.target, distance, fov: P.fov || null };
+  }
+
+  /**
+   * Stills tool: jump to a preset-like framing ({ preset, az, el, fit, pad, lift, shift, fov, minDistance }) with its own
+   * lens. The framing holds until the next camera command or resize.
+   */
+  stillCamera(spec) {
+    if (!this.loaded) return null;
+    const pose = this.withEndLayout(() => this.presetPose(spec.preset || 'hero', spec));
+    this.tweens.cancel('camera');
+    const { w, h } = this.viewSize();
+    this.camera.fov = pose.fov || fovFor(w / h);
+    this.camera.updateProjectionMatrix();
+    this.updateLimits(pose.distance);
+    this.camera.position.copy(pose.pos);
+    this.controls.target.copy(pose.target);
+    this.camera.lookAt(pose.target);
+    this.controls.update();
+    this.cameraSet = true;
+    this.userMoved = true; // a resize must not re-frame it
+    this.requestRender();
+    return { pos: pose.pos.toArray(), target: pose.target.toArray(), fov: this.camera.fov };
   }
 
   /** Animated (or immediate) move to a named preset, or to frame a group when `group` is given. */
@@ -840,7 +916,10 @@ export class Viewer {
 
   groupPose(groupId) {
     if (!this.model.groups.has(groupId)) return null;
-    const box = this.model.bounds([groupId], { includeInternal: groupId === 'internals' || this.state.style === 'xray' });
+    const inside = groupId === 'internals' || this.state.style === 'xray';
+    let box = this.model.bounds([groupId], { includeInternal: inside });
+    // a group that is hidden right now (internals in studio, the mat in stow) still frames where it is
+    if (box.isEmpty()) box = this.model.bounds([groupId], { includeInternal: true, includeHidden: true });
     if (box.isEmpty()) return null;
     const { w, h } = this.viewSize();
     const aspect = w / h;
@@ -989,6 +1068,7 @@ export class Viewer {
     let pr = Math.min(dpr, q.pixelRatio);
     const budget = PIXEL_BUDGET[this.state.quality] || PIXEL_BUDGET.high;
     if (w * h * pr * pr > budget) pr = Math.max(0.75, Math.sqrt(budget / (w * h)));
+    if (this.forcePixelRatio) pr = this.forcePixelRatio; // stills tool: supersampling
     if (!force && this.size && this.size.w === w && this.size.h === h && this.size.pr === pr) return;
     this.size = { w, h, pr };
     this.renderer.setPixelRatio(pr);
@@ -1072,7 +1152,7 @@ export class Viewer {
     }
     if (this.dirty || continuous || breathing) this.render();
     if (continuous) this.schedule(0);
-    else if (breathing) this.schedule(40); // ~24 fps is plenty for a slow breath
+    else if (breathing) this.schedule(66); // ~15 fps is plenty for a 3.2 s breath, and halves the idle GPU load in stow
     else if (this.state.mode === 'stow' && this.chargeAt > now && this.chargeAt < Infinity) this.schedule(Math.min(1000, this.chargeAt - now + 20));
   }
 
@@ -1087,6 +1167,7 @@ export class Viewer {
 
   render() {
     this.dirty = false;
+    this.renderer.info.reset(); // info.render = totals for this frame (shadow, reflection, passes), not just the last pass
     this.stage.prerender(this.scene, this.camera, this.model.root, this.contactExclude());
     this.output.render();
     this.styleFade.draw();
@@ -1129,6 +1210,25 @@ function arcPath(p0, p1, apexY, q0, q1) {
       tilt.setFromAxisAngle(axis, 3.5 * DEG * Math.sin(Math.PI * h) * (1 - down));
       quat.premultiply(tilt);
     }
+  };
+}
+
+/**
+ * Through scene.json waypoints leg by leg (lift, slide, set down): each leg eases in and out over its share of the
+ * time, so the device passes exactly through every waypoint. t is linear 0..1.
+ */
+function waypointPath(points, durs, q0, q1) {
+  const total = durs.reduce((a, b) => a + b, 0) || 1;
+  const ends = [];
+  let acc = 0;
+  for (const d of durs) ends.push((acc += d) / total);
+  return (t, pos, quat) => {
+    let i = 0;
+    while (i < ends.length - 1 && t > ends[i]) i++;
+    const t0 = i ? ends[i - 1] : 0;
+    const k = ease.inOutSine(clamp((t - t0) / Math.max(1e-6, ends[i] - t0), 0, 1));
+    pos.lerpVectors(points[i], points[Math.min(i + 1, points.length - 1)], k);
+    if (quat) quat.slerpQuaternions(q0, q1, t);
   };
 }
 

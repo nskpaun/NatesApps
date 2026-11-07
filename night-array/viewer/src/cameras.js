@@ -37,10 +37,11 @@ const _r = new THREE.Vector3(), _u = new THREE.Vector3(), _p = new THREE.Vector3
  * Frames a point cloud (e.g. the corners of every visible part's box) seen from direction `dir`
  * (unit, target -> camera): finds the target and distance at which the points' projection is centred
  * and fills the view up to `pad` (fraction of the half-extent kept free on each side).
- * `lift` moves the framed content down by that fraction of the view height (clears the app's top chrome).
+ * `lift` moves the framed content down by that fraction of the view height (clears the app's top chrome);
+ * `shift` moves it right by that fraction of the view width (stills composition).
  * Returns { target, distance }.
  */
-export function fitPoints(points, dir, fovDeg, aspect, pad = 0.05, lift = 0) {
+export function fitPoints(points, dir, fovDeg, aspect, pad = 0.05, lift = 0, shift = 0) {
   const box = new THREE.Box3().setFromPoints(points);
   const c = box.getCenter(new THREE.Vector3());
   const up = Math.abs(dir.y) > 0.995 ? new THREE.Vector3(0, 0, -1) : new THREE.Vector3(0, 1, 0);
@@ -76,8 +77,8 @@ export function fitPoints(points, dir, fovDeg, aspect, pad = 0.05, lift = 0) {
     c.addScaledVector(_r, mx * d).addScaledVector(_u, my * d);
     d = need();
   }
-  // the content sits `lift` (fraction of the view height) below the middle
-  const target = c.clone().addScaledVector(_u, lift * 2 * d * tv);
+  // the content sits `lift` (fraction of the view height) below the middle, `shift` (of the width) right of it
+  const target = c.clone().addScaledVector(_u, lift * 2 * d * tv).addScaledVector(_r, -shift * 2 * d * th);
   return { target, distance: d };
 }
 

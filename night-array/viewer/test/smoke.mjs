@@ -17,6 +17,24 @@ const HOST = () => {
   window.__events = [];
   window.NightArrayHost = { post: (s) => window.__events.push(JSON.parse(s)) };
 };
+// Counts requestAnimationFrame calls (the render loop must go quiet when nothing changes).
+const RAF_COUNTER = () => {
+  window.__raf = 0;
+  const raf = window.requestAnimationFrame.bind(window);
+  window.requestAnimationFrame = (cb) => { window.__raf++; return raf(cb); };
+};
+
+/** Screen position (CSS px) of a group's visible bounds centre, optionally lifted to its top face. */
+const groupPoint = (page, id, top = true) => page.evaluate(([id, top]) => {
+  const v = window.NA._viewer;
+  const b = v.model.bounds([id]);
+  const c = b.getCenter(b.min.clone());
+  if (top) c.y = b.max.y - 0.002;
+  c.project(v.camera);
+  const r = v.canvas.getBoundingClientRect();
+  return { x: r.left + (c.x + 1) / 2 * r.width, y: r.top + (1 - c.y) / 2 * r.height };
+}, [id, top]);
+const picks = (page) => page.evaluate(() => window.__events.filter((e) => e.type === 'pick').map((e) => e.group));
 
 async function open(browser, srv, { state = {}, init = [], route = null } = {}) {
   const page = await browser.newPage({ viewport: VIEW, deviceScaleFactor: 1 });
@@ -39,11 +57,14 @@ try {
   {
     const { page, errors } = await open(browser, srv, {
       state: { mode: 'stow', finish: 'graphite', amber: 0.4, quality: 'balanced' },
-      init: [HOST, () => {
+      init: [HOST, RAF_COUNTER, () => {
         document.addEventListener('DOMContentLoaded', () => {
           window.NA.setState({ finish: 'oxblood' });
           window.NA.camera('dock');
+          window.NA.dock('align');
+          window.NA.frame('dock');
           window.NA.setState('{"amber": 0.6}');
+          window.__preload = { ready: window.NA.ready, queued: window.NA.dock('lower') === true && window.NA.dock('align') === true };
         });
       }],
     });
@@ -73,6 +94,18 @@ try {
     ok(after.state.mode === 'stow' && after.state.quality === 'balanced', '?state= applied (mode stow, quality balanced)');
     ok(after.state.finish === 'oxblood' && after.state.amber === 0.6, 'setState before load merged (finish oxblood, amber 0.6 from JSON string)');
     ok(after.cam === 'dock', `camera command queued before load ran (${after.cam})`);
+    const pre = await page.evaluate(() => {
+      const v = window.NA._viewer;
+      const box = v.model.bounds(['dock']);
+      const c = box.getCenter(box.min.clone());
+      const out = { preload: window.__preload, dockStep: v.dockStep, framed: v.controls.target.distanceTo(c), dist: v.camera.position.distanceTo(v.controls.target) };
+      window.NA.dock('reset');
+      v.tweens.finishAll();
+      return out;
+    });
+    ok(pre.preload && !pre.preload.ready && pre.preload.queued, `calls before load are accepted and queued ${JSON.stringify(pre.preload)}`);
+    ok(pre.dockStep === 'align', `queued dock('align') applied (${pre.dockStep})`);
+    ok(pre.framed < 0.12 && pre.dist < 1.2, `queued frame('dock') applied (target ${pre.framed.toFixed(3)} m from the dock, ${pre.dist.toFixed(2)} m away)`);
     console.log('     timings', JSON.stringify(after.timings));
     await page.waitForTimeout(800);
     const opacity = await page.evaluate(() => getComputedStyle(document.querySelector('#stage canvas')).opacity);
@@ -85,10 +118,11 @@ try {
 
     // render on demand: idle = no frames (work mode: in stow the charge LEDs breathe, which does render)
     await page.evaluate(() => { window.NA.setState({ mode: 'work' }); return window.NA.idle(30000); });
-    const f0 = await page.evaluate(() => window.NA._viewer.renderer.info.render.frame);
-    await page.waitForTimeout(1500);
-    const f1 = await page.evaluate(() => window.NA._viewer.renderer.info.render.frame);
-    ok(f1 === f0, `no frames while idle (${f0} -> ${f1})`);
+    await page.waitForTimeout(300);
+    const f0 = await page.evaluate(() => [window.NA._viewer.renderer.info.render.frame, window.__raf]);
+    await page.waitForTimeout(2000);
+    const f1 = await page.evaluate(() => [window.NA._viewer.renderer.info.render.frame, window.__raf]);
+    ok(f1[0] === f0[0] && f1[1] === f0[1], `idle: no renders and no rAF callbacks over 2 s (frames ${f0[0]} -> ${f1[0]}, rAF ${f0[1]} -> ${f1[1]})`);
 
     // camera presets all resolve
     const cams = await page.evaluate(async () => {
@@ -328,6 +362,230 @@ try {
     ok(picks.length === before + 1 && picks[picks.length - 1] === null, `long press and cinematic taps don't pick (${picks.length - before} new pick)`);
     ok(errors.length === 0, `no page errors (${errors.slice(0, 3).join(' | ')})`);
     await page.close();
+  }
+
+  // 3b. contract sweep: every mode x style, explode, isolate + frame every group, finish, amber, quality, tap on the keyboard
+  {
+    const { page, errors } = await open(browser, srv, { state: { mode: 'work' }, init: [HOST] });
+    await waitEvent(page, 'ready');
+    const r = await page.evaluate(() => {
+      const NA = window.NA, v = NA._viewer, out = {};
+      NA._capture(true);
+      const fin = () => { v.tweens.finishAll(); v.fader.finishAll(); v.tweens.finishAll(); };
+      const inView = (box, minFill) => {
+        const pts = [];
+        for (let i = 0; i < 8; i++) pts.push(new v.camera.position.constructor(i & 1 ? box.max.x : box.min.x, i & 2 ? box.max.y : box.min.y, i & 4 ? box.max.z : box.min.z).project(v.camera));
+        const xs = pts.map((p) => p.x), ys = pts.map((p) => p.y);
+        const fill = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)) / 2;
+        return pts.every((p) => Math.abs(p.x) <= 1.02 && Math.abs(p.y) <= 1.02) && fill >= minFill;
+      };
+      // every mode x style draws
+      out.combos = [];
+      for (const mode of ['work', 'stow', 'standalone']) {
+        for (const style of ['studio', 'cad', 'xray', 'blueprint']) {
+          const st = NA.setState({ mode, style });
+          fin();
+          v.render();
+          const i = v.renderer.info.render;
+          out.combos.push({ mode, style, ok: st.mode === mode && st.style === style && i.calls > 10 && i.triangles > 1000, calls: i.calls, tris: i.triangles });
+        }
+      }
+      NA.setState({ mode: 'work', style: 'studio' });
+      fin();
+      // explode follows scene.json's vectors
+      const ep = [...v.model.parts.values()].filter((p) => p.explode.lengthSq() > 1e-6);
+      NA.setState({ explode: 1 });
+      fin();
+      out.explode1 = ep.length > 10 && ep.every((p) => p.node.position.distanceTo(p.rest.clone().add(p.explode)) < 1e-6);
+      NA.setState({ explode: 0.5 });
+      fin();
+      out.explodeHalf = ep.every((p) => p.node.position.distanceTo(p.rest.clone().addScaledVector(p.explode, 0.5)) < 1e-6);
+      NA.setState({ explode: 0 });
+      fin();
+      out.explode0 = ep.every((p) => p.node.position.distanceTo(p.rest) < 1e-6);
+      // stow <-> work follows scene.json's "via" waypoints: lift clear of the rim, slide out, set down (reversed going back)
+      out.via = {};
+      {
+        v.hidden = true;
+        v.stopLoop();
+        let T = 2e7;
+        const step = (ms) => { T += ms; v.tweens.update(T); };
+        NA.setState({ mode: 'stow' });
+        fin();
+        for (const [to, from] of [['work', 'stow'], ['stow', 'work']]) {
+          const tracks = {};
+          NA.setState({ mode: to });
+          step(0);
+          for (let ms = 0; ms < 3000; ms += 16) {
+            step(16);
+            for (const id of ['keyboard', 'mouse']) {
+              const mv = v.model.movables.get(id);
+              (tracks[id] = tracks[id] || []).push(mv.node.position.clone().sub(mv.pivot));
+            }
+          }
+          fin();
+          for (const id of ['keyboard', 'mouse']) {
+            const pose = v.sj.poses[to === 'stow' ? from : to][id];
+            const via = (pose && pose.via) || [];
+            const tr = tracks[id];
+            const near = (w) => Math.min(...tr.map((p) => Math.hypot(p.x - w[0], p.y - w[1], p.z - w[2])));
+            const lift = via.length ? via[0][1] : 0, slideZ = via.length ? via[via.length - 1][2] : 0;
+            out.via[`${id}:${from}->${to}`] = {
+              waypoints: via.length >= 2 && via.every((w) => near(w) < 0.002),
+              clearOfRim: tr.every((p) => !(p.z > 0.01 && p.z < slideZ - 0.005) || p.y > lift - 0.001),
+              lands: tr[tr.length - 1].distanceTo(new v.camera.position.constructor(...(to === 'stow' ? [0, 0, 0] : pose.t))) < 1e-6,
+            };
+          }
+        }
+        v.hidden = false;
+        NA.setState({ mode: 'work' });
+        fin();
+      }
+      // isolate every group: only it stays, and the camera frames it
+      out.iso = {};
+      for (const g of v.sj.groups) {
+        NA.setState({ isolate: g.id });
+        fin();
+        const vis = [...v.model.groups.values()].filter((x) => x.node.visible).map((x) => x.id);
+        const box = v.model.bounds([g.id], { includeInternal: true });
+        out.iso[g.id] = vis.length === 1 && vis[0] === g.id && !box.isEmpty() && inView(box, 0.3);
+      }
+      NA.setState({ isolate: null });
+      fin();
+      out.isoBack = [...v.model.groups.values()].filter((x) => x.node.visible).length >= v.sj.groups.length - 1;
+      // frame every group (no isolate): the group's box lands inside the view
+      out.frame = {};
+      for (const g of v.sj.groups) {
+        NA.frame(g.id);
+        fin();
+        const box = v.model.bounds([g.id], { includeInternal: true, includeHidden: true });
+        out.frame[g.id] = inView(box, 0.2);
+      }
+      NA.camera('hero');
+      fin();
+      // finish recolours material `titanium`
+      const ti = v.materials.get('titanium');
+      const col = {};
+      for (const f of ['graphite', 'oxblood', 'titanium']) {
+        NA.setState({ finish: f });
+        fin();
+        col[f] = ti.color.getHexString();
+      }
+      out.finish = col;
+      out.finishDistinct = new Set(Object.values(col)).size === 3;
+      // amber 0 = LEDs, practicals and pools off; 1 = on
+      const led = v.materials.get('amber_led');
+      NA.setState({ amber: 0 });
+      fin();
+      out.amberOff = led.emissiveIntensity === 0 && v.stage.amberLights.every((l) => !l.visible) && v.stage.pools.every((p) => !p.visible);
+      const e0 = led.emissiveIntensity;
+      NA.setState({ amber: 1 });
+      fin();
+      out.amberOn = led.emissiveIntensity > e0 && v.stage.amberLights.some((l) => l.visible && l.intensity > 0) && v.stage.pools.some((p) => p.visible);
+      NA.setState({ amber: 0.8 });
+      fin();
+      // quality tiers: shadow map size and the bloom composer
+      out.quality = {};
+      for (const q of ['battery', 'balanced', 'high']) {
+        NA.setState({ quality: q });
+        fin();
+        v.render();
+        out.quality[q] = { shadow: v.stage.key.shadow.mapSize.x, composer: !!v.output.composer, msaa: v.output.composer ? v.output.composer.renderTarget1.samples : 0, pr: v.renderer.getPixelRatio() };
+      }
+      NA.camera('hero');
+      fin();
+      v.requestRender();
+      return out;
+    });
+    const badCombos = r.combos.filter((c) => !c.ok);
+    ok(badCombos.length === 0, `every mode x style renders (${r.combos.map((c) => `${c.mode}/${c.style}:${c.calls}`).join(' ')})`);
+    ok(r.explode1 && r.explodeHalf && r.explode0, `explode follows scene.json vectors (1 ${r.explode1}, 0.5 ${r.explodeHalf}, 0 ${r.explode0})`);
+    const badVia = Object.entries(r.via).filter(([, x]) => !(x.waypoints && x.clearOfRim && x.lands)).map(([k, x]) => `${k} ${JSON.stringify(x)}`);
+    ok(Object.keys(r.via).length === 4 && badVia.length === 0, `devices follow scene.json via waypoints, clear of the rim, both ways ${badVia.length ? 'FAILED: ' + badVia.join('; ') : Object.keys(r.via).join(', ')}`);
+    const badIso = Object.entries(r.iso).filter(([, x]) => !x).map(([k]) => k);
+    ok(badIso.length === 0 && r.isoBack, `isolate shows and frames each group alone ${badIso.length ? 'FAILED: ' + badIso.join(',') : Object.keys(r.iso).join(',')}`);
+    const badFrame = Object.entries(r.frame).filter(([, x]) => !x).map(([k]) => k);
+    ok(badFrame.length === 0, `frame(group) puts each group in view ${badFrame.length ? 'FAILED: ' + badFrame.join(',') : Object.keys(r.frame).join(',')}`);
+    ok(r.finishDistinct, `finish switch recolours titanium ${JSON.stringify(r.finish)}`);
+    ok(r.amberOff && r.amberOn, `amber 0 turns LEDs/practicals/pools off, 1 turns them on (${r.amberOff}/${r.amberOn})`);
+    const Q = r.quality;
+    ok(Q.battery.shadow < Q.balanced.shadow && Q.balanced.shadow < Q.high.shadow && !Q.battery.composer && Q.balanced.composer && Q.high.composer && Q.high.msaa > Q.balanced.msaa,
+      `quality tiers scale shadows / bloom / MSAA ${JSON.stringify(Q)}`);
+
+    // a tap on the keyboard picks it, a tap on empty space picks null, a drag picks nothing
+    await page.evaluate(() => window.NA.idle(30000));
+    const kb = await groupPoint(page, 'keyboard');
+    const n0 = (await picks(page)).length;
+    await page.mouse.click(kb.x, kb.y);
+    await page.mouse.click(8, 8);
+    await page.waitForTimeout(250);
+    await page.mouse.move(kb.x, kb.y);
+    await page.mouse.down();
+    await page.mouse.move(kb.x + 40, kb.y + 10, { steps: 6 });
+    await page.mouse.up();
+    await page.waitForTimeout(250);
+    const p1 = (await picks(page)).slice(n0);
+    ok(p1.length === 2 && p1[0] === 'keyboard' && p1[1] === null, `tap keyboard -> "keyboard", tap empty -> null, drag -> nothing (${JSON.stringify(p1)})`);
+    ok(errors.length === 0, `no page errors (${errors.slice(0, 3).join(' | ')})`);
+    await page.close();
+  }
+
+  // 3c. a phone: touch, isMobile, 390x844 at DPR 3
+  {
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true });
+    const page = await ctx.newPage();
+    const errors = [];
+    page.on('pageerror', (e) => errors.push(e.message));
+    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+    await page.addInitScript(HOST);
+    await page.goto(`${srv.viewerUrl}?state=${encodeURIComponent(JSON.stringify({ mode: 'work' }))}`, { waitUntil: 'commit' });
+    await waitEvent(page, 'ready', 180000);
+    const info = await page.evaluate(() => {
+      const v = window.NA._viewer;
+      return { dpr: devicePixelRatio, touch: navigator.maxTouchPoints, pr: v.renderer.getPixelRatio(), cw: v.canvas.width, ch: v.canvas.height, cssW: v.canvas.clientWidth, cssH: v.canvas.clientHeight };
+    });
+    ok(info.dpr === 3 && info.touch > 0, `phone context (DPR ${info.dpr}, ${info.touch} touch points)`);
+    ok(info.pr <= 2 && info.cw * info.ch <= 2.4e6 * 1.01 && info.cssW === 390 && info.cssH === 844, `canvas fills the phone within the pixel budget (${info.cw}x${info.ch} @ ${info.pr})`);
+    await page.evaluate(() => { window.NA._capture(true); return window.NA.idle(60000); });
+    // tap the keyboard and empty space with a finger
+    const kb = await groupPoint(page, 'keyboard');
+    const n0 = (await picks(page)).length;
+    await page.touchscreen.tap(kb.x, kb.y);
+    await page.waitForTimeout(300);
+    await page.touchscreen.tap(12, 12);
+    await page.waitForTimeout(300);
+    const p1 = (await picks(page)).slice(n0);
+    ok(p1.length === 2 && p1[0] === 'keyboard' && p1[1] === null, `finger tap keyboard -> "keyboard", empty -> null (${JSON.stringify(p1)})`);
+    // one-finger drag orbits, two-finger pinch zooms; neither picks
+    const cdp = await ctx.newCDPSession(page);
+    const touch = (type, pts) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: pts.map(([x, y], id) => ({ x, y, id })) });
+    const cam = () => page.evaluate(() => { const v = window.NA._viewer; return { p: v.camera.position.toArray(), d: v.camera.position.distanceTo(v.controls.target) }; });
+    const c0 = await cam();
+    await touch('touchStart', [[150, 520]]);
+    for (let i = 1; i <= 8; i++) await touch('touchMove', [[150 + i * 15, 520]]);
+    await touch('touchEnd', []);
+    await page.waitForTimeout(600);
+    const c1 = await cam();
+    const moved = Math.hypot(c1.p[0] - c0.p[0], c1.p[2] - c0.p[2]);
+    await touch('touchStart', [[170, 520], [220, 520]]);
+    for (let i = 1; i <= 8; i++) await touch('touchMove', [[170 - i * 12, 520], [220 + i * 12, 520]]);
+    await touch('touchEnd', []);
+    await page.waitForTimeout(600);
+    const c2 = await cam();
+    const p2 = (await picks(page)).slice(n0);
+    ok(moved > 0.05, `one-finger drag orbits the camera (${moved.toFixed(3)} m)`);
+    ok(c2.d < c1.d * 0.95, `pinch zooms in (${c1.d.toFixed(2)} -> ${c2.d.toFixed(2)} m)`);
+    ok(p2.length === 2, `drag and pinch don't pick (${p2.length - 2} extra)`);
+    // quality tiers on a DPR-3 screen: pixel ratio steps down
+    const prs = await page.evaluate(() => {
+      const out = {};
+      for (const q of ['high', 'balanced', 'battery']) { window.NA.setState({ quality: q }); out[q] = window.NA._viewer.renderer.getPixelRatio(); }
+      window.NA.setState({ quality: 'high' });
+      return out;
+    });
+    ok(prs.high > prs.balanced && prs.balanced > prs.battery && prs.battery === 1, `pixel ratio per tier ${JSON.stringify(prs)}`);
+    ok(errors.length === 0, `no page errors on the phone (${errors.slice(0, 3).join(' | ')})`);
+    await ctx.close();
   }
 
   // 4. no WebGL2 -> error event + friendly message, page stays transparent

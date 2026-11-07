@@ -307,15 +307,22 @@ export function paintScreen(canvas, mode) {
     g.font = `${(H * 0.026).toFixed(0)}px ${FONT}`;
     g.fillStyle = 'rgba(163,154,144,0.6)';
     g.fillText('THURSDAY · STOWED', half * 0.5, H * 0.49);
-    // charging note on the right panel
+    // charging note on the right panel: "● KEYBOARD    ● MOUSE", measured so the spacing holds whatever font the
+    // device falls back to
     const cx = half * 1.5, cy = H * 0.44;
-    g.fillStyle = 'rgba(242,160,74,0.75)';
-    for (let i = 0; i < 2; i++) { g.beginPath(); g.arc(cx - H * 0.13 + i * H * 0.15, cy, H * 0.007, 0, Math.PI * 2); g.fill(); }
-    g.fillStyle = 'rgba(163,154,144,0.6)';
     g.textAlign = 'left';
     g.font = `${(H * 0.024).toFixed(0)}px ${FONT}`;
-    g.fillText('KEYBOARD', cx - H * 0.115, cy + H * 0.009);
-    g.fillText('MOUSE', cx + H * 0.035, cy + H * 0.009);
+    const dot = H * 0.007, gap = H * 0.016, sep = H * 0.06;
+    const items = ['KEYBOARD', 'MOUSE'].map((t) => ({ t, w: g.measureText(t).width }));
+    const total = items.reduce((a, it) => a + dot * 2 + gap + it.w, 0) + sep;
+    let x = cx - total / 2;
+    for (const it of items) {
+      g.fillStyle = 'rgba(242,160,74,0.75)';
+      g.beginPath(); g.arc(x + dot, cy, dot, 0, Math.PI * 2); g.fill();
+      g.fillStyle = 'rgba(163,154,144,0.6)';
+      g.fillText(it.t, x + dot * 2 + gap, cy + H * 0.009);
+      x += dot * 2 + gap + it.w + sep;
+    }
   } else {
     paintMenuBar(g, 0, half, H, false);
     paintMenuBar(g, half, half, H, true);

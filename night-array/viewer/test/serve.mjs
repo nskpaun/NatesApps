@@ -65,7 +65,7 @@ export function startServer(port = 0, { log = false } = {}) {
   }));
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const { viewerUrl } = await startServer(Number(process.argv[2] || 8787), { log: true });
   console.log(`serving ${viewerUrl}`);
 }
