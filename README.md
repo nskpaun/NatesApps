@@ -33,6 +33,7 @@ A concept desk battle station you can explore: two 27" QHD monitors in one titan
 - **Real CAD files** from a parametric CadQuery model: a STEP assembly, STEP and STL per part group, GLB, engineering drawing sheets (SVG) and DXF outlines. You can share or save every file from the app.
 - **Build it yourself:** a verified, priced [shopping list](night-array/kit/BOM.md) of real parts (screens, dock, power, keyboard, mouse, wireless chargers, steel), also in the app.
 - **Install:** download [`night-array/NightArray.apk`](night-array/NightArray.apk) on an Android phone and open it.
+- **Website:** [`web/night-array`](web/night-array/) is the same explorer in a browser (Explore, Studio, Files, Specs and Buy), built for a separate Vercel project.
 
 ## Repository layout
 

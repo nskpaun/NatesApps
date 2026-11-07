@@ -1,0 +1,9 @@
+node_modules/
+dist/
+public/model/
+public/files/
+public/drawings/
+public/renders/
+public/concept/
+public/kit/
+public/viewer/
