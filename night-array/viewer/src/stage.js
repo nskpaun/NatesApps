@@ -348,8 +348,12 @@ export class Stage {
     this.reflectStrength = 0.5;
   }
 
-  /** Pools / bounce lights that sit in world space (base glow, neck light, dock latch). Called once the model is known. */
+  /**
+   * Pools / bounce lights that sit in world space (base glow, neck light, the dock's seated light). Called once the
+   * model is known. Returns what it made (the pool and / or the light), for setGain().
+   */
   addPractical({ pos, size, light = 0, distance = 0.5, parent = null, poolK = 1, rot = 0, world = false }) {
+    const made = [];
     const host = parent || this.group;
     if (world && parent) {
       parent.updateMatrixWorld(true);
@@ -368,6 +372,7 @@ export class Stage {
       m.userData.k = poolK;
       host.add(m);
       this.pools.push(m);
+      made.push(m);
     }
     if (light > 0) {
       const l = new THREE.PointLight(AMBER.clone(), light, distance, 2);
@@ -375,7 +380,18 @@ export class Stage {
       l.userData.k = light;
       host.add(l);
       this.amberLights.push(l);
+      made.push(l);
     }
+    return made;
+  }
+
+  /**
+   * Dims some practicals on their own (0..1+; the dock's seated light follows the laptop). Intensity only: a light
+   * stays visible at 0, so the number of lights, and with it every shader program, never changes.
+   */
+  setGain(items, gain) {
+    for (const o of items) o.userData.gain = gain;
+    this.setAmber(this.amber ?? 1);
   }
 
   /** Pools belong to an assembled station: they fade out as it explodes. */
@@ -395,9 +411,9 @@ export class Stage {
     const fade = (this.poolFade ?? 1) * (this.practicalsOn === false ? 0 : 1);
     const k = a <= 0.001 ? 0 : 0.15 + 0.85 * a;
     const on = this.practicalsOn !== false;
-    for (const l of this.amberLights) { l.intensity = l.userData.k * k; l.visible = k > 0 && on; }
+    for (const l of this.amberLights) { l.intensity = l.userData.k * k * (l.userData.gain ?? 1); l.visible = k > 0 && on; }
     for (const p of this.pools) {
-      const f = fade;
+      const f = fade * (p.userData.gain ?? 1);
       p.material.color.copy(AMBER).multiplyScalar(p.userData.k * k * f);
       p.visible = k * f > 0;
     }

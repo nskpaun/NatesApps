@@ -7,8 +7,7 @@ still images the app shows before the live view is ready (`android/app/src/main/
 
 The contract with the CAD pipeline and the app is [`../SPEC.md`](../SPEC.md), section 4. Everything the CAD side
 provides in `scene.json` (groups, parts, materials and their colour / metal / roughness hints, poses, explode
-vectors, the dock sequence and the `dock_latch` sub-group pivot, dims, screen layout) is read from there, never
-hard-coded.
+vectors, the dock sequence, dims, screen layout) is read from there, never hard-coded.
 
 ## How it ships
 
@@ -34,7 +33,7 @@ drawn, so the app's still image (underneath the WebView) shows through until the
 NA.setState(partial)   // object or JSON string; merges into the current ViewerState, returns the full state
 NA.getState()          // the current ViewerState
 NA.camera(name)        // hero | front | top | side | back | dock | trays | display  (animated)
-NA.dock(step)          // align | lower | release | lift | play | reset   ("play" runs the whole sequence)
+NA.dock(step)          // align | lower | lift | play | reset   ("play" runs the whole sequence; anything else is ignored)
 NA.frame(groupId)      // animated framing of one group
 ```
 
@@ -67,14 +66,23 @@ Sent with `window.NightArrayHost.post(JSON.stringify(evt))`, or `console.log` wh
 ```
 { "type": "ready" }                                  first frame with the model drawn
 { "type": "pick", "group": "keyboard" | null }       a tap (< 8 px, < 350 ms), never a drag; null = empty space
-{ "type": "dockStep", "step": "align" | "lower" | "release" | "lift" | "done" }
+{ "type": "dockStep", "step": "align" | "lower" | "lift" | "done" }
 { "type": "error", "message": "..." }                no WebGL2, no half-float render targets, model failed to load,
                                                      context lost for good
 ```
 
-`dock('play')` posts `align` at 0 s, `lower` at 1.5 s, `release` at 3.05 s, `lift` at 3.9 s and `done` at 5.5 s, when
-the laptop starts going back into the cradle (that motion is not "lift" any more). The sequence itself runs until
-about 6.7 s: `NA.idle()` waits for it, and a step or `play` sent meanwhile simply takes over.
+The dock is latch-free: there is nothing to press or unlock, and the laptop is the only thing that moves. `align`
+holds it 70 mm up in the cradle's lead-in, `lower` lets its own weight seat it on the sprung USB-C plug (it eases
+down, sinks 1.5 mm onto the spring and settles), and `lift` takes it straight up, 160 mm, clear of the cradle; `reset`
+seats it again the same way. The light shows it is seated: the connector glows and the seated indicator on the
+cradle's front face (`dock_led`, with its small pool on the desk) comes on with a flash as the laptop lands, and both
+go dark while it is out of the cradle (`align`, `lift`, standalone). A laptop that an isolate merely fades out is
+still seated, so the light stays on.
+
+`dock('play')` posts `align` at 0 s, `lower` at 1.5 s (seated at about 2.5 s, the light on for a beat), `lift` at
+3.5 s and `done` at 5.3 s, when the laptop starts going back into the cradle (that motion is not "lift" any more).
+The sequence itself runs until about 6.5 s: `NA.idle()` waits for it, and a step or `play` sent meanwhile simply
+takes over. The times live in `DOCK_PLAY` in `src/app.js`; the app doesn't depend on them.
 
 Picking: a mouse or pen picks exactly what is under the pointer. A finger gets target expansion: when the exact ray
 finds nothing, or a group that is big on screen (the desk mat, the base), a group smaller than 44 dp on either axis
@@ -113,7 +121,7 @@ Renaming a key on either side makes it fail.
 | `src/state.js` | ViewerState defaults, validation, partial merge |
 | `src/bridge.js` | events to `NightArrayHost` / console |
 | `src/app.js` | the `Viewer`: boot, state application, mode choreography, dock sequence, cameras, picking, render-on-demand loop, context loss |
-| `src/model.js` | scene.json + GLBs -> group / sub-group / part hierarchy, pose targets, bounds |
+| `src/model.js` | scene.json + GLBs -> group / part hierarchy, pose targets, bounds |
 | `src/materials.js` | one physical material per scene.json key (hints + brushed / clearcoat extras), finish, amber |
 | `src/stage.js` | the night set: room and city bokeh, desk with contact shadow and blurred reflection, environment, key / rim lights, amber practicals |
 | `src/post.js` | quality tiers and the HDR -> bloom -> tone-mapping pipeline |
@@ -146,8 +154,11 @@ applied; every mode x style renders without console or page errors; the keyboard
 scene.json's `via` waypoints (clear of the rim) both ways and land on their poses; explode, section (x and z),
 dims, isolate and frame for every group (also groups the pose hides), finish, amber 0/1 and the quality tiers (the
 HDR composer never allocates its second target); a tap on the keyboard picks `keyboard`, empty space picks `null`, a
-drag or long press picks nothing; `dock play` emits align, lower, release, lift, done ('done' as the reset motion
-starts), and a `play` queued before load starts at the first frame; all camera presets; the render loop goes quiet
+drag or long press picks nothing; `dock play` emits align, lower, lift, done ('done' as the reset motion starts),
+and a `play` queued before load starts at the first frame; the dock is latch-free (three steps, only the laptop
+moves, no sub-groups) and `dock('release')` or any other unknown step is ignored without error; the seated light
+and the connector glow follow the laptop (dark while it is lowered in, aligned, lifted or gone for standalone, on
+with a flash as it lands, on while an isolate fades it out); all camera presets; the render loop goes quiet
 when idle (no renders, no rAF callbacks for 2 s) and while the page is hidden; context loss and restore; a phone
 (touch, `isMobile`, 390x844 at DPR 3) with finger taps (also 8-12 dp off the mouse), a tap that leaves the framing
 to the viewer, a one-finger orbit and a pinch; resizes (the key light keeps its shadow map, a style cross-fade drops
@@ -157,13 +168,15 @@ programs compiled ahead (repeat fades, the first section cut and quality switche
 frame); and the error paths (no WebGL2, no half-float render targets, model missing, no host).
 
 `tools/render_stills.mjs` renders every still SPEC.md section 4 lists: `hero-work`, `hero-stow`,
-`hero-standalone`, `dock-align`, `dock-lower`, `dock-release`, `trays`, `display`, `cad`, `xray`, `exploded`,
+`hero-standalone`, `dock-align`, `dock-lower`, `dock-lift`, `trays`, `display`, `cad`, `xray`, `exploded`,
 `blueprint`, `section`, `finish-titanium`, `finish-graphite`, `finish-oxblood`, `night`, `amber-off` (1600x900)
 and `part-<group>` (900x900, isolated, studio; `internals` in x-ray) for every group in scene.json. Each still is
 drawn at 2x (`--ss`), filtered down in the page and encoded as JPEG (q 0.85, `--q`). `node tools/render_stills.mjs
 hero dock` renders only matching names; `--out <dir>` writes elsewhere (handy while tuning). Camera framing for
 each still lives at the top of the file and uses the same presets and fitting as the live view, with a longer
-lens. The dock stills keep the cradle in the middle third because the app crops them to narrow portrait cards.
+lens. The three dock stills share one camera, so side by side they read as one motion (held above the open cradle,
+seated with its light on, lifted straight out), and keep the cradle in the middle third because the app crops them
+to narrow portrait cards.
 Re-render the stills whenever the CAD export or the look changes.
 
 ## Performance notes
@@ -191,8 +204,9 @@ Re-render the stills whenever the CAD export or the look changes.
 - B-rep edges from `station-edges.glb` are drawn as fat lines only in the cad, x-ray and blueprint styles.
 - `renderer.info.render` holds the totals of the last whole frame (it is reset once per frame, not per pass).
 
-Measured on a phone-sized page (390x844 CSS px, DPR 3, work mode, hero camera); the model is 41 meshes and
-98 k triangles, `viewer.js` is 873 KiB. "Layout" frames also redraw the shadow map and contact shadow.
+Measured on a phone-sized page (390x844 CSS px, DPR 3, work mode, hero camera) with the 41-mesh, 98 k-triangle
+model from before the dock went latch-free (it is now 40 meshes and 97 k triangles; the table has not been
+re-measured), `viewer.js` is 873 KiB. "Layout" frames also redraw the shadow map and contact shadow.
 SwiftShader times are CPU-rendered and only meaningful relative to each other.
 
 | style / quality | canvas | draw calls (orbit / layout) | triangles (orbit / layout) | SwiftShader ms per frame |

@@ -21,17 +21,13 @@ const PIXEL_BUDGET = { high: 2.4e6, balanced: 1.5e6, battery: 0.9e6 };
 // emissive gain of the desktop texture (ACES has a deep toe: the dark wallpaper needs a push to read)
 const SCREEN_GLOW = { on: 1.8, stow: 1.25 };
 const MODES_ALL = ['work', 'stow', 'standalone'];
-// dock step motion: seconds for the laptop and the latch sub-group (scene.json gives the poses, these the pace)
-const DOCK_PACE = {
-  align: { laptop: 1.0, latch: 0.25 },
-  lower: { laptop: 1.15, latch: 0.25 },
-  release: { laptop: 0.4, latch: 0.2 },
-  lift: { laptop: 1.1, latch: 0.32 },
-  reset: { laptop: 1.1, latch: 0.25 },
-};
-// NA.dock('play'): when each step starts (ms); null = the reset motion, which posts 'done' as it starts
-const DOCK_PLAY = [['align', 0], ['lower', 1500], ['release', 3050], ['lift', 3900], [null, 5500]];
-const DOCK_PLAY_DONE = 5500 + DOCK_PACE.reset.laptop * 1000 + 80;
+// dock step motion: seconds the laptop takes to reach each step (scene.json gives the poses, these the pace). The dock
+// is latch-free: the laptop is the only thing that moves.
+const DOCK_PACE = { align: 1.0, lower: 1.15, lift: 1.1, reset: 1.1 };
+// NA.dock('play'): when each step starts (ms); null = the reset motion, which posts 'done' as it starts. Lower seats the
+// laptop at about 2.5 s; it rests there, light on, for a beat before the lift, and hangs clear of the cradle before reset.
+const DOCK_PLAY = [['align', 0], ['lower', 1500], ['lift', 3500], [null, 5300]];
+const DOCK_PLAY_DONE = 5300 + DOCK_PACE.reset * 1000 + 80;
 // Night shift orbit: elevation range (min, mid, max degrees) and the breathing of its distance (+-)
 const CINE_EL = [8, 13, 18];
 const CINE_BREATH = 0.06;
@@ -293,7 +289,11 @@ export class Viewer {
     }
   }
 
-  /** The sprung USB-C connector glows when the laptop is seated; the latch light follows (flash on seat). */
+  /**
+   * The dock is latch-free, so nothing on it moves; what shows the laptop is seated is light. The sprung USB-C
+   * connector glows, and the seated indicator (dock_led, a slim strip on the cradle's front face) comes on, both with
+   * a flash as the laptop lands. Both are dark while the laptop is out of the cradle.
+   */
   setupDockGlow() {
     const conn = this.model.parts.get('dock_connector');
     if (conn) {
@@ -303,20 +303,24 @@ export class Viewer {
       conn.mesh.material = m;
       this.connectorMat = m;
     }
-    const led = this.model.parts.get('dock_latch_led');
+    const led = this.model.parts.get('dock_led');
     if (led) {
-      this.latchMat = this.materials.variant(led.material, `${led.material}-latch`);
-      led.mesh.material = this.latchMat;
+      this.dockLedMat = this.materials.variant(led.material, `${led.material}-dock`);
+      led.mesh.material = this.dockLedMat;
     }
   }
 
-  /** Seated = the laptop rests in the cradle (at its pose, not lifted). Returns true while the glow animates. */
+  /**
+   * Seated = the laptop rests in the cradle: at its seat (not aligned above it, lifted out, or gone for standalone).
+   * Position only: a laptop that an isolate fades out is still seated, so the light stays on in the stow and work modes.
+   * Returns true while the glow animates.
+   */
   updateDockGlow(dt) {
     const g = this.glow;
     const lap = this.model.movables.get('laptop');
     const base = this.materials.get('amber_led');
     if (!lap || !base) return false;
-    const seated = !!this.laptopSeat && lap.node.visible && !this.fader.isFading(lap.node) && lap.node.position.distanceTo(this.laptopSeat) < 0.0025;
+    const seated = !!this.laptopSeat && lap.node.position.distanceTo(this.laptopSeat) < 0.0025;
     if (seated && !g.seated && this.readySent) g.flash = 1;
     g.seated = seated;
     const target = seated ? 1 : 0;
@@ -327,9 +331,15 @@ export class Viewer {
     if (g.flash < 0.004) g.flash = 0;
     const amber = base.emissiveIntensity; // already follows the amber level (0 = off)
     if (this.connectorMat) this.connectorMat.emissiveIntensity = amber * (0.12 * g.k + 0.5 * g.flash);
-    if (this.latchMat) {
-      this.latchMat.color.copy(base.color);
-      this.latchMat.emissiveIntensity = amber * (0.3 + 0.7 * g.k + 0.6 * g.flash);
+    if (this.dockLedMat) {
+      // off, the strip is the dark diffuser the other LEDs show when the amber level is 0
+      this.dockLedMat.color.copy(base.userData.offColor).lerp(base.color, g.k);
+      this.dockLedMat.emissiveIntensity = amber * (g.k + 0.6 * g.flash);
+    }
+    const gain = g.k + 0.6 * g.flash;
+    if (this.dockPracticals && gain !== this.dockGain) {
+      this.dockGain = gain;
+      this.stage.setGain(this.dockPracticals, gain);
     }
     return g.k !== target || g.flash > 0;
   }
@@ -368,11 +378,16 @@ export class Viewer {
       const deckY = deck ? new THREE.Box3().setFromObject(deck.mesh).max.y : 0.03;
       S.addPractical({ pos: [neck.x, deckY + 0.0004, neck.z + 0.07], size: [0.42, 0.2], poolK: 0.32, parent: host('neck_light'), world: true });
     }
-    const latch = center('dock_latch_led');
-    if (latch) {
-      const parent = host('dock_latch_led');
-      S.addPractical({ pos: [latch.x, 0.0006, latch.z + 0.06], size: [0.13, 0.1], poolK: 0.5, parent, world: true });
-      S.addPractical({ pos: [latch.x, latch.y + 0.004, latch.z + 0.03], light: 0.006, distance: 0.18, parent, world: true });
+    // the dock's seated light: a small pool on the desk in front of the cradle and a short bounce light on its front
+    // face. Both follow the light (updateDockGlow), dark while the laptop is out of the cradle.
+    const dockLed = center('dock_led');
+    if (dockLed) {
+      const parent = host('dock_led');
+      this.dockPracticals = [
+        ...S.addPractical({ pos: [dockLed.x, 0.0006, dockLed.z + 0.05], size: [0.12, 0.08], poolK: 0.45, parent, world: true }),
+        ...S.addPractical({ pos: [dockLed.x, dockLed.y - 0.004, dockLed.z + 0.025], light: 0.005, distance: 0.16, parent, world: true }),
+      ];
+      this.dockGain = null;
     }
     // the mouse's tail light rides with the mouse (pool on whatever it rests on)
     const mg = this.model.groups.get('mouse');
@@ -713,7 +728,7 @@ export class Viewer {
    *    (lift clear of the rim, slide, set down), both on the same timing; poses without waypoints get a computed arc
    *  - the desk mat fades in before they land and out after they leave
    *  - the laptop lifts out and fades for standalone (and comes back down the same way)
-   *  - dock steps move the laptop / latch at their own pace; isolate fades the other groups
+   *  - dock steps move the laptop at their own pace (the dock is latch-free); isolate fades the other groups
    */
   layout(immediate, reframe = null, dock = null) {
     const s = this.state;
@@ -734,13 +749,13 @@ export class Viewer {
     const plans = [];
     for (const [id, mv] of M.movables) {
       const tg = targets.get(id);
-      const rest = mv.parent ? mv.pivot.clone().sub(mv.parent.pivot) : mv.pivot.clone();
+      const rest = mv.pivot.clone();
       const p1 = rest.clone().add(tg.t);
       const q1 = new THREE.Quaternion().setFromEuler(tg.r);
-      const isolated = mv.isGroup && iso && iso !== id;
+      const isolated = !!iso && iso !== id;
       // isolating a group the pose hides (the laptop in standalone, the desk mat in stow) shows it at its rest place:
       // isolate means "show only this group", never an empty stage
-      const forced = mv.isGroup && iso === id && tg.hidden;
+      const forced = iso === id && tg.hidden;
       const poseHidden = tg.hidden && !forced;
       const visible = !poseHidden && !isolated;
       const lift = poseHidden ? this.liftOut(id) : null;
@@ -780,7 +795,7 @@ export class Viewer {
     } else {
       // devices that change place between modes (pocket <-> desk mat): through scene.json's "via" waypoints when the
       // pose has them (lift clear of the rim, slide out, set down; reversed going back), else on a computed arc
-      const arcs = plans.filter((pl) => pl.visible && pl.shown && pl.mv.isGroup && Math.hypot(pl.p1.x - pl.p0.x, pl.p1.z - pl.p0.z) > 0.05 && modeChanged);
+      const arcs = plans.filter((pl) => pl.visible && pl.shown && Math.hypot(pl.p1.x - pl.p0.x, pl.p1.z - pl.p0.z) > 0.05 && modeChanged);
       const obstacle = M.bounds(['base'], { includeHidden: true }).max.y;
       let arcEnd = 0;
       for (const pl of arcs) pl.route = this.viaRoute(pl, fromMode, s.mode);
@@ -814,16 +829,16 @@ export class Viewer {
       });
       if (modeChanged) this.chargeAt = s.mode === 'stow' ? performance.now() + arcEnd * 1000 : Infinity;
 
-      const dockPace = dock ? DOCK_PACE[dock.to || 'reset'] : null;
+      const dockPace = dock ? DOCK_PACE[dock.to || 'reset'] : 0;
       for (const pl of plans) {
         if (pl.done) continue;
         const node = pl.mv.node;
         let dur = 0.9, delay = 0, easing = ease.inOutCubic, path = null;
         const appear = pl.visible && !pl.shown, vanish = !pl.visible && pl.shown;
-        if (dockPace && (pl.id === 'laptop' || pl.id === 'dock_latch')) {
-          dur = pl.id === 'laptop' ? dockPace.laptop : dockPace.latch;
-          if (pl.id === 'laptop' && dock.to === 'lower') path = seatPath(pl.p0, pl.p1);
-          if (pl.id === 'dock_latch') easing = dock.to === 'lift' ? ease.outQuart : ease.inOutSine;
+        if (dockPace && pl.id === 'laptop') {
+          dur = dockPace;
+          // coming down into the cradle (lower, or reset from above): its own weight seats it on the sprung connector
+          if ((dock.to === 'lower' || !dock.to) && pl.p0.y > pl.p1.y + 0.005) path = seatPath(pl.p0, pl.p1);
         }
         if (pl.lift && vanish) {
           // standalone: the laptop lifts out of the cradle and fades away up there
@@ -1332,7 +1347,7 @@ export class Viewer {
   }
 
   /**
-   * align -> lower -> release -> lift -> reset, with dockStep events (the app highlights its cards from them).
+   * align -> lower -> lift -> reset, with dockStep events (the app highlights its cards from them).
    * 'done' is posted when the reset motion starts (the laptop going back into the cradle is not "lift" any more);
    * dockPlay stays set until that motion ends, so NA.idle() still waits for it. Called before the first frame (a
    * queued play), the sequence waits for it: its wall-clock steps and events start from the first visible frame.

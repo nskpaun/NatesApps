@@ -36,7 +36,8 @@ if (dump.format !== 1 || !Array.isArray(dump.sessions)) {
 
 const GL_ARGS = ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'];
 const HOST = dump.assetHost; // WebViewAssetLoader.DEFAULT_DOMAIN
-const DOCK_ORDER = ['align', 'lower', 'release', 'lift', 'done'];
+// the dockStep events NA.dock('play') posts, in order (latch-free dock: three steps, then 'done' as the reset starts)
+const DOCK_ORDER = ['align', 'lower', 'lift', 'done'];
 const sceneGroups = JSON.parse(fs.readFileSync(path.join(MOUNTS.model, 'scene.json'), 'utf8')).groups.map((g) => g.id);
 
 // Known contract gaps: reported, not failed. Strict: an entry that no longer reproduces fails the run, so it gets removed.

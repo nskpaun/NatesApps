@@ -38,12 +38,12 @@ export const STILLS = [
   { name: 'hero-work', state: { mode: 'work' }, camera: HERO, exposure: LIT },
   { name: 'hero-stow', state: { mode: 'stow' }, camera: { ...HERO, el: 16 }, exposure: LIT },
   { name: 'hero-standalone', state: { mode: 'standalone' }, camera: HERO, exposure: LIT },
-  // align and lower share one camera (framing the laptop's whole travel); release moves in on the lit press-release
-  // latch. All three are centred on the dock: the app crops them to narrow portrait cards.
+  // the three docking steps share one camera (framing the laptop's whole travel), so the cards read as one motion:
+  // held above the open cradle, seated with its light on, lifted straight out. All three are centred on the dock:
+  // the app crops them to narrow portrait cards.
   { name: 'dock-align', state: { mode: 'stow' }, dock: 'align', camera: DOCK, exposure: LIT },
   { name: 'dock-lower', state: { mode: 'stow' }, dock: 'lower', camera: DOCK, exposure: LIT },
-  { name: 'dock-release', state: { mode: 'stow' }, dock: 'release', exposure: LIT,
-    camera: { ...DOCK, az: 30, el: 12, pad: 0.1, fit: { groups: ['dock'] }, minDistance: 0.2 } },
+  { name: 'dock-lift', state: { mode: 'stow' }, dock: 'lift', camera: DOCK, exposure: LIT },
   // both pockets from above, devices charging
   { name: 'trays', state: { mode: 'stow' }, camera: { preset: 'trays', az: -14, el: 60, fov: 22, pad: 0.08, lift: 0.08 }, exposure: LIT },
   { name: 'display', state: { mode: 'work' }, camera: { preset: 'display', az: -20, el: 7, fov: 20, pad: 0.05, lift: 0.0 }, exposure: LIT },

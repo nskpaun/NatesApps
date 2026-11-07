@@ -227,19 +227,40 @@ try {
     });
     await page.waitForFunction(() => window.__events.some((e) => e.type === 'dockStep' && e.step === 'done'), null, { timeout: 60000, polling: 100 });
     const steps = await page.evaluate(() => window.__events.filter((e) => e.type === 'dockStep').map((e) => e.step));
-    ok(steps.join(',') === 'align,lower,release,lift,done', `dock play emits ${steps.join(',')}`);
+    ok(steps.join(',') === 'align,lower,lift,done', `dock play emits ${steps.join(',')}`);
     const doneWhile = await page.evaluate(() => window.__doneWhile);
     ok(doneWhile && doneWhile.playing && doneWhile.step === null, `'done' comes as the reset motion starts, play still running ${JSON.stringify(doneWhile)}`);
-    const latch = await page.evaluate(() => {
-      window.NA.dock('release');
-      window.NA._viewer.tweens.finishAll();
-      const v = window.NA._viewer;
-      const z = v.model.movables.get('dock_latch').node.position.z;
-      window.NA.dock('reset');
-      window.NA._viewer.tweens.finishAll();
-      return { pressed: z, rest: v.model.movables.get('dock_latch').node.position.z };
+    // latch-free: three steps, nothing on the dock moves; a step outside the contract is ignored without error
+    const dk = await page.evaluate(async () => {
+      const NA = window.NA, v = NA._viewer;
+      await NA.idle(20000);
+      const lap = v.model.movables.get('laptop');
+      const dockNode = v.model.groups.get('dock').node;
+      const dockParts = () => v.model.groups.get('dock').parts.map((p) => p.node.position.toArray().join(','));
+      const out = { steps: v.sj.dock_sequence.map((x) => x.step).join(','), groups: Object.keys(v.sj.dock_sequence.find((x) => x.step === 'lift')).filter((k) => !['step', 'title', 'caption'].includes(k)) };
+      out.noSub = !v.sj.groups.some((g) => g.subgroups) && [...v.model.parts.values()].every((p) => p.node.parent === v.model.groups.get(p.group).node);
+      const parts0 = dockParts(), dock0 = dockNode.position.clone();
+      NA.dock('lift'); v.tweens.finishAll(); v.updateDockGlow(10);
+      out.liftDy = lap.node.position.y - v.laptopSeat.y;
+      out.liftLed = v.dockLedMat.emissiveIntensity;
+      out.dockStill = dockParts().join('|') === parts0.join('|') && dockNode.position.equals(dock0);
+      for (const bad of ['release', 'latch', 'press', '', 'LIFT']) out[`ret_${bad || 'empty'}`] = NA.dock(bad);
+      out.tweensAfterBad = v.tweens.size;
+      out.stepAfterBad = v.dockStep;
+      out.lapAfterBad = lap.node.position.y - v.laptopSeat.y;
+      NA.dock('reset'); v.tweens.finishAll(); v.updateDockGlow(10);
+      out.resetSeated = lap.node.position.distanceTo(v.laptopSeat) < 1e-6 && v.dockStep === null;
+      out.resetLed = v.dockLedMat.emissiveIntensity;
+      out.amberLed = v.materials.get('amber_led').emissiveIntensity;
+      return out;
     });
-    ok(Math.abs(latch.pressed - latch.rest + 0.003) < 1e-6, `dock_latch sub-group moves -3 mm on release (${JSON.stringify(latch)})`);
+    ok(dk.steps === 'align,lower,lift' && dk.groups.join(',') === 'laptop' && dk.noSub,
+      `latch-free dock_sequence: ${dk.steps}, moves ${dk.groups.join(',')}, no sub-groups (${dk.noSub})`);
+    ok(Math.abs(dk.liftDy - 0.16) < 1e-6 && dk.dockStill && dk.liftLed < 1e-3,
+      `dock('lift'): laptop +${(dk.liftDy * 1000).toFixed(1)} mm, dock parts unmoved (${dk.dockStill}), seated light off (${dk.liftLed.toFixed(4)})`);
+    ok(dk.stepAfterBad === 'lift' && Math.abs(dk.lapAfterBad - 0.16) < 1e-6 && dk.tweensAfterBad === 0 && dk.ret_release === true,
+      `dock('release') and other unknown steps are ignored silently (step ${dk.stepAfterBad}, ${dk.tweensAfterBad} tweens)`);
+    ok(dk.resetSeated && dk.resetLed > 0.5 * dk.amberLed, `dock('reset') seats the laptop and lights the seated indicator (${dk.resetLed.toFixed(2)} / ${dk.amberLed.toFixed(2)})`);
     ok(errors.length === 0, `no page errors (${errors.slice(0, 3).join(' | ')})`);
     await page.close();
   }
@@ -293,14 +314,31 @@ try {
       NA.setState({ mode: 'work' });
       step(0); v.tweens.finishAll();
       out.lapBack = lap.node.visible && lap.node.position.distanceTo(v.laptopSeat) < 1e-6;
-      // dock glow: seated -> connector glows; align -> not seated
+      // dock glow: seated -> connector glows and the seated light (dock_led + its practicals) is on; align -> both dark
+      const ledOn = () => v.dockLedMat.emissiveIntensity;
+      const practical = () => Math.max(...v.dockPracticals.map((o) => (o.isLight ? o.intensity / o.userData.k : o.material.color.r / o.userData.k)));
+      const lights = () => v.stage.amberLights.filter((l) => l.visible).length;
       v.updateDockGlow(10);
-      out.glowSeated = v.glow.seated && v.connectorMat.emissiveIntensity > 0;
+      out.glowSeated = v.glow.seated && v.connectorMat.emissiveIntensity > 0 && ledOn() > 1 && practical() > 0.1;
+      const lights0 = lights();
       NA.dock('align'); v.tweens.finishAll(); v.updateDockGlow(10);
-      out.glowLifted = !v.glow.seated && v.connectorMat.emissiveIntensity < 1e-3;
-      NA.dock('lower'); v.tweens.finishAll(); v.updateDockGlow(0.016);
-      out.flashOnSeat = v.glow.flash > 0.5;
-      NA.dock('reset'); v.tweens.finishAll();
+      out.glowLifted = !v.glow.seated && v.connectorMat.emissiveIntensity < 1e-3 && ledOn() < 1e-3 && practical() < 1e-3;
+      out.ledOffLightsKept = lights() === lights0; // dimmed, never hidden: the light count (and the shader programs) stay
+      // lowering: dark until it lands, then on with a flash
+      NA.dock('lower'); step(0); step(500); v.updateDockGlow(0.016);
+      out.darkWhileLowering = !v.glow.seated && ledOn() < 1e-3;
+      v.tweens.finishAll(); v.updateDockGlow(0.016);
+      out.flashOnSeat = v.glow.flash > 0.5 && ledOn() > 0;
+      NA.dock('reset'); v.tweens.finishAll(); v.updateDockGlow(10); // a dock step keeps the laptop in view: back to none
+      // a laptop an isolate fades out is still seated: the light stays on (stow / work)
+      NA.setState({ isolate: 'dock' }); v.tweens.finishAll(); v.fader.finishAll(); v.updateDockGlow(10);
+      out.ledOnIsolated = !lap.node.visible && ledOn() > 1;
+      NA.setState({ isolate: null }); v.tweens.finishAll(); v.fader.finishAll();
+      // standalone: the laptop is gone, the light is off; back to work it comes on again
+      NA.setState({ mode: 'standalone' }); v.tweens.finishAll(); v.fader.finishAll(); v.updateDockGlow(10);
+      out.ledOffStandalone = ledOn() < 1e-3;
+      NA.setState({ mode: 'work' }); v.tweens.finishAll(); v.fader.finishAll(); v.updateDockGlow(10);
+      out.ledOnWork = ledOn() > 1;
       // styles
       for (const st of ['cad', 'xray', 'blueprint', 'studio']) {
         NA.setState({ style: st }); v.tweens.finishAll();
@@ -893,7 +931,7 @@ try {
     const ev = await page.evaluate(() => ({ list: window.__events.map((e) => [e.type === 'dockStep' ? e.step : e.type, Math.round(e.t)]), cam: window.NA._viewer.cameraName }));
     const at = Object.fromEntries(ev.list);
     const order = ev.list.map(([k]) => k).join(',');
-    ok(order === 'ready,align,lower,release,lift,done' && at.lower - at.align >= 700 && at.release - at.lower >= 700 && ev.cam === 'dock',
+    ok(order === 'ready,align,lower,lift,done' && at.lower - at.align >= 700 && at.lift - at.lower >= 700 && ev.cam === 'dock',
       `queued dock play starts at the first frame (${ev.list.map(([k, t]) => `${k}@${t}`).join(' ')}, camera ${ev.cam})`);
     ok(errors.length === 0, `no page errors (${errors.slice(0, 3).join(' | ')})`);
     await page.close();

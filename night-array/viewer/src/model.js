@@ -1,9 +1,8 @@
 // Loads scene.json + station.glb + station-edges.glb and turns them into a group hierarchy:
 //   station (root)
 //     <group node>   at scene.json group pivot (stow pose); poses / dock deltas move this node
-//       [<subgroup>] e.g. dock_latch, at groups[].subgroups[id].pivot
-//         <part node> at the part's GLB translation (relative to its parent pivot); explode offsets move it
-//           mesh (+ B-rep edge lines)
+//       <part node>  at the part's GLB translation (relative to the group pivot); explode offsets move it
+//         mesh (+ B-rep edge lines)
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { DEG } from './util.js';
@@ -42,15 +41,15 @@ export class Model {
     this.sj = sceneJson;
     this.root = new THREE.Group();
     this.root.name = 'station';
-    /** id -> { def, node, pivot, parts: [] } for groups AND subgroups (movable keys used by poses / dock_sequence) */
-    this.movables = new Map();
+    /** id -> { def, node, pivot, parts: [] }: the groups, which poses and dock_sequence move (nothing moves on its own
+     *  below a group: the dock is latch-free) */
     this.groups = new Map();
+    this.movables = this.groups;
     this.parts = new Map();
     this.meshes = [];
     this.groupOrder = (sceneJson.groups || []).map((g) => g.id);
 
     const partDefs = new Map((sceneJson.parts || []).map((p) => [p.id, p]));
-    const subOf = new Map(); // partId -> subgroup id
 
     for (const g of sceneJson.groups || []) {
       const pivot = v3(g.pivot);
@@ -58,19 +57,7 @@ export class Model {
       node.name = `group:${g.id}`;
       node.position.copy(pivot);
       this.root.add(node);
-      const entry = { id: g.id, def: g, node, pivot, parent: null, parts: [], isGroup: true };
-      this.groups.set(g.id, entry);
-      this.movables.set(g.id, entry);
-      for (const [sid, s] of Object.entries(g.subgroups || {})) {
-        const sp = v3(s.pivot);
-        const sn = new THREE.Group();
-        sn.name = `sub:${sid}`;
-        sn.position.copy(sp).sub(pivot);
-        node.add(sn);
-        const se = { id: sid, def: s, node: sn, pivot: sp, parent: entry, parts: [], isGroup: false };
-        this.movables.set(sid, se);
-        for (const pid of s.parts || []) subOf.set(pid, sid);
-      }
+      this.groups.set(g.id, { id: g.id, def: g, node, pivot, parts: [] });
     }
 
     const edgeByName = new Map();
@@ -88,14 +75,12 @@ export class Model {
       const def = partDefs.get(pid) || { id: pid, group: extras.group, material: extras.material, internal: !!extras.internal, explode: [0, 0, 0] };
       const group = this.groups.get(def.group);
       if (!group) continue;
-      const sid = subOf.get(pid);
-      const container = sid ? this.movables.get(sid) : group;
       const worldPos = new THREE.Vector3().setFromMatrixPosition(obj.matrixWorld);
 
       const partNode = new THREE.Group();
       partNode.name = `part:${pid}`;
-      partNode.position.copy(worldPos).sub(container.pivot);
-      container.node.add(partNode);
+      partNode.position.copy(worldPos).sub(group.pivot);
+      group.node.add(partNode);
 
       const matKey = def.material || mesh.material?.name || 'graphite';
       const geom = mesh.geometry;
@@ -116,12 +101,11 @@ export class Model {
       }
 
       const part = {
-        id: pid, def, group: def.group, sub: sid || null, node: partNode, mesh: m, edgeGeom,
+        id: pid, def, group: def.group, node: partNode, mesh: m, edgeGeom,
         rest: partNode.position.clone(), explode: v3(def.explode), internal: !!def.internal, material: matKey,
       };
       this.parts.set(pid, part);
       group.parts.push(part);
-      if (sid) this.movables.get(sid).parts.push(part);
       this.meshes.push(m);
     }
     this.root.updateMatrixWorld(true);

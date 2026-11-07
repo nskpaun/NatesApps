@@ -5,7 +5,9 @@ export const STYLES = ['studio', 'cad', 'xray', 'blueprint'];
 export const FINISHES = ['titanium', 'graphite', 'oxblood'];
 export const QUALITIES = ['high', 'balanced', 'battery'];
 export const CAMERAS = ['hero', 'front', 'top', 'side', 'back', 'dock', 'trays', 'display'];
-export const DOCK_COMMANDS = ['align', 'lower', 'release', 'lift', 'play', 'reset'];
+// NA.dock(): the three scene.json dock_sequence steps (the dock is latch-free), the whole sequence, and back to seated.
+// Any other value is ignored without error.
+export const DOCK_COMMANDS = ['align', 'lower', 'lift', 'play', 'reset'];
 
 export const DEFAULT_STATE = Object.freeze({
   mode: 'work',
