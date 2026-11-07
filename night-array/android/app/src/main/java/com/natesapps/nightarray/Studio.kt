@@ -2,6 +2,7 @@ package com.natesapps.nightarray
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -14,6 +15,7 @@ import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.systemGestureExclusion
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -25,6 +27,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -95,7 +98,16 @@ private fun Stage(app: AppState, scene: Scene, modifier: Modifier, wide: Boolean
     val host = app.host
     val st = host.state
     val ready = host.status == LiveStatus.Ready
-    val stillA by animateFloatAsState(if (ready) 0f else 1f, tween(700), label = "still")
+    // The still and the live frame don't frame the station identically, so a long cross-fade (against the canvas'
+    // .65 s fade-in in index.html) shows two stations at once. A short linear fade-out roughly halves that overlap
+    // without dipping to black; going back to the still (an error) stays gentle.
+    val stillA by animateFloatAsState(if (ready) 0f else 1f, if (ready) tween(280, easing = LinearEasing) else tween(450), label = "still")
+    // In the phone layout the stage runs edge to edge, and a one-finger horizontal drag orbits: keep a drag that
+    // starts at a screen edge from being taken as system Back (the vertical middle band, where the model sits; the
+    // system honours at most 200 dp per edge, so Back still works above and below it). Where the stage doesn't reach a
+    // screen edge (the wide layout, between the rail and the panel) this is a no-op, so it isn't limited to the phone
+    // layout: a split-screen window can get the wide Studio without the side rail.
+    val exclusionMax = with(LocalDensity.current) { 200.dp.toPx() }
     Box(modifier.background(C.bg)) {
         if (stillA > 0.01f) {
             val ctx = LocalContext.current
@@ -108,7 +120,11 @@ private fun Stage(app: AppState, scene: Scene, modifier: Modifier, wide: Boolean
                     description = "Still render matching the current view")
             }
         }
-        ViewerSlot(host, Modifier.fillMaxSize().testTag("viewer"))
+        ViewerSlot(host, Modifier.fillMaxSize().systemGestureExclusion { c ->
+            val h = c.size.height.toFloat()
+            val band = minOf(h * .6f, exclusionMax)
+            Rect(0f, h / 2 - band / 2, c.size.width.toFloat(), h / 2 + band / 2)
+        }.testTag("viewer"))
         // top scrim for legibility of the chrome
         Box(Modifier.fillMaxWidth().height(150.dp).background(Brush.verticalGradient(listOf(C.bg.copy(alpha = .8f), Color.Transparent))))
         Column(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 16.dp, vertical = 8.dp)) {

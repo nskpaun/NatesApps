@@ -19,6 +19,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.webkit.WebResourceErrorCompat
 import androidx.webkit.WebViewAssetLoader
 import androidx.webkit.WebViewClientCompat
+import androidx.webkit.WebViewCompat
 import org.json.JSONObject
 import java.net.URLEncoder
 
@@ -27,7 +28,8 @@ class ViewerState {
     var mode by mutableStateOf("work")
     var style by mutableStateOf("studio")
     var finish by mutableStateOf("titanium")
-    var amber by mutableFloatStateOf(0.7f)
+    /** 0.8 = the viewer's DEFAULT_STATE (state.js) and the stills' BASE_STATE (render_stills.mjs), so still → live doesn't shift. */
+    var amber by mutableFloatStateOf(0.8f)
     var explode by mutableFloatStateOf(0f)
     var sectionOn by mutableStateOf(false)
     var sectionAxis by mutableStateOf("x")
@@ -108,6 +110,7 @@ class ViewerHost(private val appContext: Context) {
         when (o.optString("type")) {
             "ready" -> {
                 status = LiveStatus.Ready; errorMessage = null
+                autoRecreates = 0 // a renderer that got this far may be rebuilt quietly again after the next reclaim
                 // The page is evidently alive; make sure nothing is left waiting even if onPageFinished was missed.
                 if (!pageLoaded) onPageLoaded() else flush()
             }
@@ -161,7 +164,7 @@ class ViewerHost(private val appContext: Context) {
             dropQueuedDock(); playLocalDock(); return
         }
         call("NA.dock(${JSONObject.quote(step)})")
-        if (step == "play") main.postDelayed(dockWatchdog, DOCK_WATCHDOG_MS)
+        if (step == "play") { dockWaits = 0; main.postDelayed(dockWatchdog, DOCK_WATCHDOG_MS) }
     }
 
     // ---------- the dock sequence without the live page ----------
@@ -190,12 +193,20 @@ class ViewerHost(private val appContext: Context) {
         }
     }
 
-    /** A page that took NA.dock("play") but never reported a step: finish the sequence in Kotlin rather than stay "Playing…". */
+    /** Watchdog periods that passed without a dockStep since the last NA.dock("play"). */
+    private var dockWaits = 0
+
+    /**
+     * A page that took NA.dock("play") but never reported a step: finish the sequence in Kotlin rather than stay "Playing…".
+     * While the page is still loading it waits a little longer (the page plays it once the model is up), but not forever:
+     * a page that never gets going must not leave the button stuck either. A step reported later takes over again.
+     */
     private val dockWatchdog = object : Runnable {
         override fun run() {
             if (!dockPlaying || localDock.isNotEmpty()) return
-            if (status == LiveStatus.Ready || status == LiveStatus.Error) playLocalDock()
-            else main.postDelayed(this, DOCK_WATCHDOG_MS) // still loading: the page plays it once the model is up
+            dockWaits++
+            if (status == LiveStatus.Ready || status == LiveStatus.Error || dockWaits >= DOCK_WATCHDOG_PERIODS) playLocalDock()
+            else main.postDelayed(this, DOCK_WATCHDOG_MS)
         }
     }
 
@@ -209,10 +220,15 @@ class ViewerHost(private val appContext: Context) {
 
     fun closeSheet() { picked = null; if (state.selected != null) select(null) }
 
-    /** Same as a pick event from the page, for picks made in Compose (the Parts list). */
+    /**
+     * Same as a pick event from the page, for picks made in Compose (the Parts list). The Parts list offers every group,
+     * hidden ones too: while another group is isolated the isolation moves to the picked one (one merged setState), so the
+     * camera never frames a hidden group and the "Isolated · …" banner names what's on screen.
+     */
     fun pickLocal(group: String) {
         picked = group
         if (state.selected != group) select(group)
+        if (state.isolate != null && state.isolate != group) setIsolate(group)
         frame(group)
     }
 
@@ -407,7 +423,15 @@ class ViewerHost(private val appContext: Context) {
                 request.url.host != WebViewAssetLoader.DEFAULT_DOMAIN // never navigate away from the bundled viewer
 
             override fun onPageFinished(view: WebView, url: String) {
-                if (view === webView) onPageLoaded()
+                if (view !== webView) return
+                // viewer.js installs window.NA the moment it runs. A page without it (a WebView too old to parse the
+                // bundle, a missing or truncated viewer.js) would swallow every call, and can't report an error either:
+                // the viewer's error reporter lives in that same script. So check before letting the queue go.
+                view.evaluateJavascript(NA_PROBE) { r ->
+                    if (view !== webView || destroyed) return@evaluateJavascript
+                    if (r == "true") onPageLoaded()
+                    else if (status == LiveStatus.Loading) fail(noViewerMessage(appContext))
+                }
             }
 
             override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceErrorCompat) {
@@ -415,9 +439,17 @@ class ViewerHost(private val appContext: Context) {
             }
 
             override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
-                // The renderer crashed or was killed to reclaim memory: drop this WebView, keep the app alive.
-                if (view === webView) { discardWebView(view); fail("the live renderer stopped") }
-                else runCatching { (view.parent as? ViewGroup)?.removeView(view); view.destroy() }
+                // Either way: drop this WebView, keep the app alive.
+                if (view !== webView) { runCatching { (view.parent as? ViewGroup)?.removeView(view); view.destroy() }; return true }
+                discardWebView(view)
+                if (!detail.didCrash() && autoRecreates < MAX_AUTO_RECREATES) {
+                    // The system reclaimed the renderer's memory (a heavy WebGL page, typically while we're in the
+                    // background). That's no error: rebuild it quietly, now if it's on screen, else at the next
+                    // onResume / claim. Capped, so a device that keeps reclaiming it ends up on the stills + Retry.
+                    autoRecreates++
+                    resetForReload()
+                    if (resumed && slots.isNotEmpty()) main.post { recreateIfIdle() }
+                } else fail("the live renderer stopped")
                 return true
             }
         }
@@ -427,6 +459,12 @@ class ViewerHost(private val appContext: Context) {
         status = LiveStatus.Loading; errorMessage = null
         // The full state travels in the URL, so drop queued state merges; keep commands (camera, dock, frame).
         queue.removeAll { it is JSONObject }
+        // The camera doesn't travel in the URL, and a new page (Retry, a renderer rebuilt, a restored process) boots at
+        // "hero": bring back the preset the Camera chips and the still underneath show. Queued commands run before the
+        // first frame, so it's a jump, not a move. Not while isolated (the page frames that group itself) or in Night
+        // shift (its own orbit; exitNight() sends the camera). In front, so commands queued since (frame, dock) win.
+        if (!state.cinematic && state.isolate == null && lastCamera != "hero" && queue.none { it is String && it.startsWith("NA.camera(") })
+            queue.add(0, "NA.camera(${JSONObject.quote(lastCamera)})")
         loadGeneration++
         wv.loadUrl(viewerUrl())
         if (!resumed) wv.onPause()
@@ -442,10 +480,24 @@ class ViewerHost(private val appContext: Context) {
     /** Recreate the renderer after an error (or a page that never got ready). The dock sequence starts over too. */
     fun retry(ctx: Context) {
         webView?.let { discardWebView(it) }
+        resetForReload()
+        if (slots.isNotEmpty()) { ensureWebView(ctx); attachTop() }
+    }
+
+    /** Between two pages: no dock sequence carries over (the new page starts it over), and nothing is wrong (yet). */
+    private fun resetForReload() {
         cancelLocalDock(); main.removeCallbacks(dockWatchdog); dropQueuedDock()
         dockPlaying = false; dockStep = null
         status = LiveStatus.Idle; errorMessage = null
-        if (slots.isNotEmpty()) { ensureWebView(ctx); attachTop() }
+    }
+
+    /** Quiet rebuilds after the system reclaimed the renderer, since the last page that got ready. */
+    private var autoRecreates = 0
+
+    /** Rebuilds a renderer the system reclaimed ([LiveStatus.Idle], no WebView) once a slot shows it and we're in front. */
+    private fun recreateIfIdle() {
+        if (webView != null || destroyed || !resumed || status != LiveStatus.Idle || slots.isEmpty()) return
+        ensureWebView(slots.last().context); attachTop()
     }
 
     fun claim(container: FrameLayout) {
@@ -473,7 +525,9 @@ class ViewerHost(private val appContext: Context) {
 
     fun onResume() {
         resumed = true
-        webView?.let { wv -> runCatching { wv.resumeTimers() }; if (slots.isNotEmpty()) runCatching { wv.onResume() } }
+        val wv = webView
+        if (wv == null) recreateIfIdle() // the system reclaimed the renderer while we were away
+        else { runCatching { wv.resumeTimers() }; if (slots.isNotEmpty()) runCatching { wv.onResume() } }
     }
 
     fun onPause() {
@@ -505,6 +559,24 @@ class ViewerHost(private val appContext: Context) {
         /** Stills timings for the dock sequence (ms from the start), after app.js playDock. */
         private val LOCAL_DOCK = listOf("align" to 0L, "lower" to 1500L, "release" to 3000L, "lift" to 4300L, "done" to 6000L)
         private const val DOCK_WATCHDOG_MS = 15_000L
+        /** Watchdog periods a still-loading page gets to report a dock step before the stills play the sequence. */
+        private const val DOCK_WATCHDOG_PERIODS = 2
+        /** Renderers reclaimed by the system that are rebuilt without asking, before one gets ready again. */
+        private const val MAX_AUTO_RECREATES = 2
+        /** Evaluates to true once viewer.js has run (it installs window.NA first thing). */
+        const val NA_PROBE = "typeof window.NA==='object'"
+        /** viewer.js is built for Chrome 87 (build.mjs `target`); an older WebView may not parse it. */
+        private const val BUNDLE_CHROME = 87
+
+        /** The major version of the WebView implementation, or null if unknown. */
+        fun webViewMajor(versionName: String?): Int? = versionName?.trim()?.substringBefore('.')?.toIntOrNull()
+
+        /** Why a page came up without the viewer: an actionable message when the WebView is known to be too old. */
+        private fun noViewerMessage(ctx: Context): String {
+            val major = runCatching { webViewMajor(WebViewCompat.getCurrentWebViewPackage(ctx)?.versionName) }.getOrNull()
+            return if (major != null && major < BUNDLE_CHROME) "the live view needs a newer Android System WebView"
+            else "the live renderer couldn't start on this device"
+        }
     }
 }
 

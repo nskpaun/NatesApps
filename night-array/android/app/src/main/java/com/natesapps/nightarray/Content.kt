@@ -117,7 +117,7 @@ val STORIES = listOf(
             StorySpec("Under-glow", "1120 mm strip, front edge"), StorySpec("Neck bar", "150 mm, panels awake"), StorySpec("Pocket marks", "Charging; fade when full"),
             StorySpec("Latch strip", "Laptop locked in"), StorySpec("Mouse", "Tail light"), StorySpec("Colour", "Amber #F2A04A, dims to off"),
         ),
-        listOf(StoryStill("hero-work.jpg", "Amber at 70 %."), StoryStill("amber-off.jpg", "Amber off.")),
+        listOf(StoryStill("hero-work.jpg", "Amber at 80 %."), StoryStill("amber-off.jpg", "Amber off.")),
         Preset(mode = "stow", style = "studio", amber = 1f, camera = "trays"), liveLabel = "Set the light live",
     ),
     Story(

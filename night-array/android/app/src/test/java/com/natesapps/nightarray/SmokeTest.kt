@@ -5,6 +5,10 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Looper
+import android.view.View
+import android.view.ViewGroup
+import android.webkit.RenderProcessGoneDetail
+import android.widget.FrameLayout
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -223,6 +227,13 @@ class SmokeTest {
         back()
         tag("part-sheet").assertDoesNotExist()
         assertEquals("studio", app.nav.top) // back closed the sheet, not the screen
+        // a part picked from the list while another is isolated takes the isolation over: no framing a hidden group,
+        // and the banner names what's on screen
+        sent.clear(); act("part-mouse")
+        assertEquals("mouse", app.host.state.isolate); assertEquals("mouse", app.host.state.selected)
+        assertTrue(shows("Isolated · ${scene.group("mouse")!!.name}"))
+        assertEquals(listOf("""NA.setState({"selected":"mouse","isolate":"mouse"})""", """NA.frame("mouse")"""), sent)
+        back(); tag("part-sheet").assertDoesNotExist()
         act("panel-toggle"); assertNull(app.studioPanel)
         act("reset"); assertEquals("studio", app.host.state.style); assertEquals(0f, app.host.state.explode)
         act("studio-night"); assertTrue(app.nightShift)
@@ -233,7 +244,11 @@ class SmokeTest {
         // Kotlin → JS waits for the page
         app.host.setStyle("xray"); idle()
         assertTrue(app.host.pending > 0); assertTrue(sent.isEmpty())
-        post("""{"type":"ready"}""")
+        val still = "Still render matching the current view"
+        assertTrue("the still shows while the live view loads", rule.onAllNodesWithContentDescription(still).fetchSemanticsNodes().isNotEmpty())
+        app.host.bridge.post("""{"type":"ready"}"""); idle(); tick(500)
+        // the two framings differ: the still steps aside quickly instead of a long double exposure over the canvas fade-in
+        assertTrue("the still is gone half a second after ready", rule.onAllNodesWithContentDescription(still).fetchSemanticsNodes().isEmpty())
         assertEquals(LiveStatus.Ready, app.host.status)
         assertTrue("queued state flushed once ready", sent.any { it.startsWith("NA.setState(") && it.contains("\"style\":\"xray\"") })
         tick(1200)
@@ -596,6 +611,7 @@ class SmokeTest {
         val st = JSONObject(URLDecoder.decode(url.substringAfter("state="), "UTF-8"))
         listOf("mode", "style", "finish", "amber", "explode", "section", "dims", "autorotate", "isolate", "selected", "quality", "cinematic").forEach { assertTrue(it, st.has(it)) }
         assertEquals("stow", st.getString("mode"))
+        assertEquals("the viewer's and the stills' default amber", .8, st.getDouble("amber"), 1e-6)
         host.setExplode(.6f); host.setStyle("cad")
         host.enterNight(); assertTrue(host.state.cinematic); assertEquals("studio", host.state.style)
         host.exitNight(); assertFalse(host.state.cinematic); assertEquals("cad", host.state.style); assertEquals(.6f, host.state.explode, .001f)
@@ -626,12 +642,178 @@ class SmokeTest {
         // the first page load carries the restored state
         val st = JSONObject(URLDecoder.decode(b.host.viewerUrl().substringAfter("state="), "UTF-8"))
         assertEquals("blueprint", st.getString("style")); assertEquals("dock", st.getString("isolate"))
+        // ...but no camera preset over the isolated group: the page frames that group itself
+        val outB = mutableListOf<String>()
+        b.host.assumeBundled = true; b.host.evaluator = { outB += it }
+        b.host.claim(FrameLayout(ctx)); b.host.onPageLoaded(); idle()
+        assertFalse(outB.toString(), outB.any { it.startsWith("NA.camera(") })
+        // with nothing isolated, the restored page opens at the preset the Camera chip shows, not at hero
+        val plain = saved.toMutableList().also { it[0] = JSONObject(it[0]).put("isolate", JSONObject.NULL).toString() }
+        val d = saver.restore(plain)!!
+        val outD = mutableListOf<String>()
+        d.host.assumeBundled = true; d.host.evaluator = { outD += it }
+        d.host.claim(FrameLayout(ctx)); d.host.onPageLoaded(); idle()
+        assertEquals("trays", d.host.lastCamera)
+        assertEquals(listOf("""NA.camera("trays")"""), outD)
+        d.host.destroy(); d.scope.cancel()
         // an isolated group the scene no longer knows is dropped; a routes-only bundle from an older build still restores
         val odd = saved.toMutableList().also { it[0] = JSONObject(it[0]).put("isolate", "nope").put("style", "neon").toString() }
         val c = saver.restore(odd)!!
         assertNull(c.host.state.isolate); assertEquals("studio", c.host.state.style)
         assertEquals(listOf("specs", "specs/fit"), saver.restore(listOf("specs", "specs/fit"))!!.nav.stack.toList())
         listOf(a, b, c).forEach { it.host.destroy(); it.scope.cancel() }
+    }
+
+    @Test fun partsPickWhileIsolatedMovesTheIsolation() {
+        val host = ViewerHost(ctx)
+        val out = mutableListOf<String>()
+        host.evaluator = { out += it }
+        host.onPageLoaded()
+        host.toggleIsolate("dock"); idle(); out.clear()
+        host.pickLocal("keyboard"); idle()
+        assertEquals("keyboard", host.picked); assertEquals("keyboard", host.state.selected)
+        assertEquals("the isolation follows the pick", "keyboard", host.state.isolate)
+        assertEquals(listOf("""NA.setState({"selected":"keyboard","isolate":"keyboard"})""", """NA.frame("keyboard")"""), out)
+        // picking the isolated group again, or picking with nothing isolated, leaves the isolation alone
+        out.clear(); host.pickLocal("keyboard"); idle()
+        assertEquals(listOf("""NA.frame("keyboard")"""), out)
+        host.setIsolate(null); host.pickLocal("mouse"); idle()
+        assertNull(host.state.isolate); assertEquals("mouse", host.state.selected)
+        host.destroy()
+    }
+
+    /** Retry, a rebuilt renderer and a restored process all load a new page: it gets the camera preset back. */
+    @Test fun aNewPageGetsTheCameraPresetBack() {
+        val host = ViewerHost(ctx); host.assumeBundled = true
+        val out = mutableListOf<String>()
+        host.evaluator = { out += it }
+        host.claim(FrameLayout(ctx)); host.onPageLoaded()
+        host.camera("trays"); idle()
+        assertEquals(listOf("""NA.camera("trays")"""), out)
+        out.clear(); host.retry(ctx); host.onPageLoaded(); idle()
+        assertEquals("the new page opens where the Camera chip says", listOf("""NA.camera("trays")"""), out)
+        // a camera chosen while the page loads wins, and isn't doubled
+        out.clear(); host.camera("top"); host.retry(ctx); host.onPageLoaded(); idle()
+        assertEquals(listOf("""NA.camera("top")"""), out)
+        // later commands still run after it
+        out.clear(); host.retry(ctx); host.frame("keyboard"); host.onPageLoaded(); idle()
+        assertEquals(listOf("""NA.camera("top")""", """NA.frame("keyboard")"""), out)
+        // isolated: the page frames the group itself
+        host.setIsolate("dock"); idle(); out.clear()
+        host.retry(ctx); host.onPageLoaded(); idle()
+        assertFalse(out.toString(), out.any { it.startsWith("NA.camera(") })
+        // Night shift orbits on its own; leaving it brings the preset back
+        host.setIsolate(null); host.enterNight(); idle(); out.clear()
+        host.retry(ctx); host.onPageLoaded(); idle()
+        assertFalse(out.toString(), out.any { it.startsWith("NA.camera(") })
+        host.exitNight(); idle()
+        assertTrue(out.contains("""NA.camera("top")"""))
+        // nothing to restore at hero
+        host.camera("hero"); idle(); out.clear()
+        host.retry(ctx); host.onPageLoaded(); idle()
+        assertTrue(out.isEmpty())
+        host.destroy()
+    }
+
+    @Test fun aPageThatNeverDefinesTheViewerFailsInsteadOfHanging() {
+        val host = ViewerHost(ctx); host.assumeBundled = true
+        val out = mutableListOf<String>()
+        host.evaluator = { out += it }
+        host.claim(FrameLayout(ctx))
+        val wv = host.currentWebView!!; val sh = shadowOf(wv)
+        host.setStyle("cad"); host.dock("play"); idle()
+        sh.webViewClient.onPageFinished(wv, sh.lastLoadedUrl)
+        assertEquals("onPageFinished checks for window.NA first", ViewerHost.NA_PROBE, sh.lastEvaluatedJavascript)
+        assertTrue("nothing goes out before the check answers", out.isEmpty())
+        // e.g. a WebView too old to parse viewer.js, or a truncated bundle: no NA, and no error event either
+        sh.lastEvaluatedJavascriptCallback.onReceiveValue("false"); idle()
+        assertEquals(LiveStatus.Error, host.status)
+        assertNotNull(host.errorMessage)
+        assertTrue("the dock sequence carries on in the stills", host.dockPlaying && host.dockStep == "align")
+        assertEquals("only the state is left (the next page's URL carries it); no stale dock command", 1, host.pending)
+        // a page that does have the viewer goes ahead
+        host.retry(ctx)
+        val wv2 = host.currentWebView!!; val sh2 = shadowOf(wv2)
+        host.frame("dock")
+        sh2.webViewClient.onPageFinished(wv2, sh2.lastLoadedUrl)
+        assertTrue(out.isEmpty())
+        sh2.lastEvaluatedJavascriptCallback.onReceiveValue("true"); idle()
+        assertEquals(listOf("""NA.frame("dock")"""), out)
+        assertEquals("still loading until ready", LiveStatus.Loading, host.status)
+        // a late answer from the old page changes nothing
+        sh.lastEvaluatedJavascriptCallback.onReceiveValue("false"); idle()
+        assertEquals(LiveStatus.Loading, host.status)
+        host.destroy()
+        assertEquals(120, ViewerHost.webViewMajor("120.0.6099.230")); assertEquals(79, ViewerHost.webViewMajor("79.0.3945.136"))
+        assertNull(ViewerHost.webViewMajor(null)); assertNull(ViewerHost.webViewMajor("dev"))
+    }
+
+    @Test fun dockPlayWhileThePageNeverGetsGoingFallsBackToTheStills() {
+        val host = ViewerHost(ctx); host.assumeBundled = true; host.evaluator = {}
+        host.claim(FrameLayout(ctx))
+        assertEquals(LiveStatus.Loading, host.status)
+        host.dock("play"); assertTrue(host.dockPlaying)
+        val looper = shadowOf(Looper.getMainLooper())
+        looper.idleFor(java.time.Duration.ofSeconds(16))
+        assertTrue("waits for a loading page a while", host.dockPlaying); assertNull(host.dockStep)
+        looper.idleFor(java.time.Duration.ofSeconds(15))
+        assertEquals("then the stills play it", "align", host.dockStep)
+        looper.idleFor(java.time.Duration.ofSeconds(7))
+        assertFalse("and it ends: no 'Playing…' forever", host.dockPlaying); assertNull(host.dockStep)
+        host.destroy()
+    }
+
+    private fun renderGone(host: ViewerHost, crash: Boolean) {
+        val wv = host.currentWebView!!
+        val detail = object : RenderProcessGoneDetail() { override fun didCrash() = crash; override fun rendererPriorityAtExit() = 0 }
+        assertTrue(shadowOf(wv).webViewClient.onRenderProcessGone(wv, detail))
+    }
+
+    @Test fun aRendererReclaimedForMemoryComesBackOnItsOwn() {
+        val host = ViewerHost(ctx); host.assumeBundled = true
+        val out = mutableListOf<String>()
+        host.evaluator = { out += it }
+        host.claim(FrameLayout(ctx)); host.camera("trays"); host.onPageLoaded(); idle()
+        host.handle("""{"type":"ready"}""")
+        // reclaimed while we're in the background: not an error, and nothing is rebuilt until we're back
+        host.onPause()
+        val first = host.currentWebView
+        renderGone(host, crash = false)
+        assertEquals(LiveStatus.Idle, host.status); assertNull(host.errorMessage); assertFalse(host.hasWebView)
+        idle(); assertFalse(host.hasWebView)
+        out.clear()
+        host.onResume()
+        assertTrue("rebuilt on resume", host.hasWebView); assertNotSame(first, host.currentWebView)
+        assertEquals(LiveStatus.Loading, host.status)
+        assertNotNull(host.attachedTo)
+        host.onPageLoaded(); idle()
+        assertEquals("the camera preset survives", listOf("""NA.camera("trays")"""), out)
+        // reclaimed on screen: rebuilt right away. Capped: without a page getting ready in between, the third is an error
+        renderGone(host, crash = false); idle()
+        assertTrue(host.hasWebView); assertEquals(LiveStatus.Loading, host.status)
+        renderGone(host, crash = false); idle()
+        assertEquals(LiveStatus.Error, host.status); assertFalse(host.hasWebView)
+        assertEquals("the live renderer stopped", host.errorMessage)
+        // a page that gets ready starts the count over; a real crash is an error straight away
+        host.retry(ctx); host.handle("""{"type":"ready"}""")
+        renderGone(host, crash = false); idle()
+        assertTrue(host.hasWebView); assertEquals(LiveStatus.Loading, host.status)
+        host.handle("""{"type":"ready"}""")
+        renderGone(host, crash = true); idle()
+        assertEquals(LiveStatus.Error, host.status); assertFalse(host.hasWebView)
+        host.destroy()
+    }
+
+    @Test fun orbitDragsAtTheScreenEdgesAreNotTakenAsBack() = show("studio") {
+        val rects = mutableListOf<android.graphics.Rect>()
+        fun walk(v: View) { rects += v.systemGestureExclusionRects; (v as? ViewGroup)?.let { g -> (0 until g.childCount).forEach { walk(g.getChildAt(it)) } } }
+        rule.runOnUiThread { walk(rule.activity.window.decorView) }
+        val r = rects.maxByOrNull { it.height() }
+        assertNotNull("the stage excludes a band from the back gesture", r)
+        val dm = ctx.resources.displayMetrics
+        assertTrue("from the left edge: ${r!!.left}", r.left <= 1); assertTrue("to the right edge: ${r.right}", r.right >= dm.widthPixels - 1)
+        assertTrue("at most 200 dp (the system's cap per edge), so Back still works above and below: ${r.height()}", r.height() <= (200 * dm.density).toInt() + 1)
+        assertTrue(r.height() > 100 * dm.density)
     }
 
     @Test fun assetImageFollowsItsPath() {
