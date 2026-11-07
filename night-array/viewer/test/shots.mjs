@@ -25,6 +25,21 @@ export const SHOTS = [
   { name: 'finish-oxblood', state: { mode: 'work', finish: 'oxblood' }, camera: 'hero' },
   { name: 'amber-off', state: { mode: 'work', amber: 0 }, camera: 'hero' },
   { name: 'dock-align', state: { mode: 'stow' }, camera: 'dock', dock: 'align' },
+  // stage 2: styles, explode, section, dims, highlight, isolate, dock steps
+  { name: 'style-cad', state: { mode: 'work', style: 'cad' }, camera: 'hero' },
+  { name: 'style-xray', state: { mode: 'work', style: 'xray' }, camera: 'hero' },
+  { name: 'style-blueprint', state: { mode: 'work', style: 'blueprint' }, camera: 'hero' },
+  { name: 'exploded', state: { mode: 'work', explode: 1 }, camera: 'hero' },
+  { name: 'exploded-cad', state: { mode: 'work', style: 'cad', explode: 1 }, camera: 'hero' },
+  { name: 'section-x', state: { mode: 'work', section: { axis: 'x', t: 0.5 } }, camera: 'hero' },
+  { name: 'section-z-cad', state: { mode: 'work', style: 'cad', section: { axis: 'z', t: 0.3 } }, camera: 'front' },
+  { name: 'section-blueprint', state: { mode: 'stow', style: 'blueprint', section: { axis: 'x', t: 0.45 } }, camera: 'hero' },
+  { name: 'dims', state: { mode: 'work', dims: true }, camera: 'hero' },
+  { name: 'dims-cad', state: { mode: 'work', style: 'cad', dims: true }, camera: 'front' },
+  { name: 'selected-dock', state: { mode: 'stow', selected: 'dock' }, camera: 'dock' },
+  { name: 'isolate-mouse', state: { mode: 'work', isolate: 'mouse' }, camera: 'hero' },
+  { name: 'isolate-internals', state: { mode: 'stow', style: 'xray', isolate: 'internals' }, camera: 'hero' },
+  { name: 'dock-lift', state: { mode: 'stow' }, camera: 'dock', dock: 'lift' },
 ];
 
 const DEFAULTS = { mode: 'work', style: 'studio', finish: 'titanium', amber: 0.8, explode: 0, section: null, dims: false, autorotate: false, isolate: null, selected: null, quality: 'high', cinematic: false };
@@ -64,12 +79,13 @@ export async function shoot({ outDir, filter = null, sizes = ['portrait', 'lands
           if (shot.dock) NA.dock(shot.dock);
           v.tweens.finishAll();
           NA.camera(shot.camera || 'hero');
-          if (shot.frame) NA.frame(shot.frame);
+          if (shot.frame || (shot.state && shot.state.isolate)) NA.frame(shot.frame || shot.state.isolate);
           v.tweens.finishAll();
           v.requestRender();
           await NA.idle(60000);
           return null;
         }, { ...shot, defaults: DEFAULTS });
+        if (shot.state && shot.state.dims) await page.waitForTimeout(450); // label fade (CSS)
         const file = path.join(outDir, `${shot.name}-${typeof sz === 'string' ? sz : `${w}x${h}`}.png`);
         await page.screenshot({ path: file });
         results.push({ file, ms: Date.now() - t0, err });

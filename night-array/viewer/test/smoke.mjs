@@ -193,7 +193,144 @@ try {
     await page.close();
   }
 
-  // 3. no WebGL2 -> error event + friendly message, page stays transparent
+  // 3. stage 2: modes, dock glow, styles, section, dims, highlight, isolate, picking rules
+  {
+    const { page, errors } = await open(browser, srv, { state: { mode: 'stow' }, init: [HOST] });
+    await waitEvent(page, 'ready');
+    // drive time by hand so mid-animation checks don't depend on SwiftShader's frame rate
+    const r = await page.evaluate(() => {
+      const NA = window.NA, v = NA._viewer, out = {};
+      v.hidden = true; v.stopLoop();
+      let T = 1e7;
+      const step = (ms) => { T += ms; v.tweens.update(T); };
+      const pos = (id) => v.model.movables.get(id).node.position.clone();
+      step(0);
+      // stow -> work: keyboard lifts over the rim, travels, lands on the mat; the mat fades in first
+      const kb0 = pos('keyboard');
+      NA.setState({ mode: 'work' });
+      step(0);
+      step(150);
+      const mat = v.model.groups.get('deskmat').node;
+      out.matFading = mat.visible && v.fader.isFading(mat);
+      step(500);
+      const kbMid = pos('keyboard');
+      out.kbLifted = kbMid.y > kb0.y + 0.02;
+      step(400);
+      out.kbTravel = pos('keyboard').z > kb0.z + 0.05;
+      v.tweens.finishAll();
+      const kb1 = pos('keyboard');
+      const pose = v.sj.poses.work.keyboard.t;
+      out.kbLanded = Math.abs(kb1.z - (v.model.movables.get('keyboard').pivot.z + pose[2])) < 1e-6 && Math.abs(kb1.y - (v.model.movables.get('keyboard').pivot.y + pose[1])) < 1e-6;
+      out.matShown = mat.visible && !v.fader.isFading(mat);
+      out.matMaterialRestored = v.model.parts.get('deskmat').mesh.material === v.model.parts.get('deskmat').mesh.userData.studioMat;
+      out.notCharging = !v.charging();
+      // work -> stow: charging starts only after the devices land
+      NA.setState({ mode: 'stow' });
+      step(0); step(300);
+      out.chargeWaits = !v.charging(performance.now());
+      v.tweens.finishAll();
+      out.matHidden = !mat.visible;
+      v.chargeAt = 0;
+      out.charging = v.charging();
+      // standalone: laptop lifts out and is hidden; back in work it is seated again
+      NA.setState({ mode: 'standalone' });
+      step(0); step(600);
+      const lap = v.model.movables.get('laptop');
+      out.lapRising = lap.node.position.y > lap.pivot.y + 0.02 && lap.node.visible;
+      v.tweens.finishAll();
+      out.lapHidden = !lap.node.visible;
+      NA.setState({ mode: 'work' });
+      step(0); v.tweens.finishAll();
+      out.lapBack = lap.node.visible && lap.node.position.distanceTo(v.laptopSeat) < 1e-6;
+      // dock glow: seated -> connector glows; align -> not seated
+      v.updateDockGlow(10);
+      out.glowSeated = v.glow.seated && v.connectorMat.emissiveIntensity > 0;
+      NA.dock('align'); v.tweens.finishAll(); v.updateDockGlow(10);
+      out.glowLifted = !v.glow.seated && v.connectorMat.emissiveIntensity < 1e-3;
+      NA.dock('lower'); v.tweens.finishAll(); v.updateDockGlow(0.016);
+      out.flashOnSeat = v.glow.flash > 0.5;
+      NA.dock('reset'); v.tweens.finishAll();
+      // styles
+      for (const st of ['cad', 'xray', 'blueprint', 'studio']) {
+        NA.setState({ style: st }); v.tweens.finishAll();
+        const lines = [...v.model.parts.values()].filter((p) => p.lineV && p.lineV.visible).length;
+        const bgTex = !!(v.scene.background && v.scene.background.isTexture);
+        const m = v.model.parts.get('base_shell').mesh.material.name;
+        out[`style_${st}`] = { lines, bgTex, mat: m, desk: v.stage.desk.visible, grid: v.styles.grid.visible };
+      }
+      // section: clipping + caps on, then off
+      NA.setState({ section: { axis: 'x', t: 0.5 } }); v.tweens.finishAll();
+      const sm = v.model.parts.get('base_shell').mesh.material;
+      out.sectionOn = v.section.active && v.section.cap.visible && !!sm.clippingPlanes && sm.clippingPlanes[0] === v.section.plane;
+      const b = v.section.bounds;
+      out.sectionPlane = Math.abs(-v.section.plane.constant - (b.min.x + b.max.x) / 2) < 1e-6;
+      NA.setState({ section: { axis: 'z', t: 0.25 } }); v.tweens.finishAll();
+      out.sectionZ = v.section.axis === 'z' && v.section.plane.normal.z === -1;
+      NA.setState({ section: null }); step(0); v.tweens.finishAll();
+      out.sectionOff = !v.section.active && !v.section.cap.visible && sm.clippingPlanes === null;
+      // dims: work shows the work-offset dim; stow hides it; exploding hides all
+      NA.setState({ mode: 'work', dims: true }); v.tweens.finishAll(); v.render();
+      const shown = () => [...document.querySelectorAll('#labels .dim')].filter((e) => !e.classList.contains('hide')).map((e) => e.dataset.dim);
+      out.dimsWork = shown();
+      NA.setState({ mode: 'stow' }); v.tweens.finishAll(); v.render();
+      out.dimsStow = shown();
+      NA.setState({ explode: 0.6 }); v.tweens.finishAll(); v.render();
+      out.dimsExploded = shown();
+      NA.setState({ explode: 0, dims: false }); v.tweens.finishAll(); v.render();
+      out.dimsOff = shown().length;
+      // highlight
+      NA.setState({ selected: 'keyboard' }); v.tweens.finishAll();
+      out.rims = v.highlight.rims.length === v.model.groups.get('keyboard').parts.length && v.highlight.rims.every((r) => r.visible);
+      NA.setState({ style: 'cad' }); v.tweens.finishAll();
+      out.cadSelEdges = v.model.parts.get('keyboard_body').lineV.material === v.styles.lines.cad.sel;
+      NA.setState({ style: 'studio', selected: null }); v.tweens.finishAll();
+      out.rimsCleared = v.highlight.rims.length === 0;
+      // isolate fades the others away and brings them back
+      NA.setState({ isolate: 'mouse' }); step(0); step(200);
+      out.isoFading = v.fader.active.size > 0;
+      v.tweens.finishAll();
+      out.isoHidden = [...v.model.groups.values()].filter((g) => g.id !== 'mouse').every((g) => !g.node.visible) && v.model.groups.get('mouse').node.visible;
+      NA.setState({ isolate: null }); v.tweens.finishAll();
+      out.isoBack = ['display', 'base', 'dock', 'keyboard'].every((id) => v.model.groups.get(id).node.visible);
+      // style change cross-fades (not in capture mode)
+      v.capture = false; v.hidden = false;
+      NA.setState({ style: 'blueprint' });
+      out.styleFade = v.styleFade.alpha > 0.9 && v.tweens.has('stylefade');
+      v.tweens.finishAll();
+      out.styleFadeDone = v.styleFade.alpha < 0.01;
+      NA.setState({ style: 'studio' }); v.tweens.finishAll();
+      v.requestRender();
+      return out;
+    });
+    const bad = Object.entries(r).filter(([k, x]) => x === false).map(([k]) => k);
+    ok(bad.length === 0, `mode choreography / dock glow / section / highlight / isolate checks ${bad.length ? 'FAILED: ' + bad.join(', ') : JSON.stringify(Object.keys(r).filter((k) => r[k] === true))}`);
+    ok(r.style_cad.lines > 20 && r.style_cad.bgTex && /^cad-/.test(r.style_cad.mat) && !r.style_cad.desk && r.style_cad.grid, `cad style ${JSON.stringify(r.style_cad)}`);
+    ok(r.style_xray.mat === 'xray-shell' && r.style_xray.bgTex && !r.style_xray.desk, `xray style ${JSON.stringify(r.style_xray)}`);
+    ok(r.style_blueprint.lines > 20 && r.style_blueprint.mat === 'depth-only' && r.style_blueprint.grid, `blueprint style ${JSON.stringify(r.style_blueprint)}`);
+    ok(r.style_studio.lines === 0 && r.style_studio.desk && !r.style_studio.grid, `studio style restored ${JSON.stringify(r.style_studio)}`);
+    ok(r.dimsWork.includes('work_offset') && r.dimsWork.length >= 8, `dims in work: ${r.dimsWork.join(',')}`);
+    ok(!r.dimsStow.includes('work_offset') && r.dimsStow.length === r.dimsWork.length - 1, `dims in stow drop the work-pose dim: ${r.dimsStow.join(',')}`);
+    ok(r.dimsExploded.length === 0 && r.dimsOff === 0, 'dims hidden while exploded and when off');
+
+    // a long press is not a tap; cinematic never picks
+    await page.evaluate(() => { const v = window.NA._viewer; v.hidden = false; v.requestRender(); window.NA.camera('hero'); v.tweens.finishAll(); });
+    const before = await page.evaluate(() => window.__events.filter((e) => e.type === 'pick').length);
+    await page.mouse.move(195, 300);
+    await page.mouse.down();
+    await page.waitForTimeout(450);
+    await page.mouse.up();
+    await page.evaluate(() => window.NA.setState({ cinematic: true }));
+    await page.mouse.click(195, 300);
+    await page.evaluate(() => window.NA.setState({ cinematic: false }));
+    await page.mouse.click(5, 5);
+    await page.waitForTimeout(300);
+    const picks = await page.evaluate(() => window.__events.filter((e) => e.type === 'pick').map((e) => e.group));
+    ok(picks.length === before + 1 && picks[picks.length - 1] === null, `long press and cinematic taps don't pick (${picks.length - before} new pick)`);
+    ok(errors.length === 0, `no page errors (${errors.slice(0, 3).join(' | ')})`);
+    await page.close();
+  }
+
+  // 4. no WebGL2 -> error event + friendly message, page stays transparent
   {
     const { page } = await open(browser, srv, {
       init: [HOST, () => {
@@ -213,7 +350,7 @@ try {
     await page.close();
   }
 
-  // 4. model fails to load -> error event
+  // 5. model fails to load -> error event
   {
     const { page } = await open(browser, srv, {
       init: [HOST],
@@ -225,7 +362,7 @@ try {
     await page.close();
   }
 
-  // 5. desktop browser (no host) logs events to the console
+  // 6. desktop browser (no host) logs events to the console
   {
     const page = await browser.newPage({ viewport: VIEW });
     const logs = [];

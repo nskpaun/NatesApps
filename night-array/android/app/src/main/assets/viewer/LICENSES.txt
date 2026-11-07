@@ -1,7 +1,7 @@
 Night Array viewer (viewer.js) bundles the following third-party software.
 
 three.js 0.170.0 - https://threejs.org/ - the core library plus these modules from three/examples/jsm:
-BufferGeometryUtils, CopyShader, EffectComposer, GLTFLoader, HorizontalBlurShader, LuminosityHighPassShader, MaskPass, OrbitControls, OutputPass, OutputShader, Pass, RenderPass, ShaderPass, UnrealBloomPass, VerticalBlurShader.
+BufferGeometryUtils, CopyShader, EffectComposer, GLTFLoader, HorizontalBlurShader, LineMaterial, LineSegments2, LineSegmentsGeometry, LuminosityHighPassShader, MaskPass, OrbitControls, OutputPass, OutputShader, Pass, RenderPass, RoomEnvironment, ShaderPass, UnrealBloomPass, VerticalBlurShader.
 
 The MIT License
 

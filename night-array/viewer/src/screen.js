@@ -333,42 +333,79 @@ export function paintScreen(canvas, mode) {
 }
 
 /**
- * The live desktop texture on `display_screen`. The canvas aspect comes from scene.json screen.canvas
- * (e.g. 5120x1440); its resolution is scaled down for phones. glTF UVs have v = 0 at the top, so flipY = false.
+ * The live desktop textures on `display_screen`, one per mode (work desktop, standalone desktop, sleep screen),
+ * painted on demand and cached so a mode change can cross-fade between them (wake / sleep). The canvas aspect
+ * comes from scene.json screen.canvas (e.g. 5120x1440); its resolution is scaled down for phones.
+ * glTF UVs have v = 0 at the top, so flipY = false.
  */
 export class ScreenSurface {
   constructor(THREE, screenDef, scale = 1) {
     const canvas = (screenDef && screenDef.canvas) || [5120, 1440];
     this.THREE = THREE;
     this.aspect = canvas[0] / canvas[1];
-    this.canvas = document.createElement('canvas');
-    this.mode = null;
+    this.cache = new Map(); // mode -> { canvas, texture }
+    this.W = 0;
+    this.H = 0;
     this.setScale(scale);
   }
 
+  /** Returns true when the resolution changed (cached textures are dropped and repainted on demand). */
   setScale(scale) {
     const W = Math.round(Math.min(4096, 2560 * scale) / 2) * 2;
     const H = Math.round(W / this.aspect);
-    if (this.canvas.width === W && this.canvas.height === H && this.texture) return false;
-    this.canvas.width = W;
-    this.canvas.height = H;
-    if (this.texture) this.texture.dispose();
-    const T = this.THREE;
-    this.texture = new T.CanvasTexture(this.canvas);
-    this.texture.colorSpace = T.SRGBColorSpace;
-    this.texture.flipY = false;
-    this.texture.anisotropy = 8;
-    this.texture.generateMipmaps = true;
-    this.texture.minFilter = T.LinearMipmapLinearFilter;
-    if (this.mode) this.paint(this.mode, true);
+    if (this.W === W && this.H === H) return false;
+    this.W = W;
+    this.H = H;
+    this.dispose();
     return true;
   }
 
-  paint(mode, force = false) {
-    if (mode === this.mode && !force) return false;
-    this.mode = mode;
-    paintScreen(this.canvas, mode);
-    this.texture.needsUpdate = true;
-    return true;
+  has(mode) {
+    return this.cache.has(mode);
+  }
+
+  /** The texture for a mode (painted now if it isn't cached yet). */
+  texture(mode) {
+    let e = this.cache.get(mode);
+    if (!e) {
+      const T = this.THREE;
+      const canvas = document.createElement('canvas');
+      canvas.width = this.W;
+      canvas.height = this.H;
+      paintScreen(canvas, mode);
+      const texture = new T.CanvasTexture(canvas);
+      texture.colorSpace = T.SRGBColorSpace;
+      texture.flipY = false;
+      texture.anisotropy = 8;
+      texture.generateMipmaps = true;
+      texture.minFilter = T.LinearMipmapLinearFilter;
+      texture.name = `screen-${mode}`;
+      e = { canvas, texture };
+      this.cache.set(mode, e);
+    }
+    return e.texture;
+  }
+
+  /** Paints the given modes one by one when the page is idle (so a later mode change doesn't hitch). */
+  prepaint(modes) {
+    const todo = modes.filter((m) => !this.cache.has(m));
+    const idle = window.requestIdleCallback || ((fn) => setTimeout(fn, 300));
+    const next = () => {
+      const m = todo.shift();
+      if (!m) return;
+      if (!this.cache.has(m)) this.texture(m);
+      if (todo.length) idle(next, { timeout: 4000 });
+    };
+    if (todo.length) idle(next, { timeout: 4000 });
+  }
+
+  /** After a lost context: re-upload every cached canvas. */
+  touch() {
+    for (const e of this.cache.values()) e.texture.needsUpdate = true;
+  }
+
+  dispose() {
+    for (const e of this.cache.values()) e.texture.dispose();
+    this.cache.clear();
   }
 }

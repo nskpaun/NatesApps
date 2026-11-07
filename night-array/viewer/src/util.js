@@ -56,6 +56,14 @@ export class Tweens {
   cancel(key) {
     this.map.delete(key);
   }
+  /** Jumps one tween to its end (runs its last frame and onDone). */
+  finish(key) {
+    const tw = this.map.get(key);
+    if (!tw) return;
+    this.map.delete(key);
+    tw.fn(1, 1);
+    if (tw.onDone) tw.onDone();
+  }
   get size() {
     return this.map.size;
   }
@@ -89,4 +97,27 @@ export class Tweens {
       }
     }
   }
+}
+
+export const smootherstep = (a, b, x) => {
+  const t = clamp((x - a) / (b - a), 0, 1);
+  return t * t * t * (t * (t * 6 - 15) + 10);
+};
+
+/** Object layer for overlays (edges, rims, section stencil/caps, dims, grid): seen by the main camera only,
+ *  so the contact shadow, the desk mirror, the shadow map and the raycaster all ignore them. */
+export const OVERLAY_LAYER = 1;
+
+/**
+ * Clone of a material that keeps what Material.copy drops (onBeforeCompile hooks, program cache key) and
+ * points its clipping planes at the live section plane (copy() clones planes, which would freeze them).
+ */
+export function cloneMaterial(m, clip) {
+  const c = m.clone();
+  c.onBeforeCompile = m.onBeforeCompile;
+  c.customProgramCacheKey = m.customProgramCacheKey;
+  c.userData = { ...m.userData };
+  if (m.clippingPlanes) c.clippingPlanes = m.clippingPlanes;
+  if (clip) clip.register(c);
+  return c;
 }

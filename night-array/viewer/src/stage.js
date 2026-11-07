@@ -333,7 +333,8 @@ export class Stage {
     this.rim = new THREE.DirectionalLight('#FFB57E', 1.4);
     this.rim.position.set(-1.6, 1.4, -2.2);
     this.group.add(this.rim);
-    this.fill = new THREE.HemisphereLight('#6b5444', '#0c0908', 0.35);
+    this.fillBase = 0.35;
+    this.fill = new THREE.HemisphereLight('#6b5444', '#0c0908', this.fillBase);
     this.group.add(this.fill);
 
     // amber practicals: bounce lights (no shadows) and soft light pools on the surfaces they hit
@@ -383,11 +384,18 @@ export class Stage {
     this.setAmber(this.amber ?? 1);
   }
 
+  /** Practicals belong to the studio style only. */
+  practicalsVisible(on) {
+    this.practicalsOn = on;
+    this.setAmber(this.amber ?? 1);
+  }
+
   setAmber(a) {
     this.amber = a;
-    const fade = this.poolFade ?? 1;
+    const fade = (this.poolFade ?? 1) * (this.practicalsOn === false ? 0 : 1);
     const k = a <= 0.001 ? 0 : 0.15 + 0.85 * a;
-    for (const l of this.amberLights) { l.intensity = l.userData.k * k; l.visible = k > 0; }
+    const on = this.practicalsOn !== false;
+    for (const l of this.amberLights) { l.intensity = l.userData.k * k; l.visible = k > 0 && on; }
     for (const p of this.pools) {
       const f = fade;
       p.material.color.copy(AMBER).multiplyScalar(p.userData.k * k * f);
@@ -415,8 +423,8 @@ export class Stage {
 
   /** Per-frame passes that must run before the main render. */
   prerender(scene, camera, stationRoot, contactExclude) {
-    if (this.contact.dirty) this.contact.update(this.renderer, stationRoot, contactExclude);
-    if (this.reflection.rt && this.reflection.uniforms.uReflectStrength.value > 0) {
+    if (this.contact.dirty && this.contact.plane.visible) this.contact.update(this.renderer, stationRoot, contactExclude);
+    if (this.desk.visible && this.reflection.rt && this.reflection.uniforms.uReflectStrength.value > 0) {
       this.reflection.render(this.renderer, scene, camera, [this.desk, this.contact.plane, ...this.pools, this.room]);
     }
   }

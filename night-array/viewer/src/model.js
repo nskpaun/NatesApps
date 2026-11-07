@@ -47,7 +47,6 @@ export class Model {
     this.groups = new Map();
     this.parts = new Map();
     this.meshes = [];
-    this.edgeLines = [];
     this.groupOrder = (sceneJson.groups || []).map((g) => g.id);
 
     const partDefs = new Map((sceneJson.parts || []).map((p) => [p.id, p]));
@@ -108,22 +107,16 @@ export class Model {
       m.userData = { part: pid, group: def.group, material: matKey, internal: !!def.internal };
       partNode.add(m);
 
-      let edges = null;
+      // B-rep edges (station-edges.glb): kept as geometry; styles.js turns them into fat lines when needed
+      let edgeGeom = null;
       const eo = edgeByName.get(pid);
       if (eo) {
         const lines = eo.isLineSegments || eo.isLine ? eo : eo.getObjectByProperty('isLineSegments', true);
-        if (lines) {
-          edges = new THREE.LineSegments(lines.geometry, null);
-          edges.name = `${pid}:edges`;
-          edges.visible = false;
-          edges.userData = { part: pid, group: def.group, internal: !!def.internal };
-          partNode.add(edges);
-          this.edgeLines.push(edges);
-        }
+        if (lines) edgeGeom = lines.geometry;
       }
 
       const part = {
-        id: pid, def, group: def.group, sub: sid || null, node: partNode, mesh: m, edges,
+        id: pid, def, group: def.group, sub: sid || null, node: partNode, mesh: m, edgeGeom,
         rest: partNode.position.clone(), explode: v3(def.explode), internal: !!def.internal, material: matKey,
       };
       this.parts.set(pid, part);

@@ -22,6 +22,7 @@ export class Output {
     this.q = null;
     this.size = new THREE.Vector2(1, 1);
     this.bloom = { strength: 0.55, radius: 0.55, threshold: 1.0 };
+    this.bloomEnabled = true;
   }
 
   configure(q, w, h, pr) {
@@ -39,8 +40,9 @@ export class Output {
       return;
     }
     this.disposeComposer();
+    // stencil: section caps (section.js) count faces in the stencil buffer
     const rt = new THREE.WebGLRenderTarget(Math.max(1, w * pr), Math.max(1, h * pr), {
-      type: THREE.HalfFloatType, samples: q.msaa,
+      type: THREE.HalfFloatType, samples: q.msaa, depthBuffer: true, stencilBuffer: true,
     });
     rt.texture.name = 'NightArray.hdr';
     const c = new EffectComposer(this.renderer, rt);
@@ -48,12 +50,21 @@ export class Output {
     c.setSize(w, h);
     c.addPass(new RenderPass(this.scene, this.camera));
     this.bloomPass = new UnrealBloomPass(new THREE.Vector2(w, h), this.bloom.strength, this.bloom.radius, this.bloom.threshold);
+    this.bloomPass.enabled = this.bloomEnabled;
+    if (this.bloomStrength !== undefined) this.bloomPass.strength = this.bloomStrength;
     c.addPass(this.bloomPass);
     c.addPass(new OutputPass());
     this.composer = c;
   }
 
+  /** Bloom belongs to the lit styles (studio, x-ray); the drafting styles stay crisp. */
+  setBloomEnabled(on) {
+    this.bloomEnabled = on;
+    if (this.bloomPass) this.bloomPass.enabled = on;
+  }
+
   setBloom(strength) {
+    this.bloomStrength = strength;
     if (this.bloomPass) this.bloomPass.strength = strength;
   }
 

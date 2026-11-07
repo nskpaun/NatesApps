@@ -5,6 +5,7 @@ import { DEG, clamp, lerp, ease } from './util.js';
 /**
  * az: degrees around Y from +Z (front) toward +X (right); el: degrees above the desk.
  * fit: which groups (or parts) to frame; pad: breathing room as a fraction of the view (ppad: in portrait);
+ * reach: also frame where the dock sequence takes these groups (the laptop lifted out of the cradle).
  * lift: shifts the framed box down in the view (fraction of view height) to clear the app's top chrome.
  */
 export const PRESETS = {
@@ -13,7 +14,7 @@ export const PRESETS = {
   top: { az: 0, el: 89, fit: { all: true }, pad: 0.05, lift: 0.02 },
   side: { az: 82, el: 11, fit: { all: true }, pad: 0.09, lift: 0.04 },
   back: { az: 207, el: 19, fit: { all: true }, pad: 0.05, lift: 0.04 },
-  dock: { az: 40, el: 17, fit: { groups: ['dock', 'laptop'] }, pad: 0.12, ppad: 0.2, lift: 0.03 },
+  dock: { az: 40, el: 17, fit: { groups: ['dock', 'laptop'], reach: true }, pad: 0.1, ppad: 0.16, lift: 0.03 },
   trays: { az: -7, el: 52, fit: { parts: ['tray_pad_kb', 'tray_pad_mouse'], groups: ['keyboard', 'mouse'], within: 'base' }, pad: 0.07, lift: 0.02 },
   display: { az: -13, el: 5, fit: { groups: ['display'] }, pad: 0.035, lift: 0.03 },
 };
