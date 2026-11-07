@@ -44,6 +44,14 @@ All numbers are concept-level. The masses come from the CAD volumes and real mat
   - A bill of materials of all 41 parts with masses.
   - **Desk fit**: enter your desk size to see a plan view of the station on it, including the 15 cm work zone.
 
+## Build it yourself
+
+[`kit/`](kit/) turns the concept into a real build: off-the-shelf parts, printed shells and steel where the load goes.
+
+- **[Shopping list](kit/BOM.md):** every part with its part number, price, link and a budget-swap alternative. It's also in the app under **Specs → Buy**. The core build is about $1,730 at today's prices, or about $1,310 with the budget swaps.
+- **[Kit overview](kit/README.md):** how the structure, power, video, wireless charging and light fit together, a before-you-buy checklist, and the status.
+- The printable shells, steel cut files, laptop-insert generator, wiring diagram and assembly guide are on hold for now.
+
 ## CAD files
 
 Everything is generated from one parametric CadQuery model and kept in [`cad/export/`](cad/export/):
@@ -71,6 +79,7 @@ night-array/
   cad/               parametric CAD (Python + CadQuery) → cad/export/ (committed deliverables, also packaged into the app)
   viewer/            live renderer (three.js 0.170, esbuild) → android/app/src/main/assets/viewer/ + renders/
   android/           Kotlin + Jetpack Compose app
+  kit/               build-it-yourself kit: shopping list (parts.json → BOM.md), design rules, sourcing research
   docs/              README images
 ```
 

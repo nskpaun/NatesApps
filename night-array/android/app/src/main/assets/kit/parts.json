@@ -1,0 +1,441 @@
+{
+ "version": 1,
+ "currency": "USD",
+ "prices_checked": "2026-11-07",
+ "note": "Primary picks from kit/research/parts-research.json (five categories, each independently verified; where a verifier corrected a value, the corrected value is used). Prices are typical US street prices on the date above and move often. Planning totals use 'unit_usd'.",
+ "items": [
+  {
+   "id": "monitor",
+   "category": "Display",
+   "role": "The two screens (identical pair; buy both from one retailer, same batch)",
+   "product": "Samsung ViewFinity S6 S60UD 27\" QHD IPS, 100 Hz, USB-C 90 W",
+   "mpn": "LS27D606UANXGO",
+   "qty": 2,
+   "unit_usd": 349.99,
+   "price_note": "$369.99 list at samsung.com/us; ~$300-330 on sale",
+   "buy_url": "https://www.samsung.com/us/business/computing/monitors/uhd-and-wqhd/27-viewfinity-s6-s60d-qhd-hdr10-high-resolution-monitor-with-usb-c-and-daisy-chain-ls27d606uanxgo/",
+   "why": "Thinnest and lightest option (612.9 x 367.7 x 41.6 mm, 3.6 kg), VESA 100, flat boxy back, and Samsung publishes a to-scale 3D model so the printed shroud can fit precisely.",
+   "swap": {
+    "product": "ASUS ProArt PA278CFRV 27\" QHD 100 Hz",
+    "mpn": "PA278CFRV",
+    "unit_usd": 229.0,
+    "note": "$190-330 depending on deals; 44.9 mm deep and 4.9 kg, so the shroud is regenerated for it"
+   }
+  },
+  {
+   "id": "dock",
+   "category": "Dock",
+   "role": "Drives both screens + charges the laptop from one USB-C",
+   "product": "Plugable UD-6950PDH USB-C dual 4K DisplayLink dock (100 W charging)",
+   "mpn": "UD-6950PDH",
+   "qty": 1,
+   "unit_usd": 179.95,
+   "buy_url": "https://plugable.com/products/ud-6950pdh",
+   "why": "Works with any USB-C laptop, Mac (including base M1/M2) or Windows. Needs the free DisplayLink driver; video is compressed, fine for work, no HDCP.",
+   "upgrade": {
+    "product": "Plugable TBT-6950PD Thunderbolt 4 + DisplayLink dock",
+    "mpn": "TBT-6950PD",
+    "unit_usd": 299.99,
+    "note": "Thunderbolt 4/USB4 laptops get native, uncompressed video; DisplayLink fallback for base M1/M2"
+   }
+  },
+  {
+   "id": "cradle_cable",
+   "category": "Dock",
+   "role": "The sprung USB-C plug in the cradle (one end of the dock's host cable; never a male-to-female extension)",
+   "product": "Newnex USB4 cable, C-male straight to C-male 90-degree side-exit, 1 m, 240 W",
+   "mpn": "U4T1C01CR5P010",
+   "qty": 1,
+   "unit_usd": 64.99,
+   "buy_url": "https://www.newnex.com/",
+   "why": "Small side-exit head with a published mechanical drawing (12.35 x 6.50 x 15.51 mm), so the floating carriage can be designed around it.",
+   "swap": {
+    "product": "Plugable Thunderbolt 4 cable, right-angle, 0.8 m, 240 W",
+    "mpn": "TBT4-240W-80CMR",
+    "unit_usd": 34.95
+   }
+  },
+  {
+   "id": "carriage_springs",
+   "category": "Dock",
+   "role": "Self-centring float for the plug carriage (4 used)",
+   "product": "McMaster-Carr compression spring, music wire, 0.375 in long",
+   "mpn": "9657K614",
+   "qty": 1,
+   "unit_usd": 10.0,
+   "price_note": "pack; McMaster pages could not be checked automatically, confirm specs in a browser before ordering",
+   "buy_url": "https://www.mcmaster.com/9657K614/"
+  },
+  {
+   "id": "keyboard",
+   "category": "Keyboard & mouse",
+   "role": "75% low-profile wireless keyboard (Bluetooth x3 + 2.4 GHz + USB-C)",
+   "product": "Keychron K3 Ultra 8K wireless mechanical keyboard",
+   "mpn": "K3U-H3 (or other switch options)",
+   "qty": 1,
+   "unit_usd": 109.99,
+   "buy_url": "https://www.keychron.com/",
+   "why": "320.6 x 126 mm, 20-25.5 mm tall, Mac and Windows keycaps, ABS bottom (Qi-transparent).",
+   "swap": {
+    "product": "ZAGG Pro Keyboard 12 (charges wirelessly by itself, no receiver needed)",
+    "mpn": "103210887",
+    "unit_usd": 69.99,
+    "note": "also drop the NILLKIN receiver"
+   }
+  },
+  {
+   "id": "keyboard_qi",
+   "category": "Keyboard & mouse",
+   "role": "Makes the keyboard charge wirelessly: thin Qi receiver plugged into its USB-C port, folded flat underneath",
+   "product": "NILLKIN Magic Tag wireless charging receiver, Type-C (Short)",
+   "mpn": "Magic Tag Type-C Short (6902048139886)",
+   "qty": 1,
+   "unit_usd": 29.99,
+   "buy_url": "https://www.nillkin.com/",
+   "swap": {
+    "product": "not needed with the ZAGG keyboard",
+    "mpn": "-",
+    "unit_usd": 0.0
+   }
+  },
+  {
+   "id": "mouse",
+   "category": "Keyboard & mouse",
+   "role": "Wireless mouse that charges natively on a Qi pad",
+   "product": "Lenovo Multi-Device Wireless Mouse (X9 Edition)",
+   "mpn": "4Y51R29290",
+   "qty": 1,
+   "unit_usd": 51.99,
+   "price_note": "$58.99 list",
+   "buy_url": "https://www.cdw.com/",
+   "why": "Native Qi, 59 x 101 x 34 mm, 75 g, Bluetooth x2 + 2.4 GHz.",
+   "upgrade": {
+    "product": "Razer Cobra HyperSpeed + Razer Wireless Charging Puck",
+    "mpn": "RZ01-05570100-R3U1 + RC21-01990200-R3U1",
+    "unit_usd": 129.98,
+    "note": "puck often out of stock"
+   }
+  },
+  {
+   "id": "qi_pad",
+   "category": "Keyboard & mouse",
+   "role": "Wireless chargers fitted intact under the keyboard and mouse pockets",
+   "product": "Anker 313 Wireless Charger (Pad)",
+   "mpn": "A2503",
+   "qty": 2,
+   "unit_usd": 23.99,
+   "buy_url": "https://www.anker.com/products/a2503",
+   "why": "Certified Qi with foreign-object detection; 100 x 100 x 11.2 mm; micro-USB 5 V/2 A."
+  },
+  {
+   "id": "desk_mat",
+   "category": "Keyboard & mouse",
+   "role": "Felt mat for work mode (optional)",
+   "product": "Oakywood Felt & Cork Desk Mat 90 x 30, Anthracite",
+   "mpn": "1501FEAL",
+   "qty": 1,
+   "unit_usd": 77.0,
+   "optional": true,
+   "buy_url": "https://oakywood.shop/",
+   "swap": {
+    "product": "any 800 x 300 mm felt desk mat",
+    "mpn": "-",
+    "unit_usd": 20.0
+   }
+  },
+  {
+   "id": "power_strip",
+   "category": "Power",
+   "role": "The only mains connection: lives inside the base, one cord to the wall",
+   "product": "Tripp Lite by Eaton 6-outlet power strip, right-angle outlets, 24 in, 8 ft cord",
+   "mpn": "PS2406RA08B",
+   "qty": 1,
+   "unit_usd": 33.0,
+   "buy_url": "https://tripplite.eaton.com/",
+   "why": "UL 1363, 609.6 x 40.9 x 31.8 mm, outlets 144 mm apart; clips screw to printed bosses (never drill the strip)."
+  },
+  {
+   "id": "monitor_cords",
+   "category": "Power",
+   "role": "Right-angle mains cords from the strip to each monitor (confirm the monitor inlet is C14 on arrival)",
+   "product": "Tripp Lite heavy-duty cord, right-angle NEMA 5-15P to C13, 2 ft",
+   "mpn": "P007-002-15D",
+   "qty": 2,
+   "unit_usd": 10.0,
+   "buy_url": "https://tripplite.eaton.com/"
+  },
+  {
+   "id": "gan_charger",
+   "category": "Power",
+   "role": "Powers the low-voltage loads (charging pads, amber lights, sensors)",
+   "product": "Monoprice 100 W USB-C 4-port GaN desktop charger",
+   "mpn": "46820",
+   "qty": 1,
+   "unit_usd": 59.99,
+   "buy_url": "https://www.monoprice.com/",
+   "note": "Final port plan is part of the wiring design (still to do); its documented multi-port power split must be respected."
+  },
+  {
+   "id": "pd_trigger",
+   "category": "Power",
+   "role": "USB-C PD trigger: 12 V for the amber lighting bus",
+   "product": "Adafruit USB-C PD to 5.5/2.1 mm barrel adapter, 12 V",
+   "mpn": "Adafruit 6032 (12V)",
+   "qty": 1,
+   "unit_usd": 2.25,
+   "buy_url": "https://www.adafruit.com/product/6032"
+  },
+  {
+   "id": "led_strip",
+   "category": "Light",
+   "role": "Amber light: base under-glow, neck light bar, dock seated light",
+   "product": "SuperLightingLED 12 V super-slim amber 1800 K COB tape, 3 mm",
+   "mpn": "FSL-COB-1800K-SLIM (3 mm)",
+   "qty": 1,
+   "unit_usd": 15.98,
+   "buy_url": "https://www.superlightingled.com/",
+   "note": "Buy all amber light from one reel (colour varies between reels)."
+  },
+  {
+   "id": "led_channel",
+   "category": "Light",
+   "role": "5 x 5 mm aluminium channel with opal diffuser (2 x 1 m)",
+   "product": "SuperLightingLED ultra-slim recessed channel for 3 mm strip",
+   "mpn": "QSG-0505",
+   "qty": 2,
+   "unit_usd": 4.98,
+   "buy_url": "https://www.superlightingled.com/"
+  },
+  {
+   "id": "dimmer",
+   "category": "Light",
+   "role": "One knob dims every amber light",
+   "product": "SuperLightingLED rotary knob dimmer, DC connector",
+   "mpn": "CONSC-DIM-03",
+   "qty": 1,
+   "unit_usd": 6.99,
+   "buy_url": "https://www.superlightingled.com/"
+  },
+  {
+   "id": "seated_sensor",
+   "category": "Light",
+   "role": "Lights the dock's seated light with no switch: an IR beam across the slot is broken by the laptop",
+   "product": "Adafruit IR break-beam sensor, 3 mm LEDs",
+   "mpn": "Adafruit 2167",
+   "qty": 1,
+   "unit_usd": 2.95,
+   "buy_url": "https://www.adafruit.com/product/2167"
+  },
+  {
+   "id": "regulator_5v",
+   "category": "Light",
+   "role": "5 V logic rail for the sensor",
+   "product": "Pololu 5 V 600 mA step-down regulator",
+   "mpn": "D36V6F5 (Pololu 3792)",
+   "qty": 1,
+   "unit_usd": 6.95,
+   "buy_url": "https://www.pololu.com/product/3792"
+  },
+  {
+   "id": "opto",
+   "category": "Light",
+   "role": "Switches the seated light from the sensor (photo-Darlington opto)",
+   "product": "Lite-On LTV-815 optocoupler, DIP-4",
+   "mpn": "LTV-815",
+   "qty": 3,
+   "unit_usd": 0.25,
+   "buy_url": "https://www.lcsc.com/"
+  },
+  {
+   "id": "wiring",
+   "category": "Light",
+   "role": "Low-voltage wiring: lever splices, disconnects at base-tile joints, jack-to-terminal",
+   "product": "WAGO 221-412/413/415 + JST-SM 2-pin pairs + 2.1 mm jack-to-terminal",
+   "mpn": "221-41x, SMP-02V-BC/SMR-02V-B, Adafruit 368",
+   "qty": 1,
+   "unit_usd": 18.0,
+   "buy_url": "https://www.digikey.com/"
+  },
+  {
+   "id": "steel",
+   "category": "Structure",
+   "role": "Load path: spine/ballast plate (1/4\"), monitor wing bracket with folded flanges (3/16\"), front ballast bar (1/4\")",
+   "product": "Custom laser-cut + bent A36 steel from SendCutSend",
+   "mpn": "NA-SPINE / NA-WING / NA-FRONTBAR",
+   "qty": 1,
+   "unit_usd": 140.0,
+   "price_note": "estimate; instant quote needs our DXF upload (DXF export is part of the remaining CAD work). Optional powder coat ~$40.",
+   "buy_url": "https://sendcutsend.com/",
+   "swap": {
+    "product": "VIVO MOUNT-VW02A dual VESA adapter + Everbilt 0750 1/4 x 1-1/2 in flat steel bar",
+    "mpn": "MOUNT-VW02A + Everbilt 0750",
+    "unit_usd": 76.5,
+    "note": "no custom fabrication; less precise toe-in"
+   }
+  },
+  {
+   "id": "posts",
+   "category": "Structure",
+   "role": "Neck posts (2 side by side inside the printed neck)",
+   "product": "ZYLtech 2040 T-slot aluminium extrusion, 400 mm",
+   "mpn": "EXT-2040-REG-400",
+   "qty": 2,
+   "unit_usd": 10.14,
+   "buy_url": "https://www.zyltech.com/"
+  },
+  {
+   "id": "rails",
+   "category": "Structure",
+   "role": "Stiffening rails under the printed base tiles",
+   "product": "ZYLtech 2020 T-slot aluminium extrusion, 1200 mm",
+   "mpn": "EXT-2020-REG-1200",
+   "qty": 2,
+   "unit_usd": 15.54,
+   "buy_url": "https://www.zyltech.com/"
+  },
+  {
+   "id": "tnuts",
+   "category": "Structure",
+   "role": "M5 hammer nuts for the rails and posts (100 pack)",
+   "product": "ZYLtech M5 hammer nuts for 2020",
+   "mpn": "HW-M5-HAMMER-100PK",
+   "qty": 1,
+   "unit_usd": 9.95,
+   "buy_url": "https://www.zyltech.com/"
+  },
+  {
+   "id": "inserts",
+   "category": "Hardware",
+   "role": "Brass heat-set inserts for every screwed printed joint",
+   "product": "ruthex threaded insert assortment (M2/M3/M4/M5)",
+   "mpn": "GE-KASTEN-001",
+   "qty": 1,
+   "unit_usd": 33.0,
+   "buy_url": "https://www.ruthex.de/",
+   "swap": {
+    "product": "CNC Kitchen M3x5.7 (100) + M4x8.1 (50)",
+    "mpn": "TC-M3x5.7 + TC-M4x8.1",
+    "unit_usd": 21.0
+   }
+  },
+  {
+   "id": "screws",
+   "category": "Hardware",
+   "role": "Screws: ISO 7380 M3/M4/M5 button heads, M6x20 8.8 post bolts, M4x22 VESA screws, washers",
+   "product": "Metric socket/button-head screw kit (black oxide or A2)",
+   "mpn": "generic",
+   "qty": 1,
+   "unit_usd": 25.0,
+   "buy_url": ""
+  },
+  {
+   "id": "magnets",
+   "category": "Hardware",
+   "role": "Hold removable covers and hatches (keep 30 mm from the charging pads)",
+   "product": "K&J Magnetics 1/4 x 1/8 in N52 disc",
+   "mpn": "D42-N52",
+   "qty": 24,
+   "unit_usd": 0.52,
+   "buy_url": "https://www.kjmagnetics.com/"
+  },
+  {
+   "id": "feet",
+   "category": "Hardware",
+   "role": "Non-slip feet under the spine plate and rail ends",
+   "product": "3M Bumpon SJ5023, black (sheet of 36)",
+   "mpn": "SJ5023",
+   "qty": 1,
+   "unit_usd": 6.0,
+   "buy_url": ""
+  },
+  {
+   "id": "tape",
+   "category": "Hardware",
+   "role": "VHB for the seam strip, light pipes and inlays; foam pads for monitor tolerances",
+   "product": "3M VHB 5952 + 3M urethane foam tape 4026",
+   "mpn": "5952 + 4026",
+   "qty": 1,
+   "unit_usd": 20.0,
+   "buy_url": ""
+  },
+  {
+   "id": "ties",
+   "category": "Hardware",
+   "role": "Cable management",
+   "product": "Panduit PLT1M-C0 ties + ABMM-AT-C0 adhesive mounts",
+   "mpn": "PLT1M-C0 + ABMM-AT-C0",
+   "qty": 1,
+   "unit_usd": 15.0,
+   "buy_url": ""
+  },
+  {
+   "id": "primer",
+   "category": "Finishing",
+   "role": "Filler primer for the titanium-look parts",
+   "product": "Rust-Oleum Automotive filler primer, flat gray, 12 oz",
+   "mpn": "249279",
+   "qty": 3,
+   "unit_usd": 9.0,
+   "buy_url": "https://www.homedepot.com/"
+  },
+  {
+   "id": "paint",
+   "category": "Finishing",
+   "role": "Titanium-look topcoat",
+   "product": "Rust-Oleum Universal All Surface Metallic, Titanium Silver, 11 oz",
+   "mpn": "245220",
+   "qty": 2,
+   "unit_usd": 9.49,
+   "buy_url": "https://www.homedepot.com/"
+  },
+  {
+   "id": "fil_titanium",
+   "category": "Filament (not in budget)",
+   "role": "Titanium parts: base shell tiles, cradle, neck, front frame (painted)",
+   "product": "Bambu Lab PETG Basic, Gray (refill 1 kg)",
+   "mpn": "30107",
+   "qty": 5,
+   "unit_usd": 13.99,
+   "excluded": true,
+   "buy_url": "https://us.store.bambulab.com/"
+  },
+  {
+   "id": "fil_graphite",
+   "category": "Filament (not in budget)",
+   "role": "Graphite parts: rear shroud, deck, pocket inserts (needs a hardened nozzle)",
+   "product": "Bambu Lab PETG-CF, Titan Gray (refill 1 kg)",
+   "mpn": "31101",
+   "qty": 3,
+   "unit_usd": 31.99,
+   "excluded": true,
+   "buy_url": "https://us.store.bambulab.com/",
+   "swap": {
+    "product": "Bambu Lab PETG Basic, Black",
+    "mpn": "30105",
+    "unit_usd": 13.99
+   }
+  },
+  {
+   "id": "fil_oxblood",
+   "category": "Filament (not in budget)",
+   "role": "Oxblood accent panels on the dock",
+   "product": "Bambu Lab PLA Basic, Maroon Red",
+   "mpn": "10205",
+   "qty": 1,
+   "unit_usd": 14.99,
+   "excluded": true,
+   "buy_url": "https://us.store.bambulab.com/"
+  },
+  {
+   "id": "fil_clear",
+   "category": "Filament (not in budget)",
+   "role": "Light pipes and diffusers",
+   "product": "Bambu Lab PETG Translucent, Clear",
+   "mpn": "32101",
+   "qty": 1,
+   "unit_usd": 15.99,
+   "excluded": true,
+   "buy_url": "https://us.store.bambulab.com/"
+  }
+ ]
+}

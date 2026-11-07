@@ -31,6 +31,7 @@ A concept desk battle station you can explore: two 27" QHD monitors in one titan
 
 - **Native Android app** (Kotlin + Jetpack Compose) with a **live CAD renderer** (three.js, fully offline). It has PBR, CAD, X-ray and blueprint styles, animated Work / Stow / Standalone modes, the docking sequence, explode, section cuts, dimensions and tap-to-inspect parts.
 - **Real CAD files** from a parametric CadQuery model: a STEP assembly, STEP and STL per part group, GLB, engineering drawing sheets (SVG) and DXF outlines. You can share or save every file from the app.
+- **Build it yourself:** a verified, priced [shopping list](night-array/kit/BOM.md) of real parts (screens, dock, power, keyboard, mouse, wireless chargers, steel), also in the app.
 - **Install:** download [`night-array/NightArray.apk`](night-array/NightArray.apk) on an Android phone and open it.
 
 ## Repository layout
