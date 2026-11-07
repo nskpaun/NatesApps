@@ -85,7 +85,7 @@ GROUP_TEXT = {
                               "and the low-voltage hub, each in its own bay behind a bottom hatch. The keyboard and mouse "
                               "pockets have per-device locator inserts and an Anker 313 pad under a 1.0 mm solid floor.")),
     "dock": dict(name="Laptop dock",
-                 summary="Latch-free right-wing cradle: guide the laptop in, its own weight seats it on a floating USB-C, lift it out.",
+                 summary="Open right-wing cradle: guide the laptop in, its own weight seats it on a floating USB-C, lift it out.",
                  description=("The printed cradle rises 120 mm at the back and sweeps down to a 60 mm front, wrapped in "
                               "oxblood panels. A universal slot insert sets the width for any 11-20 mm laptop; the laptop's "
                               "own weight seats its port on a Newnex USB4 side-exit plug held in a floating, sprung carriage "
