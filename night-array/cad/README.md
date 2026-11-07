@@ -1,5 +1,16 @@
 # Night Array: CAD pipeline
 
+> **Work in progress (2026-11-07).** The source in this folder is partway through being reworked from the concept model
+> into the buildable kit (`kit/`): real-part envelopes, the steel structure, the layout and a stability check. The rework
+> is on hold, at the owner's request, before the printable shells.
+>
+> **`export/` was NOT built from this source.** It is still the output of the concept pipeline at commit `35b4189`, and
+> the app and viewer depend on it. To rebuild that export, check out the concept source first:
+> `git checkout 35b4189 -- night-array/cad`.
+>
+> Running `build.py` here builds the kit-in-progress, which the app isn't ready for. The rest of this README describes
+> the concept pipeline.
+
 Parametric B-rep model of the Night Array station (dual 27" QHD display on a titanium
 tray base with Qi2 charging pockets and a right-wing laptop dock), written in Python with
 CadQuery 2.8 / OpenCASCADE. One command regenerates every deliverable in `export/`

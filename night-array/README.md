@@ -86,7 +86,7 @@ night-array/
 ## Build
 
 ```bash
-# 1. CAD → cad/export (about a minute; byte-for-byte reproducible)
+# 1. CAD → cad/export. The CAD source is mid-rework into the kit; see the note at the top of cad/README.md before rebuilding.
 cd night-array/cad && python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 .venv/bin/python build.py && .venv/bin/python verify.py
 
