@@ -40,6 +40,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.SpanStyle
@@ -86,6 +87,7 @@ fun ExploreScreen(app: AppState, scene: Scene) {
             item(key = "materials") { MaterialsSection(app, pad) }
             item(key = "principles") { PrinciplesSection(wide, pad) }
             item(key = "board") { BoardCard(app, pad) }
+            item(key = "build") { BuildCard(app, pad) }
             item(key = "night") { NightCard(app, pad) }
             item(key = "footer") { Footer(pad) }
         }
@@ -445,6 +447,34 @@ private fun BoardCard(app: AppState, pad: androidx.compose.ui.unit.Dp) {
                     Spacer(Modifier.width(8.dp))
                     Icon(Icons.AutoMirrored.Outlined.ArrowForward, null, tint = C.amber, modifier = Modifier.size(14.dp))
                 }
+            }
+        }
+    }
+}
+
+/** The real-world parts list: what it costs to build one (Specs > Buy). Hidden when the list isn't bundled. */
+@Composable
+private fun BuildCard(app: AppState, pad: androidx.compose.ui.unit.Dp) {
+    val ctx = LocalContext.current
+    val kit = remember { KitRepo.kit(ctx) }
+    if (kit.items.isEmpty()) return
+    Column(Modifier.readable().padding(horizontal = pad).padding(top = 40.dp)) {
+        SectionHeader("Build your own", "The real parts list")
+        Spacer(Modifier.height(18.dp))
+        PressCard({ app.openSpecs("buy") }, Modifier.fillMaxWidth().testTag("build-card"), padding = 18.dp) {
+            Text("Two stock 27″ monitors, a USB-C dock, off-the-shelf peripherals, a cut steel frame and printed panels.",
+                color = C.ink.copy(alpha = .8f), fontSize = 14.sp, lineHeight = 22.sp)
+            Spacer(Modifier.height(14.dp))
+            Row(verticalAlignment = Alignment.Bottom) {
+                Text(fmtUsd(kit.coreTotal(false)), Modifier.testTag("build-total"), color = C.amber, fontSize = 22.sp, fontWeight = FontWeight.Light, maxLines = 1)
+                Spacer(Modifier.width(10.dp))
+                MicroLabel("Core parts", Modifier.padding(bottom = 4.dp), color = C.muted, tracking = .24f, weight = FontWeight.Light, maxLines = 1)
+            }
+            Spacer(Modifier.height(14.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Kicker("Open the shopping list")
+                Spacer(Modifier.width(8.dp))
+                Icon(Icons.AutoMirrored.Outlined.ArrowForward, null, tint = C.amber, modifier = Modifier.size(14.dp))
             }
         }
     }

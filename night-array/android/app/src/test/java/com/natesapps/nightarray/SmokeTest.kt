@@ -520,6 +520,52 @@ class SmokeTest {
         assertTrue(real.workDepthMm > real.baseDepthMm + 100)
     }
 
+    @Test fun specsBuyListTotalsAndSwaps() = show("specs") {
+        val kit = KitRepo.kit(ctx)
+        assertEquals(1730.46, kit.coreTotal(false), 0.005)
+        assertEquals(1312.95, kit.coreTotal(true), 0.005)
+        act("specs-buy")
+        tag("buy").assertExists()
+        tag("buy-total").assertTextEquals("$1,730.46")
+        assertTrue(shows("Prices checked ${kit.pricesChecked}; they move often"))
+        assertTrue(shows("Not in the budget"))
+        rule.onNodeWithTag("buy-swap-monitor", useUnmergedTree = true).assertDoesNotExist()
+        scrollTo("buy", "i-qi_pad"); assertTrue(shows("Anker 313"))
+        scrollTo("buy", "totals"); act("buy-swaps")
+        tag("buy-total").assertTextEquals("$1,312.95")
+        assertTrue(shows("With budget swaps"))
+        scrollTo("buy", "i-monitor"); rule.onNodeWithTag("buy-swap-monitor", useUnmergedTree = true).assertExists()
+        // tapping a part opens where to buy it
+        scrollTo("buy", "i-qi_pad"); act("buy-qi_pad")
+        val opened = shadowOf(rule.activity).nextStartedActivity
+        assertEquals(Intent.ACTION_VIEW, opened.action)
+        assertEquals(kit.items.first { it.id == "qi_pad" }.buyUrl, opened.dataString)
+    }
+
+    @Test fun exploreBuildCardOpensTheShoppingList() = show {
+        scrollTo("explore", "build")
+        rule.onNodeWithTag("build-total", useUnmergedTree = true).assertTextEquals(fmtUsd(KitRepo.kit(ctx).coreTotal(false)))
+        act("build-card")
+        assertEquals("specs", app.nav.top); assertEquals("buy", app.specsTab)
+        tag("tab-specs").assertIsSelected()
+        tag("buy").assertExists()
+        back(); assertEquals("explore", app.nav.top)
+    }
+
+    @Test fun kitParsesDefensively() {
+        listOf(null, "", "[]", "{}", "{\"items\":5}").forEach { assertTrue(KitParser.parse(it).items.isEmpty()) }
+        val k = KitParser.parse("""{"prices_checked":null,"items":[{}, null, {"product":"X","qty":-2,"unit_usd":"oops","swap":{"product":"Y"},"upgrade":{"unit_usd":3}},
+            {"product":"Z","qty":2,"unit_usd":5,"swap":{"product":"Z2","unit_usd":4}},{"product":"F","unit_usd":9,"excluded":true},{"product":"M","unit_usd":7,"optional":true}]}""")
+        assertEquals(listOf("X", "Z", "F", "M"), k.items.map { it.product })
+        val x = k.items[0]
+        assertEquals(1, x.qty); assertEquals(0.0, x.unitUsd, 0.0); assertNull(x.swap); assertNull(x.upgrade); assertEquals("", x.buyUrl)
+        assertEquals("", k.pricesChecked)
+        assertEquals(10.0, k.coreTotal(false), 1e-9); assertEquals(8.0, k.coreTotal(true), 1e-9)
+        assertEquals(7.0, k.optionalTotal(false), 1e-9); assertEquals(9.0, k.excludedTotal(false), 1e-9)
+        assertFalse(openUrl(ctx, ""))
+        assertEquals("$1,312.95", fmtUsd(1312.95)); assertEquals("\u2212$241.98", fmtDelta(-241.98))
+    }
+
     // ---------- navigation ----------
     @Test fun backNavigationAcrossTabs() = show {
         act("tab-files"); assertEquals("files", app.nav.top)
