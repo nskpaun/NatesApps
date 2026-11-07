@@ -888,13 +888,8 @@ def dock_cradle():
     cn = K["connector"]
     s = cut(s, prism_y(722 - 4.0, 722 + 4.0, cn["z"] - 7.5, cn["z"] + 7.5, cy1 - 1, sl["floor_y"] + 1, 2.0))
 
-    # oxblood panel recesses
+    # oxblood panel recesses (the front face is clean: one panel, the seated light inlaid in it, nothing to press)
     s = cut(s, _side_panel(K["x"][1] - K["panel_t"], K["x"][1] + 1), _front_panel(z1 - K["panel_t"], z1 + 1))
-
-    # latch pocket
-    lt = K["latch"]
-    c = lt["clear"]
-    s = cut(s, prism_z(lt["x"][0] - c, lt["x"][1] + c, lt["y"][0] - c, lt["y"][1] + c, lt["pocket_z0"], z1 + 1, 2.0))
     return s
 
 
@@ -910,32 +905,21 @@ def _front_panel(za, zb):
 def dock_panels():
     side = single(_side_panel(K["x"][1] - K["panel_t"], K["x"][1]))
     front = _front_panel(K["z"][1] - K["panel_t"], K["z"][1])
+    front = cut(front, _led_box(K["z"][1] - K["led"]["depth"], K["z"][1] + 1))   # the seated light's pocket
     return compound([side, front])
 
 
-@lru_cache(None)
-def _latch_body():
-    lt = K["latch"]
-    b = box(lt["x"][0], lt["x"][1], lt["y"][0], lt["y"][1], lt["z"][0], lt["z"][1])
-    b = fillet(b, 2.0, edges_where(b, lambda c, bb, e: c.z > lt["z"][0] + 0.5), "latch")
-    grooves = [box(lt["x"][0] + 4, lt["x"][1] - 4, y - 0.4, y + 0.4, lt["z"][1] - 0.5, lt["z"][1] + 1)
-               for y in (22.5, 25.5, 28.5)]
-    led = _latch_led_box(lt["y"][1] + 1)
-    return cut(b, *grooves, led)
+def _led_box(za, zb):
+    """The seated light: a slim strip near the top of the front face, on the slot axis (right under the laptop it
+    reports on), inlaid flush in a pocket in the oxblood front panel."""
+    L = K["led"]
+    return prism_z(L["x"] - L["w"] / 2, L["x"] + L["w"] / 2, L["y"], L["y"] + L["h"], za, zb, 0.9)
 
 
-def _latch_led_box(ytop):
-    ll, lt = K["latch_led"], K["latch"]
-    xc = (lt["x"][0] + lt["x"][1]) / 2
-    return prism_y(xc - ll["w"] / 2, xc + ll["w"] / 2, ll["z"][0], ll["z"][1], lt["y"][1] - ll["depth"], ytop, 1.2)
-
-
-def dock_latch():
-    return _latch_body()
-
-
-def dock_latch_led():
-    return _latch_led_box(K["latch"]["y"][1])
+def dock_led():
+    """Inlaid flush in the front face, like the base's charge indicators.  It is only a light: the dock is latch-free
+    and has nothing to press.  The dock board lights it when the USB-C plug sees the laptop (CC attach)."""
+    return _led_box(K["z"][1] - K["led"]["depth"], K["z"][1])
 
 
 def dock_connector():
@@ -1360,9 +1344,7 @@ def dock_board():
     riser = box(719, 725, y1, cn["boot_y"][0] - 0.5, cn["z"] - 6, cn["z"] + 6)   # feeds the USB-C boot
     chip = box(690, 712, y1, y1 + 1.4, -20, 2)
     pd = box(740, 756, y1, y1 + 2.0, -40, -24)
-    lt = K["latch"]
-    switch = box(744, 760, y1, lt["y"][0] - 0.5 - 6, 104, lt["pocket_z0"] - 1)
-    return fuse(pcb, riser, chip, pd, switch)
+    return fuse(pcb, riser, chip, pd)
 
 
 # ----------------------------------------------------------------------------
@@ -1394,8 +1376,7 @@ PARTS = [
 
     ("dock_cradle", "dock", "Dock cradle", "titanium", False, dock_cradle),
     ("dock_panels", "dock", "Oxblood accent panels", "oxblood", False, dock_panels),
-    ("dock_latch", "dock", "Press-release latch", "graphite", False, dock_latch),
-    ("dock_latch_led", "dock", "Latch status light", "amber_led", False, dock_latch_led),
+    ("dock_led", "dock", "Seated indicator", "amber_led", False, dock_led),
     ("dock_connector", "dock", "Sprung USB-C connector", "steel", False, dock_connector),
 
     ("laptop_body", "laptop", "Laptop", "laptop_alu", False, laptop_body),

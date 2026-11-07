@@ -71,7 +71,7 @@ ENV = {
     "qi_coil_mouse": {"y": (12, 15)},
     "ferrite_kb": {"y": (10, 12)},
     "ferrite_mouse": {"y": (10, 12)},
-    "dock_latch": {"y": (18, 40)},
+    "dock_led": {"x": (707, 737), "y": (46, 48), "z": (129, 130)},
     "neck_light": {"x": (-75, 75), "y": (126, 131)},
 }
 TOL = 0.6
@@ -98,10 +98,19 @@ def check_envelopes(parts):
     x0, y0, z0, x1, y1, z1 = tight_bbox(parts["display_frame"])
     check(abs((x1 - x0) - 1214) < 6, f"display chord {x1 - x0:.1f} mm (~1214)")
     check(abs(z1 - (-62) - 106) < 3, f"outer edges forward of seam {z1 + 62:.1f} mm (~106 + frame)")
-    # latch size
-    x0, y0, z0, x1, y1, z1 = tight_bbox(parts["dock_latch"])
-    check(abs((x1 - x0) - 34) < 0.5 and abs((y1 - y0) - 22) < 0.5 and abs((z1 - z0) - 14) < 0.5,
-          f"dock_latch {x1 - x0:.1f} x {y1 - y0:.1f} x {z1 - z0:.1f}")
+    # the dock is latch-free: its only front-face feature besides the panel is the seated light, a slim ~30 x 2 strip
+    # inlaid flush near the top edge, on the slot axis
+    check(not [p for p, *_ in model.PARTS if "latch" in p], "no latch parts (the dock is latch-free)")
+    x0, y0, z0, x1, y1, z1 = tight_bbox(parts["dock_led"])
+    K = P["dock"]
+    ok = (abs((x1 - x0) - 30) < 0.5 and abs((y1 - y0) - 2) < 0.2 and abs(z1 - K["z"][1]) < 0.01
+          and abs((x0 + x1) / 2 - sum(K["slot"]["x"]) / 2) < 0.01 and K["h_front"] - 16 < y1 < K["h_front"])
+    check(ok, f"dock_led {x1 - x0:.1f} x {y1 - y0:.1f}, flush at z {z1:.2f}, centred x {(x0 + x1) / 2:.1f} (slot axis), "
+          f"top {y1:.1f} (front face {K['h_front']:.0f} tall)")
+    # it sits in its pocket in the front panel (flush with it, both at the face), inside the panel's outline
+    fp = K["front_panel"]
+    check(fp["x"][0] < x0 and x1 < fp["x"][1] and fp["y"][0] < y0 and y1 < fp["y"][1],
+          f"dock_led inlaid in the oxblood front panel (x {fp['x']}, y {fp['y']})")
 
 
 # ----------------------------------------------------------------------------
@@ -160,16 +169,12 @@ def check_interference(parts, fast=False):
     kb = [pid for pid, g, *_ in model.PARTS if g == "keyboard"]
     ms = [pid for pid, g, *_ in model.PARTS if g == "mouse"]
     lp = [pid for pid, g, *_ in model.PARTS if g == "laptop"]
-    latch = ["dock_latch", "dock_latch_led"]
     interference(parts, label="stow pose (all parts incl. desk mat)")
     work = {p: pm["work_keyboard"] for p in kb}
     work.update({p: pm["work_mouse"] for p in ms})
     interference(parts, work, only=set(kb + ms), label="work pose (keyboard + mouse on the mat)")
     interference(parts, work, only=set(kb + ms), hidden=set(lp), label="standalone pose (laptop hidden)")
-    for step, mv in (("align", {p: (0, pm["dock_align_lift"], 0) for p in lp}),
-                     ("release", {p: (0, 0, -pm["latch_travel"]) for p in latch}),
-                     ("lift", {p: (0, pm["dock_lift_out"], 0) for p in lp})):
-        interference(parts, mv, only=set(mv), label=f"dock_sequence '{step}'")
+    check_dock_sequence(parts, lp)
     # the laptop's travel path: sample the lift between seated and fully out
     if not fast:
         for dy in (10, 40, 80):
@@ -178,6 +183,35 @@ def check_interference(parts, fast=False):
         return
     check_paths(parts, kb, ms)
     check_explode(parts, kb, ms)
+
+
+def check_dock_sequence(parts, lp):
+    """Every dock_sequence step (latch-free: the laptop is the only thing that moves) is clear of everything, and each
+    step is what its caption says: align = in the slot's lead-in, above the front lip, not yet on the plug; lower =
+    standing on the slot floor with the USB-C plug inside its port; lift = straight up and clear of the cradle."""
+    import build
+    seq = build.dock_sequence()
+    check([s["step"] for s in seq] == ["align", "lower", "lift"], "dock_sequence: align, lower, lift")
+    check(all(set(s) == {"step", "title", "caption", "laptop"} for s in seq), "dock_sequence moves the laptop only")
+    K, LP = P["dock"], P["laptop"]
+    cn = K["connector"]
+    plug_top = cn["boot_y"][1] + cn["plug"][1]
+    for s in seq:
+        d = np.array(s["laptop"]["t"]) * 1000.0
+        mv = {p: tuple(d) for p in lp}
+        interference(parts, mv, only=set(lp), label=f"dock_sequence '{s['step']}' (laptop {d[1]:+.0f} mm)")
+        lx0, ly0, lz0, lx1, ly1, lz1 = tight_bbox(parts["laptop_body"].translate(Vector(*d)))
+        if s["step"] == "align":
+            ok = K["h_front"] < ly0 < K["h_back"] and ly0 > plug_top
+            check(ok, f"align: laptop bottom at y {ly0:.1f}, in the lead-in (front lip {K['h_front']:.0f}, back "
+                      f"{K['h_back']:.0f}) and above the plug ({plug_top:.1f})")
+        elif s["step"] == "lower":
+            ok = abs(ly0 - K["slot"]["floor_y"]) < 0.01 and ly0 < plug_top < ly0 + LP["port"][1]
+            check(ok, f"lower: laptop stands on the slot floor (y {ly0:.2f}) with the plug {plug_top - ly0:.1f} mm into "
+                      f"its {LP['port'][1]:.1f} mm port (seated by its own weight)")
+        elif s["step"] == "lift":
+            ok = ly0 > K["h_back"] + 20
+            check(ok, f"lift: laptop bottom at y {ly0:.1f}, clear of the cradle top ({K['h_back']:.0f})")
 
 
 def path_points(via, t, n=PATH_SAMPLES):
@@ -501,7 +535,23 @@ def check_scene(parts):
             if k not in g:
                 check(False, f"group {g['id']} key {k}")
     check(set(sc["poses"]) == {"stow", "work", "standalone"}, "poses")
-    check([s["step"] for s in sc["dock_sequence"]] == ["align", "lower", "release", "lift"], "dock_sequence steps")
+    check(sc["dock_sequence"] == build.dock_sequence(), "dock_sequence == build.dock_sequence() (align, lower, lift)")
+    check([(s["step"], s["title"]) for s in sc["dock_sequence"]] == [("align", "Align"), ("lower", "Lower"),
+                                                                     ("lift", "Lift out")], "dock_sequence steps / titles")
+    dock = sc["groups"][model.GROUP_ORDER.index("dock")]
+    check("subgroups" not in dock, "dock group has no subgroups (nothing on it moves)")
+    led = [p for p in sc["parts"] if p["id"] == "dock_led"]
+    check(len(led) == 1 and led[0]["group"] == "dock" and led[0]["material"] == "amber_led" and not led[0]["internal"],
+          "dock_led: group dock, amber_led, not internal")
+    # latch-free copy: nothing in scene.json names a latch, and the dock / laptop text names no button, switch or lock
+    import re
+    raw = open(os.path.join(EXPORT, "model", "scene.json"), encoding="utf-8").read()
+    check("latch" not in raw.lower(), "scene.json never mentions a latch")
+    texts = [dock["summary"], dock["description"], sc["groups"][model.GROUP_ORDER.index("laptop")]["summary"],
+             sc["groups"][model.GROUP_ORDER.index("laptop")]["description"]]
+    texts += [p["name"] for p in sc["parts"] if p["group"] == "dock"]
+    bad = [w for t in texts for w in re.findall(r"(?i)\b(latch\w*|button\w*|switch\w*|press-release|locks?|locked)\b", t)]
+    check(not bad, "dock / laptop copy names no latch, button, switch or lock" + (f" (found {bad})" if bad else ""))
     dims = {d["id"] for d in sc["dims"]}
     need = {"overall_w", "base_depth", "overall_h", "display_w", "panel_active_w", "seam", "work_offset"}
     check(need <= dims, f"dims include {sorted(need)}")
@@ -592,9 +642,11 @@ def check_scene(parts):
             for pid in g["parts"]:
                 ok = np.allclose(nodes[pid]["translation"], g["pivot"], atol=1e-6)
                 check(ok, f"{pid} node translation = {g['id']} group pivot")
-    sub = sc["groups"][model.GROUP_ORDER.index("dock")]["subgroups"]["dock_latch"]
-    for pid in sub["parts"]:
-        check(np.allclose(nodes[pid]["translation"], sub["pivot"], atol=1e-6), f"{pid} node translation = dock_latch pivot")
+    # parts of groups that never move are pivoted at their own bottom-centre (SPEC section 3), dock_led included
+    led = parts["dock_led"]
+    x0, y0, z0, x1, y1, z1 = tight_bbox(led)
+    check(np.allclose(nodes["dock_led"]["translation"], np.array([(x0 + x1) / 2, y0, (z0 + z1) / 2]) / 1000.0, atol=1e-6),
+          "dock_led node translation = its bottom-centre")
     total = 0
     for root, _, files in os.walk(EXPORT):
         total += sum(os.path.getsize(os.path.join(root, f)) for f in files)

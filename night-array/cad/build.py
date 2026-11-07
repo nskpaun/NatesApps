@@ -110,7 +110,6 @@ EFFECTIVE_DENSITY = {
 PART_INFO = {pid: dict(group=g, name=n, material=m, internal=i) for pid, g, n, m, i, _ in model.PARTS}
 GROUPS = model.GROUP_ORDER
 ANIMATED_GROUPS = {"laptop", "keyboard", "mouse"}
-LATCH_PARTS = {"dock_latch", "dock_latch_led"}
 
 GROUP_TEXT = {
     "display": dict(
@@ -141,17 +140,21 @@ GROUP_TEXT = {
                      "coils. Rear I/O and the exhaust grille are on the back face, left side.")),
     "dock": dict(
         name="Laptop dock",
-        summary="Right-wing cradle with a swept profile, lead-in slot, sprung USB-C and a press-release latch.",
+        summary="Open right-wing cradle: guide the laptop in, its own weight seats it on a sprung USB-C, lift it straight out.",
         description=("The dock wing rises 120 mm at the back and sweeps down in a concave curve to a 60 mm front, wrapped in "
-                     "brushed oxblood panels. A 20 mm slot with 4 mm lead-in chamfers guides a closed laptop on its side onto a "
-                     "sprung USB-C plug standing up from the slot floor. Press the latch (3 mm travel) to release, then lift "
-                     "out; the amber strip on the latch glows while the laptop is locked in and goes dark when you press it.")),
+                     "brushed oxblood panels. A 20 mm slot with 4 mm lead-in chamfers guides a closed laptop in on its side, "
+                     "its own weight (about 13 N) seats it on a sprung, self-centring USB-C plug standing up from the slot "
+                     "floor, and to undock you simply lift it straight out. It works because the slot walls hold the laptop "
+                     "upright, so the plug only carries power and data and is never levered, while USB-C's own retention "
+                     "(roughly 8–20 N) keeps it connected. A slim amber light on the front face glows while the laptop is "
+                     "seated.")),
     "laptop": dict(
         name="Laptop",
-        summary="A slim laptop (up to about 19 mm) with a USB-C port on its left side, standing closed in the dock: your hardware.",
-        description=("A generic 14-inch class laptop (304 × 212 × 15 mm) stands closed on its left side, hinge toward the back, "
-                     "with its USB-C port seated on the dock's sprung connector. Docked, it drives the dual display and charges; "
-                     "lifted out, the station keeps running on the compute in the base. Mass is an estimate for a real device.")),
+        summary="A slim laptop (up to about 19 mm) that stands closed in the dock on its own USB-C port: your hardware.",
+        description=("A generic 14-inch class laptop (304 × 212 × 15 mm, about 1.3 kg) stands closed on its left side, hinge "
+                     "toward the back. Set it in and its weight seats its USB-C port on the dock's sprung connector; lift it "
+                     "straight out to take it with you. Docked, it drives the dual display and charges; lifted out, the "
+                     "station keeps running on the compute in the base. Mass is an estimate for a real device.")),
     "keyboard": dict(
         name="Low-profile keyboard",
         summary="75% low-profile keyboard that charges wirelessly in its pocket.",
@@ -175,7 +178,8 @@ GROUP_TEXT = {
         summary="Compute stays in the base: mainboard, vapor chamber, blower, PSU, Qi2 coils and the dock PCB.",
         description=("Inside the hollow base: a 300 × 230 mm compute board with a vapor chamber and fin stack exhausting through "
                      "the rear grille, a slim blower, a 140 × 158 mm internal power supply, three Qi2 transmitter coils on "
-                     "ferrite shields under the pocket windows and, under the cradle, the dock PCB that feeds the sprung USB-C plug. "
+                     "ferrite shields under the pocket windows and, under the cradle, the dock PCB that feeds the sprung USB-C plug "
+                     "and lights the seated indicator when the plug sees the laptop. "
                      "Because compute stays in the base, the station works with or without the laptop.")),
 }
 
@@ -205,8 +209,7 @@ EXPLODE = {
     # dock wing slides out to the right
     "dock_cradle": [0.24, 0.12, 0.0],
     "dock_panels": [0.33, 0.12, 0.05],
-    "dock_latch": [0.24, 0.12, 0.12],
-    "dock_latch_led": [0.24, 0.15, 0.12],
+    "dock_led": [0.33, 0.12, 0.08],       # rides with the front panel it is inlaid in, straight out of its pocket
     "dock_connector": [0.24, 0.20, 0.0],
     "laptop_body": [0.24, 0.50, 0.0],
     # devices rise above their pads, receiver coils between pad and device
@@ -493,23 +496,15 @@ def compute_pivots(parts):
     for g in GROUPS:
         a, b = group_bbox(parts, g)
         gp[g] = bottom_centre(a, b)
-    la, lb = None, None
-    for pid in LATCH_PARTS:
-        a, b = tight_bbox(parts[pid])
-        la = a if la is None else np.minimum(la, a)
-        lb = b if lb is None else np.maximum(lb, b)
-    latch_pivot = bottom_centre(la, lb)
     node_pivot = {}
     for pid, s in parts.items():
         g = PART_INFO[pid]["group"]
-        if pid in LATCH_PARTS:
-            node_pivot[pid] = latch_pivot
-        elif g in ANIMATED_GROUPS:
+        if g in ANIMATED_GROUPS:
             node_pivot[pid] = gp[g]
         else:
             a, b = tight_bbox(s)
             node_pivot[pid] = bottom_centre(a, b)
-    return gp, latch_pivot, node_pivot
+    return gp, node_pivot
 
 
 def part_mass(pid, vol_mm3):
@@ -633,7 +628,21 @@ def work_path(key):
     return [[0.0, pm["work_lift"], 0.0], [t[0], pm["work_lift"], pm["work_clear_z"]]]
 
 
-def build_scene(parts, gp, latch_pivot, files_index, drawings):
+def dock_sequence():
+    """The dock is latch-free: nothing to press or unlock, so every step moves the laptop alone (the viewer lights
+    dock_led while it is seated).  align: in the lead-in, above the 60 mm front lip; lower: seated on the USB-C by its
+    own weight (the stow pose); lift: straight up and clear of the cradle."""
+    pm = P["poses_mm"]
+    return [
+        {"step": "align", "title": "Align", "caption": "Guide it into the open cradle",
+         "laptop": {"t": [0, round(pm["dock_align_lift"] * 0.001, 6), 0]}},
+        {"step": "lower", "title": "Lower", "caption": "Its own weight seats it on the USB-C", "laptop": {"t": [0, 0, 0]}},
+        {"step": "lift", "title": "Lift out", "caption": "Lift straight up — nothing to unlock",
+         "laptop": {"t": [0, round(pm["dock_lift_out"] * 0.001, 6), 0]}},
+    ]
+
+
+def build_scene(parts, gp, files_index, drawings):
     mm = 0.001
     # bounds (stow pose, all parts except the hidden desk mat)
     mins, maxs = [], []
@@ -660,8 +669,6 @@ def build_scene(parts, gp, latch_pivot, files_index, drawings):
         g = {"id": gid, **GROUP_TEXT[gid], "parts": pids, "pivot": r6(np.array(gp[gid]) * mm),
              "bbox_mm": [round(float(x), 1) for x in (b - a)], "mass_g": round(mass, 1),
              "volume_cm3": round(vol / 1000.0, 1), "materials": mats}
-        if gid == "dock":
-            g["subgroups"] = {"dock_latch": {"parts": sorted(LATCH_PARTS), "pivot": r6(np.array(latch_pivot) * mm)}}
         groups.append(g)
 
     plist = []
@@ -689,15 +696,6 @@ def build_scene(parts, gp, latch_pivot, files_index, drawings):
         "standalone": {"keyboard": out_of_pocket("work_keyboard"), "mouse": out_of_pocket("work_mouse"),
                        "laptop": {"hidden": True}},
     }
-    dock_sequence = [
-        {"step": "align", "title": "Align", "caption": "Guide into the open cradle",
-         "laptop": {"t": [0, round(pm["dock_align_lift"] * mm, 6), 0]}},
-        {"step": "lower", "title": "Lower", "caption": "Seat the laptop onto the connector", "laptop": {"t": [0, 0, 0]}},
-        {"step": "release", "title": "Press-release & lift", "caption": "Press to release, then lift out",
-         "laptop": {"t": [0, 0, 0]}, "dock_latch": {"t": [0, 0, round(-pm["latch_travel"] * mm, 6)]}},
-        {"step": "lift", "title": "Lift out", "caption": "Laptop free; compute stays in the base",
-         "laptop": {"t": [0, round(pm["dock_lift_out"] * mm, 6), 0]}},
-    ]
 
     d = P["display"]
     fr_a, fr_b = tight_bbox(parts["display_frame"])
@@ -757,7 +755,7 @@ def build_scene(parts, gp, latch_pivot, files_index, drawings):
         "groups": groups,
         "parts": plist,
         "poses": poses,
-        "dock_sequence": dock_sequence,
+        "dock_sequence": dock_sequence(),
         "dims": dims,
         "screen": screen,
         "files": files_index,
@@ -808,7 +806,7 @@ def main():
     parts = model.build_all()
     if model.FILLET_LOG:
         log("WARNING fillet/chamfer fallbacks:\n  " + "\n  ".join(model.FILLET_LOG))
-    gp, latch_pivot, node_pivot = compute_pivots(parts)
+    gp, node_pivot = compute_pivots(parts)
 
     if args.only in ("all", "glb"):
         log("writing GLBs ...")
@@ -826,7 +824,7 @@ def main():
         dr.export_all(parts, PART_INFO, GROUP_TEXT, MATERIALS, part_mass, EXPORT)
 
     files = files_index_for(EXPORT)
-    scene = build_scene(parts, gp, latch_pivot, files, drawings)
+    scene = build_scene(parts, gp, files, drawings)
     with open(os.path.join(EXPORT, "model", "scene.json"), "w") as f:
         json.dump(scene, f, indent=1, ensure_ascii=False)
         f.write("\n")

@@ -128,10 +128,12 @@ P = {
         "cavity_y": [2.5, 21.0],
         "panel_t": 2.0,
         "panel_inset": 7.0,
-        "front_panel": {"x": [657.0, 727.0], "y": [9.0, 51.0]},
-        "latch": {"x": [735.0, 769.0], "y": [18.0, 40.0], "z": [124.0, 138.0], "travel": 3.0, "clear": 0.5,
-                  "pocket_z0": 119.0},
-        "latch_led": {"w": 26.0, "d": 3.0, "z": [133.0, 136.0], "depth": 0.8},
+        # latch-free: the laptop's own weight seats it on the sprung USB-C, you lift it straight out.  The front face
+        # (flat x 650 .. 763 up to the R12 plan corner, 60 tall) carries one oxblood panel with the side panel's 7 mm
+        # margins, so the two read as one wrap round the corner, and a slim amber seated light inlaid near its top
+        # edge on the slot axis, right under the laptop it reports on.
+        "front_panel": {"x": [657.0, 756.0], "y": [7.0, 53.0]},
+        "led": {"x": 722.0, "w": 30.0, "h": 2.0, "y": 46.0, "depth": 1.0},   # x = slot axis, y = bottom edge
         "connector": {"z": -60.0, "boot": [7.0, 6.0, 14.0], "plug": [2.5, 6.5, 8.3], "boot_y": [18.0, 24.0]},
     },
 
@@ -183,7 +185,6 @@ P = {
         "work_clear_z": 200.0,       # ... slide forward until the back edge is past the base front, then set down
         "dock_align_lift": 70.0,     # laptop part-way into the cradle lead-in, above the 60 mm front lip
         "dock_lift_out": 160.0,
-        "latch_travel": 3.0,
     },
 }
 

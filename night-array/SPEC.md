@@ -70,11 +70,10 @@ Never write outside your own directories (plus the two asset dirs the viewer own
 | `display` | `display_spine` | steel | **internal: true.** Steel mounting spine with two 2 mm VESA 100 plates angled ±10°, one bolted to the back of each module, on arms from a 36×38 rectangular hollow post that stands on the neck. |
 | `display` | `display_boards` | pcb | **internal: true.** Each monitor's own scaler + power board, kept as-is and mounted on standoffs behind the spine arms (two solids, one part). |
 | `dock` | `dock_cradle` | titanium | Right wing x∈[650,775], z∈[-130,130]. Side profile: ~120 tall at the back, sweeping down to ~60 at the front (concave curve). Laptop slot 20 wide (x∈[712,732]), z∈[-112,112], floor y=24, lead-in chamfers. |
-| `dock` | `dock_panels` | oxblood | 2 mm accent panels on the outer (+x) face and front face of the cradle. |
-| `dock` | `dock_latch` | graphite | Press-release button on the cradle's front face, right side, ~34×22×14, y≈18–40. Its own sub-group pivot so it can be pressed (moves −z ~3 mm). |
-| `dock` | `dock_latch_led` | amber_led | 26×3 strip on top of the latch button (moves with it). |
-| `dock` | `dock_connector` | steel | Sprung USB-C plug standing up from the slot floor at z≈-60. |
-| `laptop` | `laptop_body` | laptop_alu | Generic laptop, 304 (y, standing) × 212 (z) × 15 (x), R6 edges, lid seam groove, standing on its left side in the slot: x∈[714.5,729.5], y∈[24,328], z∈[-106,106]. Hinge edge faces −z. |
+| `dock` | `dock_panels` | oxblood | 2 mm accent panels inlaid flush in the outer (+x) face and the front face of the cradle, both with 7 mm titanium margins (front panel x∈[657,756], y∈[7,53]), so they read as one wrap round the corner. |
+| `dock` | `dock_led` | amber_led | **Seated indicator** — only a light, not a button: a slim 30×2 mm strip inlaid flush near the top of the cradle's front face, in a 1 mm pocket in the oxblood front panel, on the slot axis right under the laptop (x∈[707,737], y∈[46,48], z∈[129,130]). The viewer lights it while the laptop is seated. |
+| `dock` | `dock_connector` | steel | Sprung, self-centring USB-C plug standing up from the slot floor at z≈-60. |
+| `laptop` | `laptop_body` | laptop_alu | Generic laptop, 304 (y, standing) × 212 (z) × 15 (x), R6 edges, lid seam groove, standing on its left side in the slot: x∈[714.5,729.5], y∈[24,328], z∈[-106,106]. Hinge edge faces −z. Its USB-C port (7.5 mm deep) sits over the plug, which enters it 6.5 mm when seated. |
 | `keyboard` | `keyboard_body` | graphite | 360 (x) × 120 (z), low wedge 9 mm front → 13 mm back, R8 corners. Stow: centred (-90, 62), bottom at y=18. |
 | `keyboard` | `keyboard_keys` | keycap | ~75 % layout keycaps fused as one solid (unit 18.5 mm). |
 | `mouse` | `mouse_shell` | graphite | 66 (x) × 118 (z) × 38 (y) ergonomic ambidextrous shell. Stow: centred (250, 62), bottom y=18. |
@@ -90,6 +89,11 @@ Never write outside your own directories (plus the two asset dirs the viewer own
 | `internals` | `ferrite_kb`, `ferrite_mouse` | ferrite | Shield plates under the coils, y≈10–12. |
 | `internals` | `dock_board` | pcb | Dock PCB under the cradle. |
 | `internals` | `keyboard_coil`, `mouse_coil` | copper | Receiver coils inside the keyboard / mouse. **These belong to groups `keyboard` / `mouse`** (so they move with them) but are flagged `internal: true`. |
+
+**The dock is latch-free** (no latch, button, lock or switch, and nothing on it moves): the lead-in guides the laptop into
+the open cradle, its own weight (≈1.3 kg) seats it on the sprung, self-centring USB-C plug, and you undock by lifting it
+straight out; USB-C's own retention (roughly 8–20 N) is overcome by a gentle lift. The slot walls hold the laptop upright,
+so the plug only carries power and data and is never levered.
 
 Overall display width ≈ 1214 mm (chord; 1 218 mm over the titanium frame, the `display_w` dim), outer edges ≈ 106 mm forward of the seam. Story: "the pixels of a 49-inch
 super-ultrawide (5120×1440) for the price of two good mainstream 27s; a dead panel is a cheap swap; your OS already knows
@@ -142,7 +146,7 @@ Internal parts (`internal: true`) are hidden in the `studio` style and shown in 
       "bbox_mm": [w, h, d], "mass_g": 0, "volume_cm3": 0,
       "materials": ["titanium", "graphite", "amber_led"] }
     // groups, in this order: display, stand, base, dock, laptop, keyboard, mouse, deskmat, internals
-    // optional: "subgroups": { "dock_latch": { "parts": ["dock_latch", "dock_latch_led"], "pivot": [x,y,z] } } (dock)
+    // (no "subgroups": the dock is latch-free, nothing on it moves)
   ],
   "parts": [
     { "id": "base_shell", "group": "base", "name": "Base shell", "material": "titanium", "internal": false,
@@ -162,13 +166,13 @@ Internal parts (`internal: true`) are hidden in the `studio` style and shown in 
   // to this pose (play them reversed going back to stow). The keyboard and mouse lift 30 mm clear of the 36 mm rim, slide
   // forward until their back edge is past the base front (z = +200 mm), then set down on the mat; a straight line from
   // stow to "t" would run through the titanium rim. Animate each segment in turn (same timing for both groups).
-  "dock_sequence": [                       // laptop / dock_latch deltas for each step
-    { "step": "align",   "title": "Align",               "caption": "Guide into the open cradle",       "laptop": { "t": [0, 0.07, 0] } },
-    { "step": "lower",   "title": "Lower",               "caption": "Seat the laptop onto the connector", "laptop": { "t": [0, 0, 0] } },
-    { "step": "release", "title": "Press-release & lift", "caption": "Press to release, then lift out",  "laptop": { "t": [0, 0, 0] }, "dock_latch": { "t": [0, 0, -0.003] } },
-    { "step": "lift",    "title": "Lift out",            "caption": "Laptop free; compute stays in the base", "laptop": { "t": [0, 0.16, 0] } }
+  "dock_sequence": [                       // exactly these three steps; laptop delta (group "laptop") for each
+    { "step": "align", "title": "Align",    "caption": "Guide it into the open cradle",        "laptop": { "t": [0, 0.07, 0] } },
+    { "step": "lower", "title": "Lower",    "caption": "Its own weight seats it on the USB-C", "laptop": { "t": [0, 0, 0] } },
+    { "step": "lift",  "title": "Lift out", "caption": "Lift straight up — nothing to unlock", "laptop": { "t": [0, 0.16, 0] } }
   ],
-  // dock_latch is a sub-group pivot: parts dock_latch + dock_latch_led move together under the name "dock_latch".
+  // latch-free: the laptop is the only thing that moves. align = 70 mm up, in the slot's lead-in above the 60 mm front
+  // lip; lower = seated (the stow pose); lift = 160 mm up, clear of the 120 mm cradle. dock_led is lit while seated.
   "dims": [ { "id": "overall_w", "label": "1\u00a0415 mm", "a": [-0.64, 0, 0.15], "b": [0.775, 0, 0.15], "dir": [0, 0, 1] } ],
   // labels group thousands with a no-break space (U+00A0, written as-is in the file).
   // dims: measured points (metres, stow pose) + "dir" = which way to offset the dimension line. Include at least:
@@ -230,11 +234,14 @@ doesn't shift.
 ```
 ### Commands (Kotlin → JS)
 * `NA.camera("hero"|"front"|"top"|"side"|"back"|"dock"|"trays"|"display")` — animated camera move.
-* `NA.dock("align"|"lower"|"release"|"lift"|"play"|"reset")` — a single step moves the laptop / `dock_latch` to that
-  `dock_sequence` step (`reset` = back to the stow state: laptop seated, latch at rest) without events. `play` frames the `dock` camera (unless cinematic) and runs
-  align (0 s) → lower (1.5 s) → release (3.05 s) → lift (3.9 s) → reset (5.5 s), posting a `dockStep` event as each step
-  starts; **`done` is posted when the reset motion starts** (the laptop going back into the cradle is not "lift" any more),
-  and that motion ends at about 6.7 s. A step or `play` sent meanwhile takes over.
+* `NA.dock("align"|"lower"|"lift"|"play"|"reset")` — a single step moves the laptop to that `dock_sequence` step
+  (`reset` = back to the stow state: laptop seated) without events; any other value is ignored without error.
+  `dock_led` is lit whenever the laptop is seated (the `stow` and `work` modes, `lower`, `reset`) and dark while it is out
+  of the cradle (`align`, `lift`, and `standalone`, where the laptop is hidden).
+  `play` frames the `dock` camera (unless cinematic) and runs align (0 s) → lower (1.5 s) → lift → reset, the laptop
+  resting seated with its light on for a beat before the lift (exact times: `DOCK_PLAY` in `viewer/src/app.js`; the app
+  must not depend on them), posting a `dockStep` event as each step starts; **`done` is posted when the reset motion
+  starts** (the laptop going back into the cradle is not "lift" any more). A step or `play` sent meanwhile takes over.
 * `NA.frame("groupId")` — animated camera framing of a group.
 * All functions are safe to call before the model has loaded: calls are queued and applied before the first frame
   (they jump instead of animating). A queued `play` waits for the first frame: its steps and events are timed from then.
@@ -244,13 +251,13 @@ doesn't shift.
 * `{ "type": "ready" }` — once, after the first frame with the model is drawn.
 * `{ "type": "pick", "group": "keyboard" | null }` — a tap (moves < 8 px, lifts within 350 ms; never a drag or long press)
   on a part; null = tapped empty space. Finger taps get target expansion for groups smaller than 44 dp on screen.
-* `{ "type": "dockStep", "step": "align" | "lower" | "release" | "lift" | "done" }` — only from `play` (see above).
+* `{ "type": "dockStep", "step": "align" | "lower" | "lift" | "done" }` — only from `play` (see above).
 * `{ "type": "error", "message": "..." }` — no WebGL2, no half-float render targets, model failed to load, WebGL context
   lost for good.
 
 ### Stills (rendered by the viewer itself, headless Chromium, written to `android/app/src/main/assets/renders/`)
 JPEG, 1600×900 unless noted. The app must tolerate any of these being missing.
-`hero-work.jpg`, `hero-stow.jpg`, `hero-standalone.jpg`, `dock-align.jpg`, `dock-lower.jpg`, `dock-release.jpg`,
+`hero-work.jpg`, `hero-stow.jpg`, `hero-standalone.jpg`, `dock-align.jpg`, `dock-lower.jpg`, `dock-lift.jpg`,
 `trays.jpg` (charging pockets close-up), `display.jpg` (the dual panels + seam close-up), `cad.jpg`, `xray.jpg`, `exploded.jpg`, `blueprint.jpg`, `section.jpg`,
 `finish-titanium.jpg`, `finish-graphite.jpg`, `finish-oxblood.jpg`, `night.jpg` (cinematic), `amber-off.jpg`,
 and `part-<groupId>.jpg` (900×900, isolated group, studio style) for every group except `internals` (use xray style for that one).

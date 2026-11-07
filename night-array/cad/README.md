@@ -33,8 +33,9 @@ part ids, file paths and the `scene.json` shape.
 | `drawings/<group>.png` | The sheet rasterised with headless Chromium, 2000 × 1414 px, transparent. |
 
 Groups, in order: `display`, `stand`, `base`, `dock`, `laptop`, `keyboard`, `mouse`,
-`deskmat`, `internals`. `dock_latch` + `dock_latch_led` form the `dock_latch` sub-group
-pivot (it moves −z by 3 mm in the `release` dock step).
+`deskmat`, `internals`. The dock is latch-free, so nothing on it moves: `dock_sequence` is
+`align` (laptop 70 mm up, in the lead-in), `lower` (seated on the USB-C by its own weight) and
+`lift` (160 mm up, clear of the cradle), and the viewer lights `dock_led` while the laptop is seated.
 
 ## Rebuild
 
@@ -131,8 +132,11 @@ Everything is exported in the stow pose (laptop docked, keyboard and mouse in th
   (non-metallic, so Qi2 passes) sit over non-metallic coil windows. The shell is hollow, with mounting bosses. Rear I/O, exhaust grille and AC
   inlet are on the back face, with an amber under-glow and charge indicators at the front.
 * **Dock:** a swept side profile (spline, 120 mm at the back down to 60 at the front), a 20 mm slot
-  with 4 mm lead-in chamfers, oxblood panels inlaid flush, a press-release latch with an LED strip,
-  and a sprung USB-C plug.
+  with 4 mm lead-in chamfers, oxblood panels inlaid flush with the same 7 mm margins on the side and
+  front faces, and a sprung, self-centring USB-C plug. It is latch-free: the laptop's own weight seats
+  it on the plug and you lift it straight out (the slot walls hold it upright, so the plug is never
+  levered, and USB-C's own retention keeps it connected). The only thing on the front face is a slim
+  30 × 2 mm amber seated light, inlaid in the oxblood panel near the top edge on the slot axis.
 * **Devices:** a generic 304 × 212 × 15 laptop, a 75 % low-profile keyboard (84 keycaps fused into one
   solid), and an ambidextrous mouse lofted through 14 sections. Each device has its receiver coil(s).
 * **Internals:** the compute board with vapor chamber, fin stack and blower, the PSU, three Qi2 coils on
@@ -145,9 +149,12 @@ each such part's `mass_note` in `scene.json` says so.
 ## Verification (`verify.py`)
 
 1. Every part's bounding box is checked against the SPEC envelope numbers (±0.6 mm), along with the
-   display chord, the forward offset of the outer edges, and the latch size.
+   display chord, the forward offset of the outer edges, and the seated light (size, flush in its
+   pocket in the front panel, on the slot axis; no latch parts).
 2. Interference: boolean intersection volume ≤ 0.5 mm³ for every overlapping pair of parts in the stow
-   pose, the work and standalone poses, each `dock_sequence` step, and along the paths between them:
+   pose, the work and standalone poses, each `dock_sequence` step (and that each step is what it says:
+   `align` in the lead-in above the plug, `lower` on the slot floor with the plug in the port, `lift`
+   clear of the cradle), and along the paths between them:
    the laptop part-way out (10, 40 and 80 mm), the keyboard and mouse along their `via` waypoints
    (8 samples per segment, desk mat shown), and the explode slider at 0.1 … 0.9 in the stow and work
    poses. Two kinds of pair are expected to cross while exploding and are left out by name: the base
