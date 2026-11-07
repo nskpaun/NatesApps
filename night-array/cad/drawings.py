@@ -30,10 +30,10 @@ FONT = "Inter, 'Helvetica Neue', Arial, sans-serif"
 SCALES = [(1, 1), (1, 2), (1, 2.5), (1, 4), (1, 5), (1, 8), (1, 10), (1, 15), (1, 20)]
 ISO_DIR = (0.62, 0.52, 1.0)
 
-HIDDEN = {"base", "dock", "stand", "display", "laptop", "mouse"}
+HIDDEN = {"base", "dock", "stand", "display", "laptop", "mouse", "structure"}
 # groups whose lofted B-spline shells defeat the exact HLR silhouette search -> polygonal HLR on a fine mesh
 POLY_HLR = {"mouse"}
-GROUP_ORDER = ["display", "stand", "base", "dock", "laptop", "keyboard", "mouse", "deskmat", "internals"]
+GROUP_ORDER = ["display", "stand", "base", "dock", "laptop", "keyboard", "mouse", "deskmat", "structure", "electronics"]
 
 
 # ----------------------------------------------------------------------------
@@ -632,14 +632,14 @@ const jobs = JSON.parse(process.argv[1]);
         pass
 
 
-def export_all(parts, part_info, group_text, materials, part_mass, export_dir, groups=None):
+def export_all(parts, part_info, group_text, materials, part_mass, export_dir, groups=None, group_order=None):
     import time
     sdir = os.path.join(export_dir, "files", "drawings")
     pdir = os.path.join(export_dir, "drawings")
     os.makedirs(sdir, exist_ok=True)
     os.makedirs(pdir, exist_ok=True)
     svgs, pngs = [], []
-    for gi, gid in enumerate(GROUP_ORDER):
+    for gi, gid in enumerate(group_order or GROUP_ORDER):
         if groups and gid not in groups:
             continue
         t = time.time()

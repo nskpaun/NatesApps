@@ -1,10 +1,18 @@
 #!/usr/bin/env python3
-"""Night Array -- build every deliverable from params.py + model.py.
+"""Night Array -- build every deliverable from the kit package (cad/kit/), one command.
 
-    cad/.venv/bin/python cad/build.py            # everything, from scratch
-    cad/.venv/bin/python cad/build.py --only glb # just station.glb / edges / scene.json (fast iteration)
+    cad/.venv/bin/python cad/build.py                              # everything -> cad/export (wipes it first)
+    cad/.venv/bin/python cad/build.py --only glb|step|drawings     # one export stage into cad/export (no wipe)
+    cad/.venv/bin/python cad/build.py --only base --out /tmp/x     # ONE MODULE + the full assembly into a scratch dir
+                                                                   # (module = display|neck|base|dock|structure|electronics)
 
-Outputs (SPEC.md section 3) under cad/export/:
+Module builds never touch cad/export: they write <out>/model/{station.glb, station-edges.glb, scene.json} (the full
+assembly with the module's changes), <out>/parts/<part>.step|.stl for the module's parts, <out>/print/<filament>/
+<piece>.stl (Z-up, flat face down, at the origin) for its printed pieces, <out>/report.json (sizes, fits, masses,
+interference against everything else) and, for --only structure, <out>/metal/*.dxf.  Render previews of <out> with
+    node cad/tools/preview.mjs <out>                               # hero / back / top / section PNGs
+
+Outputs of the full build (SPEC.md section 3) under cad/export/:
   model/station.glb, model/station-edges.glb, model/scene.json     app axes: +Y up, metres
   files/night-array-assembly.step, files/parts/<group>.step|.stl   CAD axes: +Z up, mm (see to_cad_axes)
   files/drawings/<group>.svg|<group>-top.dxf, drawings/<group>.png
@@ -21,6 +29,7 @@ if __name__ == "__main__" and os.environ.get("PYTHONHASHSEED") != "0":
 
 import argparse  # noqa: E402
 import json  # noqa: E402
+import math  # noqa: E402
 import shutil  # noqa: E402
 import struct  # noqa: E402
 import time  # noqa: E402
@@ -45,15 +54,50 @@ from OCP.TopoDS import TopoDS  # noqa: E402
 from OCP.TopTools import TopTools_IndexedMapOfShape  # noqa: E402
 from OCP.gp import gp_Trsf  # noqa: E402
 
-import model  # noqa: E402
 import stepfile  # noqa: E402
-from params import P, COS_T, SIN_T, facet_point  # noqa: E402
+from kit import common as C  # noqa: E402
+from kit import registry as R  # noqa: E402
+from kit import purchased as PU  # noqa: E402
 
 EXPORT = os.path.join(HERE, "export")
+PREVIEW = os.path.join(HERE, "preview")
+COS_T, SIN_T = C.COS_T, C.SIN_T
+
+MATERIALS = R.MATERIALS
+MATERIAL_ORDER = list(MATERIALS.keys())
+PART_INFO = {p.id: dict(group=p.group, name=p.name, material=p.material, internal=p.internal, kind=p.kind)
+             for p in R.PARTS}
+PARTDEF = R.BY_ID
+GROUPS = R.GROUP_ORDER
+ANIMATED_GROUPS = R.ANIMATED_GROUPS
+GROUP_TEXT = R.GROUP_TEXT
+EXPLODE = R.EXPLODE
+
+# tessellation: (linear deflection mm, angular deflection rad)
+TESS_DEFAULT = (0.3, 0.35)
+TESS = {
+    "base_shell": (0.45, 0.4), "display_back": (0.5, 0.45), "monitor_housings": (0.4, 0.4),
+    "display_frame": (0.2, 0.35), "keyboard_keys": (0.2, 0.6), "neck_badge": (0.04, 0.35), "mouse_shell": (0.12, 0.2),
+    "laptop_body": (0.2, 0.3), "dock_cradle": (0.2, 0.25), "display_screen": (0.5, 0.5), "deskmat": (0.4, 0.4),
+    "fasteners": (0.2, 0.6), "lv_hub": (0.2, 0.6),
+}
+STL_TESS_DEFAULT = (0.3, 0.6)
+STL_TESS = {"mouse": (0.15, 0.4), "dock": (0.2, 0.5), "base": (0.3, 0.5), "stand": (0.2, 0.5),
+            "laptop": (0.2, 0.5), "deskmat": (0.2, 0.5)}
+
 
 # ----------------------------------------------------------------------------
-# materials
+# helpers (geometry -> meshes, GLB writer, STEP canonicalisation, axes)
 # ----------------------------------------------------------------------------
+
+def log(*a):
+    print(*a, flush=True)
+
+
+def tight_bbox(shape):
+    x0, y0, z0, x1, y1, z1 = C.tight_bbox(shape)
+    return [x0, y0, z0], [x1, y1, z1]
+
 
 def srgb_to_lin(h):
     h = h.lstrip("#")
@@ -62,215 +106,6 @@ def srgb_to_lin(h):
         c = int(h[i:i + 2], 16) / 255.0
         out.append(c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4)
     return out
-
-
-# key: label, sRGB colour, metallic, roughness, density g/cm3, (emissive sRGB)
-MATERIALS = {
-    "titanium":    ("Neutral Titanium", "#BDB2A4", 1.0, 0.32, 4.43, None, "Grade 5 titanium, bead-blasted and brushed"),
-    "graphite":    ("Charcoal Graphite", "#3A3735", 0.55, 0.48, 2.70, None,
-                    "charcoal graphite finish: anodised aluminium on metal parts, soft-touch polymer on the charging pads and mouse"),
-    "oxblood":     ("Brushed Oxblood", "#7A2E2A", 0.75, 0.36, 2.70, None, "brushed aluminium, oxblood anodise"),
-    "glass_black": ("Black Glass", "#060606", 0.0, 0.06, 2.50, None, "cover glass with black print"),
-    "screen":      ("Active Screen", "#08080A", 0.0, 0.12, 2.50, None, "IPS active area (2560 × 1440 each)"),
-    "keycap":      ("PBT Keycap", "#1C1A19", 0.0, 0.62, 1.30, None, "double-shot PBT"),
-    "rubber":      ("Rubber", "#141313", 0.0, 0.88, 1.20, None, "silicone rubber"),
-    "amber_led":   ("Amber Light", "#F2A04A", 0.0, 0.40, 1.19, "#F2A04A", "diffused amber LED under PMMA"),
-    "copper":      ("Copper", "#C9805A", 1.0, 0.33, 8.96, None, "copper windings"),
-    "pcb":         ("PCB", "#1D2A22", 0.0, 0.55, 1.85, None, "FR-4 with components"),
-    "ferrite":     ("Ferrite", "#2A2828", 0.0, 0.80, 4.80, None, "MnZn ferrite"),
-    "laptop_alu":  ("Laptop Aluminium", "#8C847B", 1.0, 0.38, 2.70, None, "aluminium unibody"),
-    "felt":        ("Wool Felt", "#2B2724", 0.0, 0.96, 0.30, None, "pressed wool felt"),
-    "steel":       ("Steel", "#9A9C9E", 1.0, 0.40, 7.85, None, "stainless steel"),
-}
-MATERIAL_ORDER = list(MATERIALS.keys())
-
-# Parts modelled as a solid envelope of a hollow device: effective density
-# (the material's real density x fill factor) so masses read like real devices.
-EFFECTIVE_DENSITY = {
-    "display_screen": (2.50, "visual skin only (0.3 mm over the active areas); the LCD modules are part of display_glass"),
-    "display_glass": (0.90, "solid envelope of the two stripped 27″ QHD LCD modules (black front, cell, backlight, steel tray), "
-                            "effective density"),
-    "tray_pad_kb": (1.20, "soft-touch PU over a glass-fibre carrier; non-metallic so Qi2 passes"),
-    "tray_pad_mouse": (1.20, "soft-touch PU over a glass-fibre carrier; non-metallic so Qi2 passes"),
-    "laptop_body": (1.35, "solid envelope; effective density of a 14″ aluminium laptop"),
-    "keyboard_body": (1.10, "solid envelope; aluminium chassis with internals, effective density"),
-    "mouse_shell": (0.45, "solid envelope; hollow PC/ABS shell with internals, effective density"),
-    "psu": (1.25, "solid envelope; GaN power supply, effective density"),
-    "compute_fan": (0.55, "solid envelope; blower housing and impeller, effective density"),
-    "display_boards": (1.10, "PCB + components, effective density"),
-    "compute_board": (1.60, "PCB + components, effective density"),
-    "dock_board": (1.60, "PCB + components, effective density"),
-    "qi_coil_kb": (5.40, "litz-wire winding, ~60% copper fill"),
-    "qi_coil_mouse": (5.40, "litz-wire winding, ~60% copper fill"),
-    "keyboard_coil": (5.40, "litz-wire winding, ~60% copper fill"),
-    "mouse_coil": (5.40, "litz-wire winding, ~60% copper fill"),
-    "compute_heatsink": (8.50, "copper vapor chamber + fins (nickel plated)"),
-}
-
-PART_INFO = {pid: dict(group=g, name=n, material=m, internal=i) for pid, g, n, m, i, _ in model.PARTS}
-GROUPS = model.GROUP_ORDER
-ANIMATED_GROUPS = {"laptop", "keyboard", "mouse"}
-
-GROUP_TEXT = {
-    "display": dict(
-        name="Dual 27″ display",
-        summary="Two mainstream 27″ QHD panels, toed in 10°, one 5120 × 1440 canvas with an honest titanium seam.",
-        description=("Two off-the-shelf 27″ 2560 × 1440 IPS monitors are stripped of their plastic housings, and their "
-                     "LCD modules hang on one steel VESA spine inside a shared graphite shroud. Each panel is toed in 10° "
-                     "about the seam, so the outer edges come 106 mm toward you and the 1.2 m wide canvas wraps your field of "
-                     "view like a 49-inch "
-                     "super-ultrawide. The 14 mm gap between the active areas is not hidden: a 4 mm titanium mullion runs the "
-                     "full height of the glass, and your OS already treats it as the border between two displays. A dead panel "
-                     "is a cheap swap, not a new monitor.")),
-    "stand": dict(
-        name="Neck & light bar",
-        summary="Trapezoid aluminium neck that carries the display and the cables, with the amber light bar under the screen.",
-        description=("A hollow trapezoid neck (320 mm at the foot, 180 mm at the top) leans back 4.8° and plugs 3 mm into "
-                     "the display's keel, so the steel spine sits directly on it. The hollow core is the cable chase from the "
-                     "compute board to the monitors' scaler boards. NIGHT ARRAY is inlaid in titanium on the front face, and an "
-                     "amber light bar glows on the neck face just below the display.")),
-    "base": dict(
-        name="Base & charging trays",
-        summary="1.29 m machined titanium tray with a recessed deck and two Qi2 charging pockets.",
-        description=("The base is one long titanium tray: a 16 mm rim, a deck recessed 6 mm, and two pockets that sink the "
-                     "keyboard to about deck level (its keycaps stay just below the rim) and cradle the mouse. Soft-touch "
-                     "polymer pads cover non-metallic windows in the pocket floors, "
-                     "because titanium would block Qi2; set a device down and it charges. Amber indicators sit on the front "
-                     "lip, an under-glow strip lights the desk, and the shell is hollow inside to hold the compute, power and "
-                     "coils. Rear I/O and the exhaust grille are on the back face, left side.")),
-    "dock": dict(
-        name="Laptop dock",
-        summary="Open right-wing cradle: guide the laptop in, its own weight seats it on a sprung USB-C, lift it straight out.",
-        description=("The dock wing rises 120 mm at the back and sweeps down in a concave curve to a 60 mm front, wrapped in "
-                     "brushed oxblood panels. A 20 mm slot with 4 mm lead-in chamfers guides a closed laptop in on its side, "
-                     "its own weight (about 13 N) seats it on a sprung, self-centring USB-C plug standing up from the slot "
-                     "floor, and to undock you simply lift it straight out. It works because the slot walls hold the laptop "
-                     "upright, so the plug only carries power and data and is never levered, while USB-C's own retention "
-                     "(roughly 8–20 N) keeps it connected. A slim amber light on the front face glows while the laptop is "
-                     "seated.")),
-    "laptop": dict(
-        name="Laptop",
-        summary="A slim laptop (up to about 19 mm) that stands closed in the dock on its own USB-C port: your hardware.",
-        description=("A generic 14-inch class laptop (304 × 212 × 15 mm, about 1.3 kg) stands closed on its left side, hinge "
-                     "toward the back. Set it in and its weight seats its USB-C port on the dock's sprung connector; lift it "
-                     "straight out to take it with you. Docked, it drives the dual display and charges; lifted out, the "
-                     "station keeps running on the compute in the base. Mass is an estimate for a real device.")),
-    "keyboard": dict(
-        name="Low-profile keyboard",
-        summary="75% low-profile keyboard that charges wirelessly in its pocket.",
-        description=("A 360 × 120 mm aluminium wedge (9 mm at the front, 13 mm at the back) with an 84-key 75% layout on an "
-                     "18.5 mm pitch. Two receiver coils under the chassis line up with the base's Qi2 coils when it is stowed. "
-                     "In work mode it lifts clear of the rim and comes 298 mm forward onto the felt mat, leaving 150 mm of open "
-                     "desk in front of the base.")),
-    "mouse": dict(
-        name="Mouse",
-        summary="Ambidextrous ergonomic mouse with an amber tail light and a Qi2 receiver coil.",
-        description=("A 66 × 118 × 38 mm ambidextrous shell lofted through fourteen sections, with a rubber scroll wheel, split "
-                     "buttons and an amber accent at the rear. Its receiver coil sits over the pocket's Qi2 coil when stowed. "
-                     "The mass is an effective estimate for a real hollow mouse.")),
-    "deskmat": dict(
-        name="Felt desk mat",
-        summary="820 × 300 mm wool felt mat for work mode.",
-        description=("A 3 mm pressed wool felt mat that defines the work zone in front of the base. It only appears in work and "
-                     "standalone modes, when the keyboard and mouse come out of their pockets.")),
-    "internals": dict(
-        name="Internals",
-        summary="Compute stays in the base: mainboard, vapor chamber, blower, PSU, Qi2 coils and the dock PCB.",
-        description=("Inside the hollow base: a 300 × 230 mm compute board with a vapor chamber and fin stack exhausting through "
-                     "the rear grille, a slim blower, a 140 × 158 mm internal power supply, three Qi2 transmitter coils on "
-                     "ferrite shields under the pocket windows and, under the cradle, the dock PCB that feeds the sprung USB-C plug "
-                     "and lights the seated indicator when the plug sees the laptop. "
-                     "Because compute stays in the base, the station works with or without the laptop.")),
-}
-
-# explode vectors, metres (offset at explode = 1)
-EXPLODE = {
-    # display: lifts clear of the neck, layers fan out along the view axis
-    "display_screen": [0.0, 0.42, 0.20],
-    "display_seam": [0.0, 0.42, 0.25],
-    "display_glass": [0.0, 0.42, 0.13],
-    "display_frame": [0.0, 0.42, 0.16],   # ahead of the glass: the rim wraps the modules' outer edges flush
-    "display_spine": [0.0, 0.42, -0.08],
-    "display_boards": [0.0, 0.42, -0.14],
-    "display_back": [0.0, 0.42, -0.23],
-    # stand
-    "neck": [0.0, 0.22, -0.03],
-    "neck_light": [0.0, 0.225, 0.03],     # relative to the neck: straight out along the face normal (4.8 deg lean)
-    "neck_badge": [0.0, 0.2283, 0.07],
-    # base: the shell lifts off its internals, which stay at desk level
-    "base_shell": [0.0, 0.12, 0.0],
-    "deck_liner": [0.0, 0.145, 0.0],
-    "tray_pad_kb": [0.0, 0.17, 0.0],
-    "tray_pad_mouse": [0.0, 0.17, 0.0],
-    "base_glow": [0.0, 0.10, 0.07],
-    "kb_charge_led": [0.0, 0.15, 0.06],
-    "mouse_charge_led": [0.0, 0.15, 0.06],
-    "base_feet": [0.0, 0.0, 0.0],
-    # dock wing slides out to the right
-    "dock_cradle": [0.24, 0.12, 0.0],
-    "dock_panels": [0.33, 0.12, 0.05],
-    "dock_led": [0.33, 0.12, 0.08],       # rides with the front panel it is inlaid in, straight out of its pocket
-    "dock_connector": [0.24, 0.20, 0.0],
-    "laptop_body": [0.24, 0.50, 0.0],
-    # devices rise above their pads, receiver coils between pad and device
-    "keyboard_body": [0.0, 0.25, 0.05],
-    "keyboard_keys": [0.0, 0.29, 0.05],
-    "keyboard_coil": [0.0, 0.21, 0.05],
-    "mouse_shell": [0.0, 0.25, 0.05],
-    "mouse_wheel": [0.0, 0.30, 0.05],
-    "mouse_glow": [0.0, 0.25, 0.09],
-    "mouse_coil": [0.0, 0.21, 0.05],
-    "deskmat": [0.0, 0.0, 0.08],
-    # internals stay on the desk, slightly fanned out
-    "compute_board": [0.0, 0.0, 0.0],
-    "compute_heatsink": [0.0, 0.035, 0.0],
-    "compute_fan": [0.0, 0.035, 0.03],
-    "psu": [0.0, 0.0, 0.0],
-    "qi_coil_kb": [0.0, 0.03, 0.0],
-    "qi_coil_mouse": [0.0, 0.03, 0.0],
-    "ferrite_kb": [0.0, 0.0, 0.0],
-    "ferrite_mouse": [0.0, 0.0, 0.0],
-    "dock_board": [0.24, 0.0, 0.0],
-}
-
-# tessellation: (linear deflection mm, angular deflection rad)
-TESS_DEFAULT = (0.25, 0.32)
-TESS = {
-    "base_shell": (0.45, 0.38), "display_back": (0.5, 0.42), "display_frame": (0.15, 0.3),
-    "keyboard_keys": (0.12, 0.6), "compute_heatsink": (0.3, 0.6), "neck_badge": (0.04, 0.35),
-    "mouse_shell": (0.12, 0.2), "mouse_glow": (0.1, 0.25), "laptop_body": (0.2, 0.3),
-    "dock_cradle": (0.2, 0.25), "display_screen": (0.5, 0.5), "display_glass": (0.3, 0.35),
-    "deskmat": (0.4, 0.4),
-}
-
-# STL tessellation per group: (absolute linear deflection mm, angular deflection rad).  Organic and
-# small parts get finer meshes; the big, mostly planar groups stay coarse to keep export/ ~20 MB.
-STL_TESS_DEFAULT = (0.3, 0.6)
-STL_TESS = {"mouse": (0.15, 0.4), "dock": (0.2, 0.5), "base": (0.25, 0.5), "stand": (0.2, 0.5),
-            "laptop": (0.2, 0.5), "deskmat": (0.2, 0.5)}
-
-
-# ----------------------------------------------------------------------------
-# helpers
-# ----------------------------------------------------------------------------
-
-def log(*a):
-    print(*a, flush=True)
-
-
-def bbox_of(shape):
-    bb = shape.BoundingBox()
-    return [bb.xmin, bb.ymin, bb.zmin], [bb.xmax, bb.ymax, bb.zmax]
-
-
-def tight_bbox(shape):
-    """Bounding box from the triangulation (OCC's BoundingBox can be loose on splines)."""
-    from OCP.Bnd import Bnd_Box
-    from OCP.BRepBndLib import BRepBndLib
-    b = Bnd_Box()
-    BRepBndLib.AddOptimal_s(shape.wrapped, b, False, False)
-    x0, y0, z0, x1, y1, z1 = b.Get()
-    return [x0, y0, z0], [x1, y1, z1]
 
 
 def tessellate(shape, lin, ang):
@@ -377,20 +212,16 @@ def edge_lines(shape, ang=0.2, curv=0.08):
 
 
 def screen_uv(P_):
-    """Split UV: left panel u 0 -> 0.5 (outer edge -> seam), right 0.5 -> 1; v 0 = top."""
-    d = P["display"]
-    sz = d["seam_axis_xz"][1]
+    """Split UV: left panel u 0 -> 0.5 (outer edge -> seam), right 0.5 -> 1; v 0 = top (one 5120 x 1440 canvas)."""
+    sz = C.seam_z()
+    u0, u1, ya, yb = PU.active_area()
     x, y, z = P_[:, 0], P_[:, 1], P_[:, 2]
     s_dist = np.abs(x) * COS_T + (z - sz) * SIN_T
-    frac = np.clip((s_dist - d["inner_border"]) / d["active"][0], 0.0, 1.0)
+    frac = np.clip((s_dist - u0) / (u1 - u0), 0.0, 1.0)
     u = np.where(x >= 0, 0.5 + 0.5 * frac, 0.5 - 0.5 * frac)
-    v = np.clip((d["active_y"][1] - y) / (d["active_y"][1] - d["active_y"][0]), 0.0, 1.0)
+    v = np.clip((yb - y) / (yb - ya), 0.0, 1.0)
     return np.stack([u, v], axis=1)
 
-
-# ----------------------------------------------------------------------------
-# GLB writer
-# ----------------------------------------------------------------------------
 
 class GLB:
     def __init__(self):
@@ -473,9 +304,82 @@ def gltf_material(key):
     return m
 
 
+def cq_color(key):
+    r, gg, b = [int(MATERIALS[key][1][i:i + 2], 16) / 255.0 for i in (1, 3, 5)]
+    return cq.Color(r, gg, b, 1.0)
+
+
+def normalise_step(path):
+    """Fixed FILE_NAME stamp + canonical order of the colour/style tail (see stepfile.py) -> reproducible bytes."""
+    stepfile.canonicalise_file(path)
+
+
+# The model is built in app axes (+Y up, +Z toward the user; SPEC.md section 1), and the GLBs / scene.json stay
+# there.  The CAD exchange files (STEP, STL) are written Z-up, the convention of FreeCAD, Onshape, current Fusion
+# and every slicer:
+#     CAD (x, y, z) = app (x, -z, y)
+# i.e. a +90 deg rotation about +X (right-handed, det +1): up (+Y app) -> +Z, the user side (+Z app) -> -Y, so
+# the CAD "Front" view (looking along +Y) faces the user side, and +X stays +X.  The desk is still z = 0.
+# Rows of the matrix, applied to column vectors (x_app, y_app, z_app).  The matrix is set entry by entry rather
+# than with SetRotation(90 deg), so every coordinate maps exactly (no cos(90 deg) = 6e-17 noise in the files).
+APP_TO_CAD = ((1, 0, 0), (0, 0, -1), (0, 1, 0))
+
+
+def to_cad_axes(shape):
+    """A copy of `shape` (app axes) with its geometry moved into the Z-up CAD axes (baked, no location)."""
+    t = gp_Trsf()
+    (a11, a12, a13), (a21, a22, a23), (a31, a32, a33) = APP_TO_CAD
+    t.SetValues(a11, a12, a13, 0, a21, a22, a23, 0, a31, a32, a33, 0)
+    return cq.Shape.cast(BRepBuilderAPI_Transform(shape.wrapped, t, True).Shape())
+
+
+
+
 # ----------------------------------------------------------------------------
-# pivots / mass
+# masses, pivots, print pieces
 # ----------------------------------------------------------------------------
+
+def part_mass(pid, shape):
+    """(grams, density g/cm3, note).  Purchased parts carry the research weight; printed parts use the shell +
+    infill model (common.print_mass_g); metal and hardware use volume x density of their material."""
+    p = PARTDEF[pid]
+    vol = shape.Volume()
+    if p.mass_g is not None:
+        g = p.mass_g
+        return g, (g / (vol / 1000.0) if vol > 0 else 0.0), p.mass_note or "manufacturer / research weight"
+    if p.kind == "printed":
+        g = C.print_mass_g(vol, shape.Area(), p.print)
+        return g, g / (vol / 1000.0), (f"printed {C.FILAMENT[p.print.filament][2]}, {int(p.print.infill * 100)} % infill, "
+                                       f"{p.print.walls} walls (shell + infill model)")
+    dens = MATERIALS[p.material][4]
+    return vol / 1000.0 * dens, dens, None
+
+
+def print_orient(shape, down):
+    """App-axes solid -> Z-up print orientation with the `down` face on the bed, min corner at the origin."""
+    rot = {"-y": None, "+y": ((1, 0, 0), 180), "+z": ((1, 0, 0), 90), "-z": ((1, 0, 0), -90),
+           "+x": ((0, 0, 1), -90), "-x": ((0, 0, 1), 90)}[down]
+    s = shape
+    if rot:
+        s = s.rotate(cq.Vector(0, 0, 0), cq.Vector(*rot[0]), rot[1])
+    s = to_cad_axes(s)
+    x0, y0, z0, x1, y1, z1 = C.tight_bbox(s)
+    return s.translate(cq.Vector(-x0, -y0, -z0))
+
+
+def print_pieces(pid, shape):
+    """[{name, solid, dims_mm, fits, grams, minutes}] for a printed part (one entry per solid)."""
+    p = PARTDEF[pid]
+    out = []
+    sols = shape.Solids()
+    for i, s in enumerate(sols):
+        fits, dims = C.print_fit(s)
+        g = C.print_mass_g(s.Volume(), s.Area(), p.print)
+        nm = pid if len(sols) == 1 else f"{pid}_{i + 1:02d}"
+        out.append({"name": nm, "solid": s, "dims_mm": [round(d, 1) for d in dims], "fits": fits,
+                    "grams": round(g, 1), "minutes": round(C.print_minutes(g))})
+    return out
+
 
 def group_bbox(parts, gid):
     mins, maxs = [], []
@@ -507,13 +411,8 @@ def compute_pivots(parts):
     return gp, node_pivot
 
 
-def part_mass(pid, vol_mm3):
-    dens = EFFECTIVE_DENSITY.get(pid, (MATERIALS[PART_INFO[pid]["material"]][4], None))[0]
-    return vol_mm3 / 1000.0 * dens, dens
-
-
 # ----------------------------------------------------------------------------
-# GLB export
+# GLB / STEP / STL export
 # ----------------------------------------------------------------------------
 
 def export_glbs(parts, node_pivot, outdir):
@@ -532,7 +431,8 @@ def export_glbs(parts, node_pivot, outdir):
         uvs = screen_uv(P_) if pid == "display_screen" else None
         mi = MATERIAL_ORDER.index(info["material"])
         mesh = g.add_mesh(pid, (P_ - piv) / 1000.0, T_, N_, uvs, mi)
-        extras = {"group": info["group"], "material": info["material"], "internal": bool(info["internal"])}
+        extras = {"group": info["group"], "material": info["material"], "internal": bool(info["internal"]),
+                  "kind": info["kind"]}
         g.add_node(pid, mesh, piv / 1000.0, extras)
         EP, ES = edge_lines(s)
         emesh = e.add_mesh(pid + "_edges", (EP - piv) / 1000.0, ES, material=0, mode=1)
@@ -542,39 +442,6 @@ def export_glbs(parts, node_pivot, outdir):
     g.write(os.path.join(outdir, "station.glb"), gen)
     e.write(os.path.join(outdir, "station-edges.glb"), gen)
     return stats
-
-
-# ----------------------------------------------------------------------------
-# STEP / STL
-# ----------------------------------------------------------------------------
-
-def cq_color(key):
-    r, gg, b = [int(MATERIALS[key][1][i:i + 2], 16) / 255.0 for i in (1, 3, 5)]
-    return cq.Color(r, gg, b, 1.0)
-
-
-def normalise_step(path):
-    """Fixed FILE_NAME stamp + canonical order of the colour/style tail (see stepfile.py) -> reproducible bytes."""
-    stepfile.canonicalise_file(path)
-
-
-# The model is built in app axes (+Y up, +Z toward the user; SPEC.md section 1), and the GLBs / scene.json stay
-# there.  The CAD exchange files (STEP, STL) are written Z-up, the convention of FreeCAD, Onshape, current Fusion
-# and every slicer:
-#     CAD (x, y, z) = app (x, -z, y)
-# i.e. a +90 deg rotation about +X (right-handed, det +1): up (+Y app) -> +Z, the user side (+Z app) -> -Y, so
-# the CAD "Front" view (looking along +Y) faces the user side, and +X stays +X.  The desk is still z = 0.
-# Rows of the matrix, applied to column vectors (x_app, y_app, z_app).  The matrix is set entry by entry rather
-# than with SetRotation(90 deg), so every coordinate maps exactly (no cos(90 deg) = 6e-17 noise in the files).
-APP_TO_CAD = ((1, 0, 0), (0, 0, -1), (0, 1, 0))
-
-
-def to_cad_axes(shape):
-    """A copy of `shape` (app axes) with its geometry moved into the Z-up CAD axes (baked, no location)."""
-    t = gp_Trsf()
-    (a11, a12, a13), (a21, a22, a23), (a31, a32, a33) = APP_TO_CAD
-    t.SetValues(a11, a12, a13, 0, a21, a22, a23, 0, a31, a32, a33, 0)
-    return cq.Shape.cast(BRepBuilderAPI_Transform(shape.wrapped, t, True).Shape())
 
 
 def export_step_stl(parts, files_dir):
@@ -598,9 +465,8 @@ def export_step_stl(parts, files_dir):
         sub.export(p, "STEP", write_pcurves=False)
         normalise_step(p)
         comp = cq.Compound.makeCompound(solids)
-        BRepTools.Clean_s(comp.wrapped)   # drop the finer GLB triangulation so the STL tolerance applies
+        BRepTools.Clean_s(comp.wrapped)
         lin, ang = STL_TESS.get(gid, STL_TESS_DEFAULT)
-        # absolute deflection (CadQuery's default is relative to edge length, which faceted the mouse badly)
         comp.exportStl(os.path.join(pdir, gid + ".stl"), tolerance=lin, angularTolerance=ang, ascii=False, relative=False)
     p = os.path.join(files_dir, "night-array-assembly.step")
     root.export(p, "STEP", write_pcurves=False)
@@ -618,21 +484,20 @@ def r6(v):
 def fmt_mm(v):
     v = round(v)
     s = f"{v:,}".replace(",", " ")
-    return f"{s} mm"
+    return f"{s} mm"
 
 
 def work_path(key):
     """Waypoints (mm deltas from stow) a device passes through on its way from its pocket to `key`'s work position."""
-    pm = P["poses_mm"]
+    pm = R.POSES_MM
     t = pm[key]
     return [[0.0, pm["work_lift"], 0.0], [t[0], pm["work_lift"], pm["work_clear_z"]]]
 
 
 def dock_sequence():
-    """The dock is latch-free: nothing to press or unlock, so every step moves the laptop alone (the viewer lights
-    dock_led while it is seated).  align: in the lead-in, above the 60 mm front lip; lower: seated on the USB-C by its
-    own weight (the stow pose); lift: straight up and clear of the cradle."""
-    pm = P["poses_mm"]
+    """Latch-free: align (in the lead-in above the 60 mm front lip), lower (seated by its own weight: stow pose),
+    lift (straight up, clear of the cradle)."""
+    pm = R.POSES_MM
     return [
         {"step": "align", "title": "Align", "caption": "Guide it into the open cradle",
          "laptop": {"t": [0, round(pm["dock_align_lift"] * 0.001, 6), 0]}},
@@ -642,9 +507,53 @@ def dock_sequence():
     ]
 
 
-def build_scene(parts, gp, files_index, drawings):
+def scene_params():
+    """params: the kit's interface numbers (common.LAYOUT + each module's table), plus the keys the app reads by dot
+    path (kept where cheap so the current app still finds them)."""
+    from kit import base as KB, dock as KD, display as KDI, neck as KN, structure as KS, electronics as KE
+    L = C.LAYOUT
+    kbp = KB.kb_pocket()
+    u0, u1, ya, yb = PU.active_area()
+    return {
+        "units": "mm",
+        "axes": "+X right, +Y up, +Z toward the user; desk y=0; x=0 at the display seam; z=0 base depth centre",
+        "pose": "stow",
+        "layout": L,
+        "tolerances": C.TOL,
+        "hardware": {"insert": C.INSERT, "dowel": C.DOWEL, "joint_screw": C.JOINT_SCREW, "magnet": C.MAGNET},
+        "print_max_mm": C.PRINT_MAX,
+        # --- backward-compatible keys the app reads (Content.kt / Specs.kt) -------------------------------
+        "base": {"x": L["base"]["x"], "z": L["base"]["z"], "height": L["base"]["height"], "deck_y": L["base"]["deck_y"],
+                 "rim_w": L["base"]["rim_w"],
+                 "kb_pocket": {"c": [(kbp[0] + kbp[1]) / 2, (kbp[2] + kbp[3]) / 2], "size": [kbp[1] - kbp[0], kbp[3] - kbp[2]],
+                               "floor_y": L["qi"]["kb_floor_y"]},
+                 "mouse_pocket": {"c": L["mouse"]["c"], "floor_y": L["qi"]["mouse_floor_y"]},
+                 "floor_over_coil": L["qi"]["floor_over_coil"], "pad": L["qi"]["pad"]},
+        "display": {"toe_in_deg": C.TOE_IN_DEG, "seam_mm": round(2 * u0, 2), "mullion_w": KDI.DISPLAY["seam"]["w"],
+                    "shroud_depth": -KDI.DISPLAY["shroud"]["inner_w"] + KDI.DISPLAY["shroud"]["wall"],
+                    "active": PU.S60UD["active"], "active_y": [round(ya, 2), round(yb, 2)],
+                    "face_bottom_y": L["display"]["face_bottom_y"], "vesa_y": L["display"]["vesa_y"],
+                    "seam_axis_xz": L["display"]["seam_axis_xz"], "monitor": "Samsung S60UD (LS27D606UANXGO)"},
+        "neck": {"y": KN.NECK["y"], "bottom_w": KN.NECK["bottom_w"], "top_w": KN.NECK["top_w"],
+                 "light": {"w": KN.NECK["light"]["w"], "y": KN.NECK["light"]["y"]}},
+        "dock": {"x": KD.K["x"], "z": KD.K["z"], "h_back": KD.K["h_back"], "h_front": KD.K["h_front"],
+                 "slot": KD.K["slot"], "landing_y": KD.K["landing_y"], "overmold_below": KD.K["overmold_below"],
+                 "led": KD.K["led"], "connector": {"z": KD.K["plug_z"], "cable": "Newnex U4T1C01CR5P010"},
+                 "laptop_t_range": [11.0, 20.0]},
+        "laptop": {"t": PU.LAPTOP["t"], "h": PU.LAPTOP["h"], "d": PU.LAPTOP["d"], "port_z": KD.K["plug_z"]},
+        "keyboard": {"model": "Keychron K3 Ultra 8K", "size": [PU.K3U["w"], PU.K3U["d"]], "h_front": PU.K3U["h_front"],
+                     "h_back": PU.K3U["h_rear"], "stow_x": L["keyboard"]["x"], "stow_z": L["keyboard"]["z"]},
+        "mouse": {"model": "Lenovo X9 4Y51R29290", "size": [PU.X9["w"], PU.X9["l"], PU.X9["h"]], "stow_c": L["mouse"]["c"]},
+        "deskmat": {"size": [PU.DESKMAT["w"], PU.DESKMAT["t"], PU.DESKMAT["d"]], "c": list(KB.DESKMAT_C)},
+        "structure": {"spine": KS.SPINE, "front_bar": KS.FRONT_BAR, "wing": KS.WING, "centre": KS.CENTRE,
+                      "feet_xz": KS.FEET_XZ},
+        "electronics": {"bays": {k: v[0] for k, v in KE.BAYS.items()}, "keepouts": {k: v[0] for k, v in KE.KEEPOUTS.items()}},
+        "poses_mm": R.POSES_MM,
+    }
+
+
+def build_scene(parts, gp, files_index, drawings, pieces):
     mm = 0.001
-    # bounds (stow pose, all parts except the hidden desk mat)
     mins, maxs = [], []
     pinfo = {}
     for pid, s in parts.items():
@@ -654,102 +563,111 @@ def build_scene(parts, gp, files_index, drawings):
             mins.append(a)
             maxs.append(b)
     bmin, bmax = np.min(mins, axis=0), np.max(maxs, axis=0)
+    masses = {pid: part_mass(pid, s) for pid, s in parts.items()}
 
     groups = []
     for gid in GROUPS:
-        pids = [pid for pid, *_ in model.PARTS if PART_INFO[pid]["group"] == gid]
+        pids = [p.id for p in R.PARTS if p.group == gid]
         a, b = group_bbox(parts, gid)
-        vol = sum(pinfo[p][2] for p in pids)
-        mass = sum(part_mass(p, pinfo[p][2])[0] for p in pids)
         mats = []
         for p in pids:
-            m = PART_INFO[p]["material"]
-            if m not in mats:
-                mats.append(m)
-        g = {"id": gid, **GROUP_TEXT[gid], "parts": pids, "pivot": r6(np.array(gp[gid]) * mm),
-             "bbox_mm": [round(float(x), 1) for x in (b - a)], "mass_g": round(mass, 1),
-             "volume_cm3": round(vol / 1000.0, 1), "materials": mats}
-        groups.append(g)
+            if PART_INFO[p]["material"] not in mats:
+                mats.append(PART_INFO[p]["material"])
+        groups.append({"id": gid, **GROUP_TEXT[gid], "parts": pids, "pivot": r6(np.array(gp[gid]) * mm),
+                       "bbox_mm": [round(float(x), 1) for x in (b - a)],
+                       "mass_g": round(sum(masses[p][0] for p in pids), 1),
+                       "volume_cm3": round(sum(pinfo[p][2] for p in pids) / 1000.0, 1), "materials": mats})
 
     plist = []
-    for pid, grp, name, mat, internal, _ in model.PARTS:
-        a, b, vol = pinfo[pid]
-        mass, dens = part_mass(pid, vol)
-        e = {"id": pid, "group": grp, "name": name, "material": mat, "internal": bool(internal),
-             "explode": EXPLODE[pid], "bbox_mm": [round(float(x), 1) for x in (np.array(b) - np.array(a))],
-             "volume_cm3": round(vol / 1000.0, 2), "mass_g": round(mass, 1), "density_g_cm3": dens}
-        if pid in EFFECTIVE_DENSITY:
-            e["mass_note"] = EFFECTIVE_DENSITY[pid][1]
-        if len(parts[pid].Solids()) > 1:
-            e["solids"] = len(parts[pid].Solids())
+    for p in R.PARTS:
+        a, b, vol = pinfo[p.id]
+        g, dens, note = masses[p.id]
+        e = {"id": p.id, "group": p.group, "name": p.name, "material": p.material, "internal": bool(p.internal),
+             "kind": p.kind, "explode": EXPLODE[p.id], "bbox_mm": [round(float(x), 1) for x in (np.array(b) - np.array(a))],
+             "volume_cm3": round(vol / 1000.0, 2), "mass_g": round(g, 1), "density_g_cm3": round(dens, 3),
+             "owner": p.owner}
+        if note:
+            e["mass_note"] = note
+        if p.bom:
+            e["bom"] = p.bom
+        if p.kind == "printed":
+            pcs = pieces[p.id]
+            fil = C.FILAMENT[p.print.filament]
+            e["print"] = {"filament": p.print.filament, "filament_product": f"{fil[0]} {fil[1]}", "down": p.print.down,
+                          "supports": p.print.supports, "infill": p.print.infill,
+                          "grams": round(sum(x["grams"] for x in pcs), 1),
+                          "minutes": int(sum(x["minutes"] for x in pcs)), "plate": p.print.plate,
+                          "file": f"print/{p.print.filament}/{pcs[0]['name']}.stl",
+                          "pieces": [{"name": x["name"], "file": f"print/{p.print.filament}/{x['name']}.stl",
+                                      "dims_mm": x["dims_mm"], "fits": x["fits"], "grams": x["grams"],
+                                      "minutes": x["minutes"]} for x in pcs]}
+            if p.split:
+                e["print"]["split"] = p.split
+        if len(parts[p.id].Solids()) > 1:
+            e["solids"] = len(parts[p.id].Solids())
         plist.append(e)
 
-    pm = P["poses_mm"]
+    pm = R.POSES_MM
 
     def out_of_pocket(key):
-        # the straight line from the pocket to the mat runs through the 36 mm rim: lift clear, slide out, set down
         return {"t": r6(np.array(pm[key]) * mm), "via": [r6(np.array(v) * mm) for v in work_path(key)]}
 
-    poses = {
-        "stow": {"deskmat": {"hidden": True}},
-        "work": {"keyboard": out_of_pocket("work_keyboard"), "mouse": out_of_pocket("work_mouse")},
-        "standalone": {"keyboard": out_of_pocket("work_keyboard"), "mouse": out_of_pocket("work_mouse"),
-                       "laptop": {"hidden": True}},
-    }
+    poses = {"stow": {"deskmat": {"hidden": True}},
+             "work": {"keyboard": out_of_pocket("work_keyboard"), "mouse": out_of_pocket("work_mouse")}}
 
-    d = P["display"]
+    u0, u1, ya, yb = PU.active_area()
     fr_a, fr_b = tight_bbox(parts["display_frame"])
-    disp_a, disp_b = tight_bbox(parts["display_back"])
-    dmin_x = min(fr_a[0], disp_a[0])
-    L_out = d["inner_border"] + d["active"][0] + d["outer_border"] + d["frame_w"]
-    # display width at its true extremes: the shroud's outer back corners, just below the R7 top corners
-    y_w = d["glass_y"][1] + d["frame_w"] - d["frame_corner_r"]
-    outer_r = facet_point(1, L_out, y_w, -d["shroud_thin"])
-    outer_l = facet_point(-1, L_out, y_w, -d["shroud_thin"])
-    a_in = facet_point(1, d["inner_border"], d["active_y"][1], d["screen_proud"])
-    a_out = facet_point(1, d["inner_border"] + d["active"][0], d["active_y"][1], d["screen_proud"])
-    s_l = facet_point(-1, d["inner_border"], d["active_y"][0], d["screen_proud"])
-    s_r = facet_point(1, d["inner_border"], d["active_y"][0], d["screen_proud"])
-    bx0, bx1 = P["base"]["x"]
-    bz0, bz1 = P["base"]["z"]
-    kbz = P["keyboard"]["stow_c"][1] - P["keyboard"]["size"][1] / 2 + pm["work_keyboard"][2]
+    bk_a, bk_b = tight_bbox(parts["display_back"])
+    L = C.LAYOUT
+    bx0, bx1 = L["base"]["x"]
+    bz0, bz1 = L["base"]["z"]
+    outer_l = (fr_a[0], (fr_a[1] + fr_b[1]) / 2, fr_b[2])
+    outer_r = (fr_b[0], (fr_a[1] + fr_b[1]) / 2, fr_b[2])
+    a_in = C.facet_point(1, u0, yb, 0.3)
+    a_out = C.facet_point(1, u1, yb, 0.3)
+    s_l = C.facet_point(-1, u0, ya, 0.3)
+    s_r = C.facet_point(1, u0, ya, 0.3)
+    kz1 = L["keyboard"]["z"][0] + pm["work_keyboard"][2]
+    kxc = sum(L["keyboard"]["x"]) / 2
+    from kit import dock as KD
     dims = [
         {"id": "overall_w", "a": r6([bmin[0] * mm, 0, bz1 * mm]), "b": r6([bmax[0] * mm, 0, bz1 * mm]), "dir": [0, 0, 1]},
         {"id": "base_depth", "a": r6([bx0 * mm, 0, bz0 * mm]), "b": r6([bx0 * mm, 0, bz1 * mm]), "dir": [-1, 0, 0]},
-        {"id": "overall_h", "a": r6([dmin_x * mm, 0, outer_l[2] * mm]),
-         "b": r6([dmin_x * mm, bmax[1] * mm, outer_l[2] * mm]), "dir": [-1, 0, 0]},
-        {"id": "display_w", "a": r6(np.array(outer_l) * mm), "b": r6(np.array(outer_r) * mm), "dir": [0, 1, 0]},
-        {"id": "panel_active_w", "label": "596.7 mm · 27″ active", "a": r6(np.array(a_in) * mm),
-         "b": r6(np.array(a_out) * mm), "dir": [0, 1, 0]},
-        {"id": "seam", "label": "14 mm seam", "a": r6(np.array(s_l) * mm), "b": r6(np.array(s_r) * mm), "dir": [0, -1, 0]},
-        {"id": "work_offset", "pose": "work",
-         "a": r6([P["keyboard"]["stow_c"][0] * mm, 0.003, bz1 * mm]), "b": r6([P["keyboard"]["stow_c"][0] * mm, 0.003, kbz * mm]),
+        {"id": "overall_h", "a": r6([bmin[0] * mm, 0, fr_b[2] * mm]), "b": r6([bmin[0] * mm, bmax[1] * mm, fr_b[2] * mm]),
          "dir": [-1, 0, 0]},
-        {"id": "dock_h", "a": r6([P["dock"]["x"][1] * mm, 0, P["dock"]["z"][0] * mm]),
-         "b": r6([P["dock"]["x"][1] * mm, P["dock"]["h_back"] * mm, P["dock"]["z"][0] * mm]), "dir": [1, 0, 0]},
-        {"id": "base_h", "a": r6([bx1 * mm - 0.04, 0, bz1 * mm]),
-         "b": r6([bx1 * mm - 0.04, P["base"]["height"] * mm, bz1 * mm]), "dir": [0, 0, 1]},
+        {"id": "display_w", "a": r6(np.array(outer_l) * mm), "b": r6(np.array(outer_r) * mm), "dir": [0, 1, 0]},
+        {"id": "panel_active_w", "label": f"{PU.S60UD['active'][0]:.1f} mm · 27″ active", "a": r6(np.array(a_in) * mm),
+         "b": r6(np.array(a_out) * mm), "dir": [0, 1, 0]},
+        {"id": "seam", "label": f"{2 * u0:.0f} mm seam", "a": r6(np.array(s_l) * mm), "b": r6(np.array(s_r) * mm),
+         "dir": [0, -1, 0]},
+        {"id": "work_offset", "pose": "work", "a": r6([kxc * mm, 0.003, bz1 * mm]), "b": r6([kxc * mm, 0.003, kz1 * mm]),
+         "dir": [-1, 0, 0]},
+        {"id": "dock_h", "a": r6([KD.K["x"][1] * mm, 0, KD.K["z"][0] * mm]),
+         "b": r6([KD.K["x"][1] * mm, KD.K["h_back"] * mm, KD.K["z"][0] * mm]), "dir": [1, 0, 0]},
+        {"id": "base_h", "a": r6([bx1 * mm - 0.04, 0, bz1 * mm]), "b": r6([bx1 * mm - 0.04, L["base"]["height"] * mm, bz1 * mm]),
+         "dir": [0, 0, 1]},
     ]
-    # length labels are the measured distance between the two points (seam and panel_active_w keep their nominal text)
     order = ("id", "label", "pose", "a", "b", "dir")
     for i, dm in enumerate(dims):
         if "label" not in dm:
             dm["label"] = fmt_mm(np.linalg.norm(np.array(dm["b"]) - np.array(dm["a"])) / mm)
         dims[i] = {k: dm[k] for k in order if k in dm}
-    screen = {"part": "display_screen", "layout": "dual", "panels": 2, "panel_inch": d["panel_inch"],
-              "panel_active_mm": d["active"], "resolution_each": d["resolution_each"], "seam_mm": d["seam_mm"],
-              "toe_in_deg": d["toe_in_deg"], "seam_axis": [0, 0, round(d["seam_axis_xz"][1] * mm, 6)],
-              "canvas": [5120, 1440], "active_y_mm": d["active_y"],
+    screen = {"part": "display_screen", "layout": "dual", "panels": 2, "panel_inch": 27,
+              "panel_active_mm": PU.S60UD["active"], "resolution_each": [2560, 1440], "seam_mm": round(2 * u0, 2),
+              "toe_in_deg": C.TOE_IN_DEG, "seam_axis": [0, 0, round(C.seam_z() * mm, 6)], "canvas": [5120, 1440],
+              "active_y_mm": [round(ya, 2), round(yb, 2)],
               "uv": "TEXCOORD_0: left panel u 0->0.5 (outer edge -> seam), right panel u 0.5->1 (seam -> outer edge); v 0 = top"}
-
     mats = {k: {"label": v[0], "color": v[1], "metallic": v[2], "roughness": v[3], "density_g_cm3": v[4],
                 "spec": v[6], **({"emissive": True} if v[5] else {})} for k, v in MATERIALS.items()}
+    kinds = {}
+    for p in plist:
+        kinds[p["kind"]] = kinds.get(p["kind"], 0) + 1
     return {
         "version": 1,
         "units": "m",
-        "name": "Night Array — Work & Stow",
+        "name": "Night Array — Work & Stow (buildable kit)",
         "tagline": "Your hardware. Your OS.",
-        "params": P,
+        "params": scene_params(),
         "bounds": {"min": r6(bmin * mm), "max": r6(bmax * mm)},
         "materials": mats,
         "groups": groups,
@@ -760,7 +678,10 @@ def build_scene(parts, gp, files_index, drawings):
         "screen": screen,
         "files": files_index,
         "drawings": drawings,
-        "mass_note": "Masses are concept-level estimates from the B-rep volumes and real densities; solid envelopes of hollow devices use effective densities (see parts[].mass_note).",
+        "kit": {"kinds": kinds, "print_max_mm": C.PRINT_MAX,
+                "total_mass_g": round(sum(m[0] for pid, m in masses.items() if pid != "deskmat"), 0)},
+        "mass_note": ("Purchased parts use manufacturer / research weights (monitors 3.6 kg each); steel and aluminium "
+                      "use volume x density; printed parts use a shell + infill model of the slicer mass."),
     }
 
 
@@ -784,48 +705,142 @@ def files_index_for(export_dir):
 
 
 # ----------------------------------------------------------------------------
+# module build (scratch dir)
+# ----------------------------------------------------------------------------
+
+def interference_report(parts, pids, others=None, tol=0.5):
+    """[(a, b, mm3)] for every pair (a in pids, b anywhere) whose solids intersect by more than tol."""
+    boxes = {pid: C.tight_bbox(s) for pid, s in parts.items()}
+    out = []
+    ids = list(parts)
+    seen = set()
+    for a in pids:
+        for b in (others or ids):
+            if a == b or (b, a) in seen:
+                continue
+            seen.add((a, b))
+            A, B = boxes[a], boxes[b]
+            if not all(A[i] - 0.05 <= B[i + 3] and B[i] - 0.05 <= A[i + 3] for i in range(3)):
+                continue
+            v = parts[a].intersect(parts[b]).Volume()
+            if v > tol:
+                out.append((a, b, round(v, 2)))
+    return out
+
+
+def write_print_stls(pid, pcs, outdir):
+    p = PARTDEF[pid]
+    d = os.path.join(outdir, "print", p.print.filament)
+    os.makedirs(d, exist_ok=True)
+    files = []
+    for x in pcs:
+        s = print_orient(x["solid"], p.print.down)
+        fn = os.path.join(d, x["name"] + ".stl")
+        s.exportStl(fn, tolerance=0.05, angularTolerance=0.2, ascii=False, relative=False)
+        files.append(fn)
+    return files
+
+
+def build_module(module, outdir, parts):
+    from kit import structure as KS
+    pids = R.parts_of_module(module)
+    log(f"module {module}: {len(pids)} parts -> {outdir}")
+    os.makedirs(os.path.join(outdir, "model"), exist_ok=True)
+    os.makedirs(os.path.join(outdir, "parts"), exist_ok=True)
+    gp, node_pivot = compute_pivots(parts)
+    export_glbs(parts, node_pivot, os.path.join(outdir, "model"))
+    pieces = {pid: print_pieces(pid, s) for pid, s in parts.items() if PARTDEF[pid].kind == "printed"}
+    rep = {"module": module, "parts": {}, "interference": [], "too_big": []}
+    for pid in pids:
+        s = parts[pid]
+        sc = to_cad_axes(s)
+        cq.exporters.export(sc, os.path.join(outdir, "parts", pid + ".step"))
+        sc.exportStl(os.path.join(outdir, "parts", pid + ".stl"), tolerance=0.1, angularTolerance=0.3, ascii=False,
+                     relative=False)
+        g, dens, note = part_mass(pid, s)
+        a, b = tight_bbox(s)
+        e = {"kind": PARTDEF[pid].kind, "solids": len(s.Solids()), "bbox_mm": [round(v, 1) for v in (np.array(b) - np.array(a))],
+             "mass_g": round(g, 1)}
+        if pid in pieces:
+            write_print_stls(pid, pieces[pid], outdir)
+            e["pieces"] = [{k: v for k, v in x.items() if k != "solid"} for x in pieces[pid]]
+            rep["too_big"] += [x["name"] for x in pieces[pid] if not x["fits"]]
+        rep["parts"][pid] = e
+    if module == "structure":
+        KS.write_metal(os.path.join(outdir, "metal"))
+        rep["metal_problems"] = KS.check_flat_patterns()
+    log("interference (module parts vs everything, stow) ...")
+    rep["interference"] = interference_report(parts, pids)
+    for a, b, v in rep["interference"]:
+        log(f"  INTERFERENCE {a} x {b}: {v} mm3")
+    for n in rep["too_big"]:
+        log(f"  TOO BIG FOR THE BED: {n}")
+    scene = build_scene(parts, gp, files_index_for(outdir), {}, pieces)
+    with open(os.path.join(outdir, "model", "scene.json"), "w") as f:
+        json.dump(scene, f, indent=1, ensure_ascii=False)
+        f.write("\n")
+    with open(os.path.join(outdir, "report.json"), "w") as f:
+        json.dump(rep, f, indent=1)
+    log(f"report: {os.path.join(outdir, 'report.json')}  (preview: node cad/tools/preview.mjs {outdir})")
+
+
+# ----------------------------------------------------------------------------
 # main
 # ----------------------------------------------------------------------------
 
+MODULE_NAMES = list(R.MODULES)
+
+
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--only", choices=["glb", "step", "drawings", "all"], default="all")
+    ap.add_argument("--only", choices=["glb", "step", "drawings", "all"] + MODULE_NAMES, default="all")
     ap.add_argument("--keep", action="store_true", help="do not wipe export/ first")
-    ap.add_argument("--out", default=None, help="write somewhere other than cad/export (e.g. to diff two builds)")
+    ap.add_argument("--out", default=None, help="write somewhere other than cad/export (module builds: a scratch dir)")
     args = ap.parse_args()
-    EXPORT = os.path.abspath(args.out) if args.out else globals()["EXPORT"]
     t0 = time.time()
-    if args.only == "all" and not args.keep and os.path.isdir(EXPORT):
-        if os.listdir(EXPORT) and not os.path.isdir(os.path.join(EXPORT, "model")):
-            sys.exit(f"refusing to wipe {EXPORT}: it does not look like an export directory")
-        shutil.rmtree(EXPORT)
+    if args.only in MODULE_NAMES:
+        out = os.path.abspath(args.out) if args.out else os.path.join(PREVIEW, args.only)
+        if os.path.abspath(out).startswith(os.path.abspath(EXPORT)):
+            sys.exit("module builds never write into cad/export: pass --out <scratch dir>")
+        log("building parts ...")
+        parts = R.build_parts()
+        if C.FILLET_LOG:
+            log("WARNING fillet/chamfer fallbacks:\n  " + "\n  ".join(C.FILLET_LOG))
+        build_module(args.only, out, parts)
+        log(f"done in {time.time() - t0:.1f}s")
+        return
+    EXP = os.path.abspath(args.out) if args.out else EXPORT
+    if args.only == "all" and not args.keep and os.path.isdir(EXP):
+        if os.listdir(EXP) and not os.path.isdir(os.path.join(EXP, "model")):
+            sys.exit(f"refusing to wipe {EXP}: it does not look like an export directory")
+        shutil.rmtree(EXP)
     for d in ("model", "files/parts", "files/drawings", "drawings"):
-        os.makedirs(os.path.join(EXPORT, d), exist_ok=True)
+        os.makedirs(os.path.join(EXP, d), exist_ok=True)
 
     log("building parts ...")
-    parts = model.build_all()
-    if model.FILLET_LOG:
-        log("WARNING fillet/chamfer fallbacks:\n  " + "\n  ".join(model.FILLET_LOG))
+    parts = R.build_parts()
+    if C.FILLET_LOG:
+        log("WARNING fillet/chamfer fallbacks:\n  " + "\n  ".join(C.FILLET_LOG))
     gp, node_pivot = compute_pivots(parts)
+    pieces = {pid: print_pieces(pid, s) for pid, s in parts.items() if PARTDEF[pid].kind == "printed"}
 
     if args.only in ("all", "glb"):
         log("writing GLBs ...")
-        st = export_glbs(parts, node_pivot, os.path.join(EXPORT, "model"))
-        nv = sum(v[0] for v in st.values())
-        nt = sum(v[1] for v in st.values())
-        log(f"  {nv} vertices, {nt} triangles")
+        st = export_glbs(parts, node_pivot, os.path.join(EXP, "model"))
+        log(f"  {sum(v[0] for v in st.values())} vertices, {sum(v[1] for v in st.values())} triangles")
     if args.only in ("all", "step"):
         log("writing STEP / STL ...")
-        export_step_stl(parts, os.path.join(EXPORT, "files"))
+        export_step_stl(parts, os.path.join(EXP, "files"))
     drawings = {gid: f"drawings/{gid}.png" for gid in GROUPS}
     if args.only in ("all", "drawings"):
         import drawings as dr
         log("writing drawings ...")
-        dr.export_all(parts, PART_INFO, GROUP_TEXT, MATERIALS, part_mass, EXPORT)
+        dr.export_all(parts, PART_INFO, GROUP_TEXT, MATERIALS, lambda pid, vol: part_mass(pid, parts[pid]), EXP,
+                      group_order=GROUPS)
 
-    files = files_index_for(EXPORT)
-    scene = build_scene(parts, gp, files, drawings)
-    with open(os.path.join(EXPORT, "model", "scene.json"), "w") as f:
+    files = files_index_for(EXP)
+    scene = build_scene(parts, gp, files, drawings, pieces)
+    with open(os.path.join(EXP, "model", "scene.json"), "w") as f:
         json.dump(scene, f, indent=1, ensure_ascii=False)
         f.write("\n")
     log(f"done in {time.time() - t0:.1f}s")
