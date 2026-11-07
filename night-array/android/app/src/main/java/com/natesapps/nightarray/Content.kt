@@ -129,7 +129,7 @@ val STORIES = listOf(
             "Pick the metal: Neutral Titanium, Charcoal Graphite or Brushed Oxblood. The rest of the palette holds still.",
         ),
         listOf(
-            StorySpec("Primary metal", "Titanium, 4.43 g/cm³"), StorySpec("Soft surfaces", "Charcoal graphite"), StorySpec("Accent", "Brushed oxblood panels"),
+            StorySpec("Primary metal", "Titanium, 4.43 g/cm³"), StorySpec("Soft surfaces", "Charcoal graphite: soft-touch pads, anodised neck and shroud"), StorySpec("Accent", "Brushed oxblood panels"),
             StorySpec("Panel faces", "Black glass"), StorySpec("Finishes", "Titanium · Graphite · Oxblood"),
         ),
         listOf(StoryStill("finish-titanium.jpg", "Neutral Titanium."), StoryStill("finish-graphite.jpg", "Charcoal Graphite."), StoryStill("finish-oxblood.jpg", "Brushed Oxblood.")),

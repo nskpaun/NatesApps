@@ -146,7 +146,7 @@ GROUP_TEXT = {
                      "out; the amber strip on the latch glows while the laptop is locked in and goes dark when you press it.")),
     "laptop": dict(
         name="Laptop",
-        summary="Any slim laptop, standing closed on its side in the dock: your hardware.",
+        summary="A slim laptop (up to about 19 mm) with a USB-C port on its left side, standing closed in the dock: your hardware.",
         description=("A generic 14-inch class laptop (304 × 212 × 15 mm) stands closed on its left side, hinge toward the back, "
                      "with its USB-C port seated on the dock's sprung connector. Docked, it drives the dual display and charges; "
                      "lifted out, the station keeps running on the compute in the base. Mass is an estimate for a real device.")),

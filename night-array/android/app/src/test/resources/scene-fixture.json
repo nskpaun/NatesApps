@@ -176,8 +176,8 @@
     "h": 5.0,
     "depth": 3.0,
     "y": [
-     148.0,
-     153.0
+     126.0,
+     131.0
     ]
    },
    "badge": {
@@ -220,6 +220,8 @@
     507.7
    ],
    "glass_t": 2.0,
+   "module_t": 10.0,
+   "module_inset": 1.5,
    "screen_proud": 0.3,
    "glass_corner_r": 4.0,
    "frame_w": 3.0,
@@ -228,7 +230,7 @@
    "frame_corner_r": 7.0,
    "mullion_w": 4.0,
    "mullion_front_z": -60.6,
-   "shroud_thin": 14.0,
+   "shroud_thin": 16.0,
    "shroud_depth": 45.0,
    "shroud_wall": 2.5,
    "bump_front": {
@@ -276,7 +278,7 @@
      255.0,
      425.0
     ],
-    "t": 2.5
+    "t": 2.0
    },
    "spine_arm": {
     "u_max": 236.0,
@@ -285,8 +287,8 @@
      352.0
     ],
     "w": [
-     -14.0,
-     -4.5
+     -23.5,
+     -14.0
     ]
    },
    "spine_post": {
@@ -296,9 +298,10 @@
      352.0
     ],
     "z": [
-     -104.0,
-     -66.0
-    ]
+     -114.0,
+     -76.0
+    ],
+    "wall": 3.0
    },
    "spine_foot": {
     "x": 88.0,
@@ -321,8 +324,8 @@
      348.0
     ],
     "w_pcb": [
-     -24.0,
-     -22.4
+     -25.6,
+     -24.0
     ]
    }
   },
@@ -653,7 +656,9 @@
     -15.0,
     298.0
    ],
-   "dock_align_lift": 140.0,
+   "work_lift": 30.0,
+   "work_clear_z": 200.0,
+   "dock_align_lift": 70.0,
    "dock_lift_out": 160.0,
    "latch_travel": 3.0
   }
@@ -685,7 +690,7 @@
    "metallic": 0.55,
    "roughness": 0.48,
    "density_g_cm3": 2.7,
-   "spec": "anodised aluminium, charcoal graphite finish"
+   "spec": "charcoal graphite finish: anodised aluminium on metal parts, soft-touch polymer on the charging pads and mouse"
   },
   "oxblood": {
    "label": "Brushed Oxblood",
@@ -709,7 +714,7 @@
    "metallic": 0.0,
    "roughness": 0.12,
    "density_g_cm3": 2.5,
-   "spec": "IPS active area (2560x1440 each)"
+   "spec": "IPS active area (2560 × 1440 each)"
   },
   "keycap": {
    "label": "PBT Keycap",
@@ -788,9 +793,9 @@
  "groups": [
   {
    "id": "display",
-   "name": "Dual 27\" display",
-   "summary": "Two mainstream 27\" QHD panels, toed in 10 degrees, one 5120 x 1440 canvas with an honest titanium seam.",
-   "description": "Two off-the-shelf 27-inch 2560 x 1440 IPS monitors are stripped of their plastic and hung on one steel VESA spine inside a shared graphite shroud. Each panel is toed in 10 degrees about the seam, so the outer edges come 106 mm toward you and the 1.2 m wide canvas wraps your field of view like a 49-inch super-ultrawide. The 14 mm gap between the active areas is not hidden: a 4 mm titanium mullion runs the full height of the glass, and your OS already treats it as the border between two displays. A dead panel is a cheap swap, not a new monitor.",
+   "name": "Dual 27″ display",
+   "summary": "Two mainstream 27″ QHD panels, toed in 10°, one 5120 × 1440 canvas with an honest titanium seam.",
+   "description": "Two off-the-shelf 27″ 2560 × 1440 IPS monitors are stripped of their plastic housings, and their LCD modules hang on one steel VESA spine inside a shared graphite shroud. Each panel is toed in 10° about the seam, so the outer edges come 106 mm toward you and the 1.2 m wide canvas wraps your field of view like a 49-inch super-ultrawide. The 14 mm gap between the active areas is not hidden: a 4 mm titanium mullion runs the full height of the glass, and your OS already treats it as the border between two displays. A dead panel is a cheap swap, not a new monitor.",
    "parts": [
     "display_screen",
     "display_glass",
@@ -806,12 +811,12 @@
     -0.048645
    ],
    "bbox_mm": [
-    1217.6,
+    1218.2,
     366.7,
     188.7
    ],
-   "mass_g": 11258.8,
-   "volume_cm3": 3118.8,
+   "mass_g": 12176.4,
+   "volume_cm3": 7322.7,
    "materials": [
     "screen",
     "glass_black",
@@ -825,7 +830,7 @@
    "id": "stand",
    "name": "Neck & light bar",
    "summary": "Trapezoid aluminium neck that carries the display and the cables, with the amber light bar under the screen.",
-   "description": "A hollow trapezoid neck (320 mm at the foot, 180 mm at the top) leans back 4.8 degrees and plugs 3 mm into the display's keel, so the steel spine sits directly on it. The hollow core is the cable chase from the compute board to the monitors' scaler boards. NIGHT ARRAY is inlaid in titanium on the front face and an amber light bar washes the top edge just below the glass.",
+   "description": "A hollow trapezoid neck (320 mm at the foot, 180 mm at the top) leans back 4.8° and plugs 3 mm into the display's keel, so the steel spine sits directly on it. The hollow core is the cable chase from the compute board to the monitors' scaler boards. NIGHT ARRAY is inlaid in titanium on the front face, and an amber light bar glows on the neck face just below the display.",
    "parts": [
     "neck",
     "neck_light",
@@ -853,7 +858,7 @@
    "id": "base",
    "name": "Base & charging trays",
    "summary": "1.29 m machined titanium tray with a recessed deck and two Qi2 charging pockets.",
-   "description": "The base is one long titanium tray: a 16 mm rim, a deck recessed 6 mm, and two pockets that take the keyboard and mouse flush with the rim. Soft-touch pads cover non-metallic windows in the pocket floors, because titanium would block Qi2; set a device down and it charges. Amber indicators sit on the front lip, an under-glow strip lights the desk, and the shell is hollow inside to hold the compute, power and coils. Rear I/O and the exhaust grille are on the back face, left side.",
+   "description": "The base is one long titanium tray: a 16 mm rim, a deck recessed 6 mm, and two pockets that sink the keyboard to about deck level (its keycaps stay just below the rim) and cradle the mouse. Soft-touch polymer pads cover non-metallic windows in the pocket floors, because titanium would block Qi2; set a device down and it charges. Amber indicators sit on the front lip, an under-glow strip lights the desk, and the shell is hollow inside to hold the compute, power and coils. Rear I/O and the exhaust grille are on the back face, left side.",
    "parts": [
     "base_shell",
     "deck_liner",
@@ -874,7 +879,7 @@
     36.0,
     300.0
    ],
-   "mass_g": 11522.3,
+   "mass_g": 11341.3,
    "volume_cm3": 2777.4,
    "materials": [
     "titanium",
@@ -887,7 +892,7 @@
    "id": "dock",
    "name": "Laptop dock",
    "summary": "Right-wing cradle with a swept profile, lead-in slot, sprung USB-C and a press-release latch.",
-   "description": "The dock wing rises 120 mm at the back and sweeps down in a concave curve to a 60 mm front, wrapped in brushed oxblood panels. A 20 mm slot with 4 mm lead-in chamfers guides a closed laptop on its side onto a sprung USB-C plug standing up from the slot floor. Press the latch (3 mm travel) to release, then lift out; the amber strip on the latch shows charge and link state.",
+   "description": "The dock wing rises 120 mm at the back and sweeps down in a concave curve to a 60 mm front, wrapped in brushed oxblood panels. A 20 mm slot with 4 mm lead-in chamfers guides a closed laptop on its side onto a sprung USB-C plug standing up from the slot floor. Press the latch (3 mm travel) to release, then lift out; the amber strip on the latch glows while the laptop is locked in and goes dark when you press it.",
    "parts": [
     "dock_cradle",
     "dock_panels",
@@ -931,8 +936,8 @@
   {
    "id": "laptop",
    "name": "Laptop",
-   "summary": "Any slim laptop, standing closed on its side in the dock: your hardware.",
-   "description": "A generic 14-inch class laptop (304 x 212 x 15 mm) stands closed on its left side, hinge toward the back, with its USB-C port seated on the dock's sprung connector. Docked, it drives the dual display and charges; lifted out, the station keeps running on the compute in the base. Mass is an estimate for a real device.",
+   "summary": "A slim laptop (up to about 19 mm) with a USB-C port on its left side, standing closed in the dock: your hardware.",
+   "description": "A generic 14-inch class laptop (304 × 212 × 15 mm) stands closed on its left side, hinge toward the back, with its USB-C port seated on the dock's sprung connector. Docked, it drives the dual display and charges; lifted out, the station keeps running on the compute in the base. Mass is an estimate for a real device.",
    "parts": [
     "laptop_body"
    ],
@@ -956,7 +961,7 @@
    "id": "keyboard",
    "name": "Low-profile keyboard",
    "summary": "75% low-profile keyboard that charges wirelessly in its pocket.",
-   "description": "A 360 x 120 mm aluminium wedge (9 mm at the front, 13 mm at the back) with an 84-key 75% layout on an 18.5 mm pitch. Two receiver coils under the chassis line up with the base's Qi2 coils when it is stowed. In work mode it comes 298 mm forward onto the felt mat, leaving 150 mm of open desk in front of the base.",
+   "description": "A 360 × 120 mm aluminium wedge (9 mm at the front, 13 mm at the back) with an 84-key 75% layout on an 18.5 mm pitch. Two receiver coils under the chassis line up with the base's Qi2 coils when it is stowed. In work mode it lifts clear of the rim and comes 298 mm forward onto the felt mat, leaving 150 mm of open desk in front of the base.",
    "parts": [
     "keyboard_body",
     "keyboard_keys",
@@ -984,7 +989,7 @@
    "id": "mouse",
    "name": "Mouse",
    "summary": "Ambidextrous ergonomic mouse with an amber tail light and a Qi2 receiver coil.",
-   "description": "A 66 x 118 x 38 mm ambidextrous shell lofted through fourteen sections, with a rubber scroll wheel, split buttons and an amber accent at the rear. Its receiver coil sits over the pocket's Qi2 coil when stowed. The mass is an effective estimate for a real hollow mouse.",
+   "description": "A 66 × 118 × 38 mm ambidextrous shell lofted through fourteen sections, with a rubber scroll wheel, split buttons and an amber accent at the rear. Its receiver coil sits over the pocket's Qi2 coil when stowed. The mass is an effective estimate for a real hollow mouse.",
    "parts": [
     "mouse_shell",
     "mouse_wheel",
@@ -1013,7 +1018,7 @@
   {
    "id": "deskmat",
    "name": "Felt desk mat",
-   "summary": "820 x 300 mm wool felt mat for work mode.",
+   "summary": "820 × 300 mm wool felt mat for work mode.",
    "description": "A 3 mm pressed wool felt mat that defines the work zone in front of the base. It only appears in work and standalone modes, when the keyboard and mouse come out of their pockets.",
    "parts": [
     "deskmat"
@@ -1038,7 +1043,7 @@
    "id": "internals",
    "name": "Internals",
    "summary": "Compute stays in the base: mainboard, vapor chamber, blower, PSU, Qi2 coils and the dock PCB.",
-   "description": "Inside the hollow base: a 300 x 230 mm compute board with a vapor chamber and fin stack exhausting through the rear grille, a slim blower, a 140 x 158 mm internal power supply, three Qi2 transmitter coils on ferrite shields under the pocket windows, and the dock PCB with its pogo contact under the cradle. Because compute stays in the base, the station works with or without the laptop.",
+   "description": "Inside the hollow base: a 300 × 230 mm compute board with a vapor chamber and fin stack exhausting through the rear grille, a slim blower, a 140 × 158 mm internal power supply, three Qi2 transmitter coils on ferrite shields under the pocket windows and, under the cradle, the dock PCB that feeds the sprung USB-C plug. Because compute stays in the base, the station works with or without the laptop.",
    "parts": [
     "compute_board",
     "compute_heatsink",
@@ -1075,7 +1080,7 @@
   {
    "id": "display_screen",
    "group": "display",
-   "name": "Active screen (2 x 27\" QHD)",
+   "name": "Active area (visual skin, 2 × 27″)",
    "material": "screen",
    "internal": false,
    "explode": [
@@ -1091,12 +1096,13 @@
    "volume_cm3": 120.19,
    "mass_g": 300.5,
    "density_g_cm3": 2.5,
+   "mass_note": "visual skin only (0.3 mm over the active areas); the LCD modules are part of display_glass",
    "solids": 2
   },
   {
    "id": "display_glass",
    "group": "display",
-   "name": "Panel front glass & bezels",
+   "name": "LCD modules & black fronts (2 × 27″)",
    "material": "glass_black",
    "internal": false,
    "explode": [
@@ -1105,13 +1111,14 @@
     0.13
    ],
    "bbox_mm": [
-    1207.5,
+    1208.0,
     360.7,
-    108.4
+    118.2
    ],
-   "volume_cm3": 883.98,
-   "mass_g": 2209.9,
-   "density_g_cm3": 2.5,
+   "volume_cm3": 5293.12,
+   "mass_g": 4763.8,
+   "density_g_cm3": 0.9,
+   "mass_note": "solid envelope of the two stripped 27″ QHD LCD modules (black front, cell, backlight, steel tray), effective density",
    "solids": 2
   },
   {
@@ -1143,7 +1150,7 @@
    "explode": [
     0.0,
     0.42,
-    0.07
+    0.16
    ],
    "bbox_mm": [
     1214.4,
@@ -1166,12 +1173,12 @@
     -0.23
    ],
    "bbox_mm": [
-    1217.6,
+    1218.2,
     366.7,
     183.0
    ],
-   "volume_cm3": 1361.56,
-   "mass_g": 3676.2,
+   "volume_cm3": 1368.77,
+   "mass_g": 3695.7,
    "density_g_cm3": 2.7
   },
   {
@@ -1186,12 +1193,12 @@
     -0.08
    ],
    "bbox_mm": [
-    828.8,
+    832.1,
     269.0,
-    146.0
+    136.1
    ],
-   "volume_cm3": 600.28,
-   "mass_g": 4712.2,
+   "volume_cm3": 389.61,
+   "mass_g": 3058.4,
    "density_g_cm3": 7.85
   },
   {
@@ -1206,12 +1213,12 @@
     -0.14
    ],
    "bbox_mm": [
-    815.9,
+    816.4,
     86.0,
-    55.8
+    48.1
    ],
-   "volume_cm3": 95.12,
-   "mass_g": 104.6,
+   "volume_cm3": 93.33,
+   "mass_g": 102.7,
    "density_g_cm3": 1.1,
    "mass_note": "PCB + components, effective density",
    "solids": 2
@@ -1244,7 +1251,7 @@
    "internal": false,
    "explode": [
     0.0,
-    0.22,
+    0.225,
     0.03
    ],
    "bbox_mm": [
@@ -1264,7 +1271,7 @@
    "internal": false,
    "explode": [
     0.0,
-    0.22,
+    0.2283,
     0.07
    ],
    "bbox_mm": [
@@ -1334,8 +1341,9 @@
     134.0
    ],
    "volume_cm3": 99.8,
-   "mass_g": 269.5,
-   "density_g_cm3": 2.7
+   "mass_g": 119.8,
+   "density_g_cm3": 1.2,
+   "mass_note": "soft-touch PU over a glass-fibre carrier; non-metallic so Qi2 passes"
   },
   {
    "id": "tray_pad_mouse",
@@ -1354,8 +1362,9 @@
     132.0
    ],
    "volume_cm3": 20.81,
-   "mass_g": 56.2,
-   "density_g_cm3": 2.7
+   "mass_g": 25.0,
+   "density_g_cm3": 1.2,
+   "mass_note": "soft-touch PU over a glass-fibre carrier; non-metallic so Qi2 passes"
   },
   {
    "id": "base_glow",
@@ -1558,7 +1567,7 @@
    "volume_cm3": 962.53,
    "mass_g": 1299.4,
    "density_g_cm3": 1.35,
-   "mass_note": "solid envelope; effective density of a 14\" aluminium laptop"
+   "mass_note": "solid envelope; effective density of a 14″ aluminium laptop"
   },
   {
    "id": "keyboard_body",
@@ -1569,7 +1578,7 @@
    "explode": [
     0.0,
     0.25,
-    0.12
+    0.05
    ],
    "bbox_mm": [
     360.0,
@@ -1590,7 +1599,7 @@
    "explode": [
     0.0,
     0.29,
-    0.12
+    0.05
    ],
    "bbox_mm": [
     301.0,
@@ -1610,7 +1619,7 @@
    "explode": [
     0.0,
     0.21,
-    0.12
+    0.05
    ],
    "bbox_mm": [
     200.0,
@@ -1632,7 +1641,7 @@
    "explode": [
     0.0,
     0.25,
-    0.12
+    0.05
    ],
    "bbox_mm": [
     66.0,
@@ -1653,7 +1662,7 @@
    "explode": [
     0.0,
     0.3,
-    0.12
+    0.05
    ],
    "bbox_mm": [
     6.5,
@@ -1673,7 +1682,7 @@
    "explode": [
     0.0,
     0.25,
-    0.16
+    0.09
    ],
    "bbox_mm": [
     30.0,
@@ -1693,7 +1702,7 @@
    "explode": [
     0.0,
     0.21,
-    0.12
+    0.05
    ],
    "bbox_mm": [
     38.0,
@@ -1927,6 +1936,18 @@
      0.0,
      -0.015,
      0.298
+    ],
+    "via": [
+     [
+      0.0,
+      0.03,
+      0.0
+     ],
+     [
+      0.0,
+      0.03,
+      0.2
+     ]
     ]
    },
    "mouse": {
@@ -1934,6 +1955,18 @@
      0.04,
      -0.015,
      0.298
+    ],
+    "via": [
+     [
+      0.0,
+      0.03,
+      0.0
+     ],
+     [
+      0.04,
+      0.03,
+      0.2
+     ]
     ]
    }
   },
@@ -1943,6 +1976,18 @@
      0.0,
      -0.015,
      0.298
+    ],
+    "via": [
+     [
+      0.0,
+      0.03,
+      0.0
+     ],
+     [
+      0.0,
+      0.03,
+      0.2
+     ]
     ]
    },
    "mouse": {
@@ -1950,6 +1995,18 @@
      0.04,
      -0.015,
      0.298
+    ],
+    "via": [
+     [
+      0.0,
+      0.03,
+      0.0
+     ],
+     [
+      0.04,
+      0.03,
+      0.2
+     ]
     ]
    },
    "laptop": {
@@ -1965,7 +2022,7 @@
    "laptop": {
     "t": [
      0,
-     0.14,
+     0.07,
      0
     ]
    }
@@ -2057,14 +2114,14 @@
    "id": "overall_h",
    "label": "520 mm",
    "a": [
-    -0.608777,
+    -0.609125,
     0.0,
-    0.0459
+    0.029158
    ],
    "b": [
-    -0.608777,
+    -0.609125,
     0.5197,
-    0.0459
+    0.029158
    ],
    "dir": [
     -1,
@@ -2076,14 +2133,14 @@
    "id": "display_w",
    "label": "1 218 mm",
    "a": [
-    -0.606172,
-    0.5197,
-    0.0459
+    -0.609125,
+    0.5127,
+    0.029158
    ],
    "b": [
-    0.606172,
-    0.5197,
-    0.0459
+    0.609125,
+    0.5127,
+    0.029158
    ],
    "dir": [
     0,
@@ -2093,7 +2150,7 @@
   },
   {
    "id": "panel_active_w",
-   "label": "596.7 mm · 27\" active",
+   "label": "596.7 mm · 27″ active",
    "a": [
     0.006842,
     0.5077,
@@ -2225,7 +2282,7 @@
    "format": "STEP",
    "label": "Full assembly",
    "path": "files/night-array-assembly.step",
-   "bytes": 6075154
+   "bytes": 5917362
   },
   {
    "id": "assembly-glb",
@@ -2233,39 +2290,39 @@
    "format": "GLB",
    "label": "Full assembly",
    "path": "model/station.glb",
-   "bytes": 2775256
+   "bytes": 2730324
   },
   {
    "id": "display-step",
    "group": "display",
    "format": "STEP",
-   "label": "Dual 27\" display",
+   "label": "Dual 27″ display",
    "path": "files/parts/display.step",
-   "bytes": 1263694
+   "bytes": 1197748
   },
   {
    "id": "display-stl",
    "group": "display",
    "format": "STL",
-   "label": "Dual 27\" display",
+   "label": "Dual 27″ display",
    "path": "files/parts/display.stl",
-   "bytes": 704084
+   "bytes": 663884
   },
   {
    "id": "display-svg",
    "group": "display",
    "format": "SVG",
-   "label": "Dual 27\" display drawing",
+   "label": "Dual 27″ display drawing",
    "path": "files/drawings/display.svg",
-   "bytes": 351145
+   "bytes": 233543
   },
   {
    "id": "display-dxf",
    "group": "display",
    "format": "DXF",
-   "label": "Dual 27\" display top view",
+   "label": "Dual 27″ display top view",
    "path": "files/drawings/display-top.dxf",
-   "bytes": 118281
+   "bytes": 117314
   },
   {
    "id": "stand-step",
@@ -2273,7 +2330,7 @@
    "format": "STEP",
    "label": "Neck & light bar",
    "path": "files/parts/stand.step",
-   "bytes": 563792
+   "bytes": 553495
   },
   {
    "id": "stand-stl",
@@ -2281,7 +2338,7 @@
    "format": "STL",
    "label": "Neck & light bar",
    "path": "files/parts/stand.stl",
-   "bytes": 133784
+   "bytes": 149584
   },
   {
    "id": "stand-svg",
@@ -2289,7 +2346,7 @@
    "format": "SVG",
    "label": "Neck & light bar drawing",
    "path": "files/drawings/stand.svg",
-   "bytes": 60932
+   "bytes": 46243
   },
   {
    "id": "stand-dxf",
@@ -2297,7 +2354,7 @@
    "format": "DXF",
    "label": "Neck & light bar top view",
    "path": "files/drawings/stand-top.dxf",
-   "bytes": 43728
+   "bytes": 43720
   },
   {
    "id": "base-step",
@@ -2305,7 +2362,7 @@
    "format": "STEP",
    "label": "Base & charging trays",
    "path": "files/parts/base.step",
-   "bytes": 734794
+   "bytes": 718112
   },
   {
    "id": "base-stl",
@@ -2313,7 +2370,7 @@
    "format": "STL",
    "label": "Base & charging trays",
    "path": "files/parts/base.stl",
-   "bytes": 602884
+   "bytes": 856684
   },
   {
    "id": "base-svg",
@@ -2321,7 +2378,7 @@
    "format": "SVG",
    "label": "Base & charging trays drawing",
    "path": "files/drawings/base.svg",
-   "bytes": 179905
+   "bytes": 123337
   },
   {
    "id": "base-dxf",
@@ -2337,7 +2394,7 @@
    "format": "STEP",
    "label": "Laptop dock",
    "path": "files/parts/dock.step",
-   "bytes": 540561
+   "bytes": 531346
   },
   {
    "id": "dock-stl",
@@ -2345,7 +2402,7 @@
    "format": "STL",
    "label": "Laptop dock",
    "path": "files/parts/dock.stl",
-   "bytes": 162984
+   "bytes": 316384
   },
   {
    "id": "dock-svg",
@@ -2353,7 +2410,7 @@
    "format": "SVG",
    "label": "Laptop dock drawing",
    "path": "files/drawings/dock.svg",
-   "bytes": 69893
+   "bytes": 53061
   },
   {
    "id": "dock-dxf",
@@ -2369,7 +2426,7 @@
    "format": "STEP",
    "label": "Laptop",
    "path": "files/parts/laptop.step",
-   "bytes": 79756
+   "bytes": 77827
   },
   {
    "id": "laptop-stl",
@@ -2377,7 +2434,7 @@
    "format": "STL",
    "label": "Laptop",
    "path": "files/parts/laptop.stl",
-   "bytes": 61684
+   "bytes": 86684
   },
   {
    "id": "laptop-svg",
@@ -2385,7 +2442,7 @@
    "format": "SVG",
    "label": "Laptop drawing",
    "path": "files/drawings/laptop.svg",
-   "bytes": 27059
+   "bytes": 21811
   },
   {
    "id": "laptop-dxf",
@@ -2401,7 +2458,7 @@
    "format": "STEP",
    "label": "Low-profile keyboard",
    "path": "files/parts/keyboard.step",
-   "bytes": 1300381
+   "bytes": 1274847
   },
   {
    "id": "keyboard-stl",
@@ -2409,7 +2466,7 @@
    "format": "STL",
    "label": "Low-profile keyboard",
    "path": "files/parts/keyboard.stl",
-   "bytes": 668484
+   "bytes": 674484
   },
   {
    "id": "keyboard-svg",
@@ -2417,7 +2474,7 @@
    "format": "SVG",
    "label": "Low-profile keyboard drawing",
    "path": "files/drawings/keyboard.svg",
-   "bytes": 207832
+   "bytes": 150753
   },
   {
    "id": "keyboard-dxf",
@@ -2433,7 +2490,7 @@
    "format": "STEP",
    "label": "Mouse",
    "path": "files/parts/mouse.step",
-   "bytes": 558341
+   "bytes": 551852
   },
   {
    "id": "mouse-stl",
@@ -2441,7 +2498,7 @@
    "format": "STL",
    "label": "Mouse",
    "path": "files/parts/mouse.stl",
-   "bytes": 55084
+   "bytes": 363184
   },
   {
    "id": "mouse-svg",
@@ -2449,7 +2506,7 @@
    "format": "SVG",
    "label": "Mouse drawing",
    "path": "files/drawings/mouse.svg",
-   "bytes": 38489
+   "bytes": 25485
   },
   {
    "id": "mouse-dxf",
@@ -2457,7 +2514,7 @@
    "format": "DXF",
    "label": "Mouse top view",
    "path": "files/drawings/mouse-top.dxf",
-   "bytes": 36129
+   "bytes": 25482
   },
   {
    "id": "deskmat-step",
@@ -2465,7 +2522,7 @@
    "format": "STEP",
    "label": "Felt desk mat",
    "path": "files/parts/deskmat.step",
-   "bytes": 22800
+   "bytes": 22254
   },
   {
    "id": "deskmat-stl",
@@ -2473,7 +2530,7 @@
    "format": "STL",
    "label": "Felt desk mat",
    "path": "files/parts/deskmat.stl",
-   "bytes": 18284
+   "bytes": 28684
   },
   {
    "id": "deskmat-svg",
@@ -2481,7 +2538,7 @@
    "format": "SVG",
    "label": "Felt desk mat drawing",
    "path": "files/drawings/deskmat.svg",
-   "bytes": 15261
+   "bytes": 13535
   },
   {
    "id": "deskmat-dxf",
@@ -2497,7 +2554,7 @@
    "format": "STEP",
    "label": "Internals",
    "path": "files/parts/internals.step",
-   "bytes": 830936
+   "bytes": 811395
   },
   {
    "id": "internals-stl",
@@ -2505,7 +2562,7 @@
    "format": "STL",
    "label": "Internals",
    "path": "files/parts/internals.stl",
-   "bytes": 311484
+   "bytes": 340084
   },
   {
    "id": "internals-svg",
@@ -2513,7 +2570,7 @@
    "format": "SVG",
    "label": "Internals drawing",
    "path": "files/drawings/internals.svg",
-   "bytes": 117611
+   "bytes": 83114
   },
   {
    "id": "internals-dxf",

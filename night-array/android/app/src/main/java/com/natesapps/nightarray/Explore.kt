@@ -351,7 +351,7 @@ private fun DockingSection(app: AppState, scene: Scene, pad: androidx.compose.ui
 @Composable
 private fun MaterialsSection(app: AppState, pad: androidx.compose.ui.unit.Dp) {
     Column(Modifier.readable().padding(horizontal = pad).padding(top = 46.dp)) {
-        SectionHeader("Materials", "Three metals, one amber")
+        SectionHeader("Materials", "Three finishes, one amber")
         Spacer(Modifier.height(18.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             listOf("graphite" to "Charcoal Graphite", "oxblood" to "Brushed Oxblood", "titanium" to "Neutral Titanium").forEach { (k, label) ->
