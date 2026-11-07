@@ -1,0 +1,37 @@
+id,category,product,mpn,qty,unit_usd,line_usd,optional,excluded_from_budget,role,buy_url
+monitor,Display,"Samsung ViewFinity S6 S60UD 27"" QHD IPS, 100 Hz, USB-C 90 W",LS27D606UANXGO,2,349.99,699.98,False,False,"The two screens (identical pair; buy both from one retailer, same batch)",https://www.samsung.com/us/business/computing/monitors/uhd-and-wqhd/27-viewfinity-s6-s60d-qhd-hdr10-high-resolution-monitor-with-usb-c-and-daisy-chain-ls27d606uanxgo/
+dock,Dock,Plugable UD-6950PDH USB-C dual 4K DisplayLink dock (100 W charging),UD-6950PDH,1,179.95,179.95,False,False,Drives both screens + charges the laptop from one USB-C,https://plugable.com/products/ud-6950pdh
+cradle_cable,Dock,"Newnex USB4 cable, C-male straight to C-male 90-degree side-exit, 1 m, 240 W",U4T1C01CR5P010,1,64.99,64.99,False,False,The sprung USB-C plug in the cradle (one end of the dock's host cable; never a male-to-female extension),https://www.newnex.com/
+carriage_springs,Dock,"McMaster-Carr compression spring, music wire, 0.375 in long",9657K614,1,10.0,10.0,False,False,Self-centring float for the plug carriage (4 used),https://www.mcmaster.com/9657K614/
+keyboard,Keyboard & mouse,Keychron K3 Ultra 8K wireless mechanical keyboard,K3U-H3 (or other switch options),1,109.99,109.99,False,False,75% low-profile wireless keyboard (Bluetooth x3 + 2.4 GHz + USB-C),https://www.keychron.com/
+keyboard_qi,Keyboard & mouse,"NILLKIN Magic Tag wireless charging receiver, Type-C (Short)",Magic Tag Type-C Short (6902048139886),1,29.99,29.99,False,False,"Makes the keyboard charge wirelessly: thin Qi receiver plugged into its USB-C port, folded flat underneath",https://www.nillkin.com/
+mouse,Keyboard & mouse,Lenovo Multi-Device Wireless Mouse (X9 Edition),4Y51R29290,1,51.99,51.99,False,False,Wireless mouse that charges natively on a Qi pad,https://www.cdw.com/
+qi_pad,Keyboard & mouse,Anker 313 Wireless Charger (Pad),A2503,2,23.99,47.98,False,False,Wireless chargers fitted intact under the keyboard and mouse pockets,https://www.anker.com/products/a2503
+desk_mat,Keyboard & mouse,"Oakywood Felt & Cork Desk Mat 90 x 30, Anthracite",1501FEAL,1,77.0,77.0,True,False,Felt mat for work mode (optional),https://oakywood.shop/
+power_strip,Power,"Tripp Lite by Eaton 6-outlet power strip, right-angle outlets, 24 in, 8 ft cord",PS2406RA08B,1,33.0,33.0,False,False,"The only mains connection: lives inside the base, one cord to the wall",https://tripplite.eaton.com/
+monitor_cords,Power,"Tripp Lite heavy-duty cord, right-angle NEMA 5-15P to C13, 2 ft",P007-002-15D,2,10.0,20.0,False,False,Right-angle mains cords from the strip to each monitor (confirm the monitor inlet is C14 on arrival),https://tripplite.eaton.com/
+gan_charger,Power,Monoprice 100 W USB-C 4-port GaN desktop charger,46820,1,59.99,59.99,False,False,"Powers the low-voltage loads (charging pads, amber lights, sensors)",https://www.monoprice.com/
+pd_trigger,Power,"Adafruit USB-C PD to 5.5/2.1 mm barrel adapter, 12 V",Adafruit 6032 (12V),1,2.25,2.25,False,False,USB-C PD trigger: 12 V for the amber lighting bus,https://www.adafruit.com/product/6032
+led_strip,Light,"SuperLightingLED 12 V super-slim amber 1800 K COB tape, 3 mm",FSL-COB-1800K-SLIM (3 mm),1,15.98,15.98,False,False,"Amber light: base under-glow, neck light bar, dock seated light",https://www.superlightingled.com/
+led_channel,Light,SuperLightingLED ultra-slim recessed channel for 3 mm strip,QSG-0505,2,4.98,9.96,False,False,5 x 5 mm aluminium channel with opal diffuser (2 x 1 m),https://www.superlightingled.com/
+dimmer,Light,"SuperLightingLED rotary knob dimmer, DC connector",CONSC-DIM-03,1,6.99,6.99,False,False,One knob dims every amber light,https://www.superlightingled.com/
+seated_sensor,Light,"Adafruit IR break-beam sensor, 3 mm LEDs",Adafruit 2167,1,2.95,2.95,False,False,Lights the dock's seated light with no switch: an IR beam across the slot is broken by the laptop,https://www.adafruit.com/product/2167
+regulator_5v,Light,Pololu 5 V 600 mA step-down regulator,D36V6F5 (Pololu 3792),1,6.95,6.95,False,False,5 V logic rail for the sensor,https://www.pololu.com/product/3792
+opto,Light,"Lite-On LTV-815 optocoupler, DIP-4",LTV-815,3,0.25,0.75,False,False,Switches the seated light from the sensor (photo-Darlington opto),https://www.lcsc.com/
+wiring,Light,WAGO 221-412/413/415 + JST-SM 2-pin pairs + 2.1 mm jack-to-terminal,"221-41x, SMP-02V-BC/SMR-02V-B, Adafruit 368",1,18.0,18.0,False,False,"Low-voltage wiring: lever splices, disconnects at base-tile joints, jack-to-terminal",https://www.digikey.com/
+steel,Structure,Custom laser-cut + bent A36 steel from SendCutSend,NA-SPINE / NA-WING / NA-FRONTBAR,1,140.0,140.0,False,False,"Load path: spine/ballast plate (1/4""), monitor wing bracket with folded flanges (3/16""), front ballast bar (1/4"")",https://sendcutsend.com/
+posts,Structure,"ZYLtech 2040 T-slot aluminium extrusion, 400 mm",EXT-2040-REG-400,2,10.14,20.28,False,False,Neck posts (2 side by side inside the printed neck),https://www.zyltech.com/
+rails,Structure,"ZYLtech 2020 T-slot aluminium extrusion, 1200 mm",EXT-2020-REG-1200,2,15.54,31.08,False,False,Stiffening rails under the printed base tiles,https://www.zyltech.com/
+tnuts,Structure,ZYLtech M5 hammer nuts for 2020,HW-M5-HAMMER-100PK,1,9.95,9.95,False,False,M5 hammer nuts for the rails and posts (100 pack),https://www.zyltech.com/
+inserts,Hardware,ruthex threaded insert assortment (M2/M3/M4/M5),GE-KASTEN-001,1,33.0,33.0,False,False,Brass heat-set inserts for every screwed printed joint,https://www.ruthex.de/
+screws,Hardware,Metric socket/button-head screw kit (black oxide or A2),generic,1,25.0,25.0,False,False,"Screws: ISO 7380 M3/M4/M5 button heads, M6x20 8.8 post bolts, M4x22 VESA screws, washers",
+magnets,Hardware,K&J Magnetics 1/4 x 1/8 in N52 disc,D42-N52,24,0.52,12.48,False,False,Hold removable covers and hatches (keep 30 mm from the charging pads),https://www.kjmagnetics.com/
+feet,Hardware,"3M Bumpon SJ5023, black (sheet of 36)",SJ5023,1,6.0,6.0,False,False,Non-slip feet under the spine plate and rail ends,
+tape,Hardware,3M VHB 5952 + 3M urethane foam tape 4026,5952 + 4026,1,20.0,20.0,False,False,"VHB for the seam strip, light pipes and inlays; foam pads for monitor tolerances",
+ties,Hardware,Panduit PLT1M-C0 ties + ABMM-AT-C0 adhesive mounts,PLT1M-C0 + ABMM-AT-C0,1,15.0,15.0,False,False,Cable management,
+primer,Finishing,"Rust-Oleum Automotive filler primer, flat gray, 12 oz",249279,3,9.0,27.0,False,False,Filler primer for the titanium-look parts,https://www.homedepot.com/
+paint,Finishing,"Rust-Oleum Universal All Surface Metallic, Titanium Silver, 11 oz",245220,2,9.49,18.98,False,False,Titanium-look topcoat,https://www.homedepot.com/
+fil_titanium,Filament (not in budget),"Bambu Lab PETG Basic, Gray (refill 1 kg)",30107,5,13.99,69.95,False,True,"Titanium parts: base shell tiles, cradle, neck, front frame (painted)",https://us.store.bambulab.com/
+fil_graphite,Filament (not in budget),"Bambu Lab PETG-CF, Titan Gray (refill 1 kg)",31101,3,31.99,95.97,False,True,"Graphite parts: rear shroud, deck, pocket inserts (needs a hardened nozzle)",https://us.store.bambulab.com/
+fil_oxblood,Filament (not in budget),"Bambu Lab PLA Basic, Maroon Red",10205,1,14.99,14.99,False,True,Oxblood accent panels on the dock,https://us.store.bambulab.com/
+fil_clear,Filament (not in budget),"Bambu Lab PETG Translucent, Clear",32101,1,15.99,15.99,False,True,Light pipes and diffusers,https://us.store.bambulab.com/
