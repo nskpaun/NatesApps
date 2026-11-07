@@ -11,6 +11,7 @@ An offline guide to Alex Wissner-Gross's **Chain Theory** (October 2026), his at
 ![Chain Theory Explorer on Android: home, quiz, refresher and reader screens](chain-theory/docs/screenshots.png)
 
 - **Native Android app** (Kotlin + Jetpack Compose), fully offline: layered explainers, a kets & cross products refresher, quizzes and flashcards, an α calculator, and a swipeable reader with native PDF rendering and full-text search.
+- **Website** in [`web/chain-theory/`](web/chain-theory/): the same app in the browser, ready to deploy on its own. See that folder’s README for the Vercel root directory, build, and output settings.
 - **Single-file web version**: the same content in one HTML file that works offline in any browser.
 - **Install:** download [`chain-theory/ChainTheory.apk`](chain-theory/ChainTheory.apk) on an Android phone and open it. Allow installs from unknown sources when prompted.
 
@@ -29,6 +30,7 @@ A guide to **Russell Ackoff**: his 1993 talk *From Mechanistic to Social Systemi
 <app-name>/          one directory per app
   README.md          what it is, how to install, how to build
   ...                source, assets, prebuilt artifacts
+web/<app-name>/      browser port of that app, deployed on its own
 ```
 
 To add an app, create a new top-level directory with its own README, then add an entry under **Apps** above.
