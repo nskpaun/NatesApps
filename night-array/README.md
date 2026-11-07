@@ -50,10 +50,10 @@ Everything is generated from one parametric CadQuery model and kept in [`cad/exp
 
 | File | |
 |---|---|
-| [`files/night-array-assembly.step`](cad/export/files/night-array-assembly.step) | Full assembly, STEP AP214, mm, named and coloured parts |
-| `files/parts/<group>.step`, `.stl` | One STEP and one binary STL per group: display, stand, base, dock, laptop, keyboard, mouse, deskmat, internals |
+| [`files/night-array-assembly.step`](cad/export/files/night-array-assembly.step) | Full assembly, STEP AP214, mm, Z-up (opens upright in CAD tools), named and coloured parts |
+| `files/parts/<group>.step`, `.stl` | One STEP and one binary STL (Z-up) per group: display, stand, base, dock, laptop, keyboard, mouse, deskmat, internals |
 | `files/drawings/<group>.svg`, `-top.dxf` | A3 drawing sheets (three views + isometric, dimensions, parts list, title block) and top-view outlines |
-| [`model/station.glb`](cad/export/model/station.glb) | The assembly as glTF (one node per part), used by the app's renderer and viewable anywhere |
+| [`model/station.glb`](cad/export/model/station.glb) | The assembly as glTF (metres, Y-up, one node per part), used by the app's renderer and viewable anywhere |
 | `model/scene.json` | Parts, groups, masses, poses, explode vectors, docking sequence, dimensions and a file index |
 
 See [`cad/README.md`](cad/README.md) for how to open them in FreeCAD, Fusion and Onshape.

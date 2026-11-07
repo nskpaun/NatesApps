@@ -23,6 +23,16 @@ A guide to **Russell Ackoff**: his 1993 talk *From Mechanistic to Social Systemi
 - **Native Android app**, fully offline: five levels (from a 3-minute intro to hands-on exercises), a section-by-section study guide to the talk, quizzes, flashcards, a "Machine or Systems?" swipe game, search, and a library that imports PDFs for offline reading.
 - **Install:** download [`ackoff/Ackoff.apk`](ackoff/Ackoff.apk) on an Android phone and open it.
 
+### [Night Array: Work & Stow](night-array/)
+
+A concept desk battle station you can explore: two 27" QHD monitors in one titanium shroud with an honest seam, a long titanium base with pockets that charge your keyboard and mouse wirelessly, and a vertical laptop dock on the right wing.
+
+![Night Array on Android: Explore, a feature story, the live Studio, a CAD file group and the desk-fit check](night-array/docs/screenshots.png)
+
+- **Native Android app** (Kotlin + Jetpack Compose) with a **live CAD renderer** (three.js, fully offline). It has PBR, CAD, X-ray and blueprint styles, animated Work / Stow / Standalone modes, the docking sequence, explode, section cuts, dimensions and tap-to-inspect parts.
+- **Real CAD files** from a parametric CadQuery model: a STEP assembly, STEP and STL per part group, GLB, engineering drawing sheets (SVG) and DXF outlines. You can share or save every file from the app.
+- **Install:** download [`night-array/NightArray.apk`](night-array/NightArray.apk) on an Android phone and open it.
+
 ## Repository layout
 
 ```
