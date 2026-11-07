@@ -68,8 +68,8 @@ val STORIES = listOf(
             "The outer faces wear brushed oxblood: the station's one deep colour, on the side your hand reaches for.",
         ),
         listOf(
-            StorySpec("Position", "Right outer wing"), StorySpec("Slot", "20 mm wide, chamfered lead-ins"), StorySpec("Connector", "Sprung USB-C on the slot floor"),
-            StorySpec("Release", "Press latch, 3 mm travel"), StorySpec("Laptop", "Up to 15 mm thick, 212 mm deep"), StorySpec("Footprint", "125 × 260 mm"),
+            StorySpec("Position", "Right outer wing"), StorySpec("Slot", "20 × 224 mm, 4 mm lead-in chamfers"), StorySpec("Connector", "Sprung USB-C on the slot floor"),
+            StorySpec("Release", "Press latch, 3 mm travel"), StorySpec("Laptop", "Any slim laptop up to 20 mm thick, on its edge"), StorySpec("Footprint", "125 × 260 mm"),
         ),
         listOf(StoryStill("dock-align.jpg", "1 · Align: guide into the open cradle."), StoryStill("dock-lower.jpg", "2 · Lower: seat the laptop onto the connector."), StoryStill("dock-release.jpg", "3 · Press-release & lift.")),
         Preset(mode = "stow", style = "studio", camera = "dock", explode = 0f, dock = "play"), liveLabel = "Play the sequence live",
@@ -79,6 +79,7 @@ val STORIES = listOf(
         "Set it down where it lives and it charges. No cable, no puck, nothing to line up.",
         listOf(
             "Under each soft-touch pad is a flat Qi2 coil on a ferrite shield: two under the keyboard, one under the mouse. The pocket walls place each device within a few millimetres of its coil, which is all inductive charging asks for.",
+            "Titanium would block the field, so the pocket floors are cut with round non-metallic windows over every coil. A faint ring debossed in each pad marks the spot, though the walls already put you there.",
             "The receiver coils sit in the floors of the keyboard and mouse, directly over the transmitters when stowed, with 2 mm of pad between them.",
             "A thin amber mark on each pocket's front lip glows while charging and fades out when the battery is full.",
         ),
@@ -151,10 +152,58 @@ val STORIES = listOf(
 
 fun story(id: String): Story? = STORIES.firstOrNull { it.id == id }
 
-/** Spec rows for a story. The display story is built from scene.json's `screen` block so it always matches the CAD. */
-fun storySpecs(s: Story, scene: Scene): List<StorySpec> = if (s.id != "dual") s.specs else {
+/**
+ * Spec rows for a story. Where scene.json carries the number (screen block, params.py), the row is built from it so
+ * the story always matches the CAD; otherwise the SPEC envelope values written above stand.
+ */
+fun storySpecs(s: Story, scene: Scene): List<StorySpec> = when (s.id) {
+    "dual" -> dualSpecs(scene)
+    "dock" -> {
+        val slotW = scene.span("dock.slot.x"); val slotL = scene.span("dock.slot.z")
+        val lead = scene.num("dock.slot.lead_in"); val travel = scene.num("dock.latch.travel")
+        val w = scene.span("dock.x"); val d = scene.span("dock.z")
+        s.specs.map { r ->
+            when (r.label) {
+                "Slot" -> if (slotW != null && slotL != null) r.copy(value = "${fmtNum(slotW)} × ${fmtNum(slotL)} mm, ${fmtNum(lead ?: 4.0)} mm lead-in chamfers") else r
+                "Release" -> if (travel != null) r.copy(value = "Press latch, ${fmtNum(travel)} mm travel") else r
+                "Laptop" -> if (slotW != null) r.copy(value = "Any slim laptop up to ${fmtNum(slotW)} mm thick, on its edge") else r
+                "Footprint" -> if (w != null && d != null) r.copy(value = "${fmtNum(w)} × ${fmtNum(d)} mm") else r
+                else -> r
+            }
+        }
+    }
+    "work-stow" -> {
+        val kb = scene.nums("base.kb_pocket.size"); val ms = scene.nums("base.mouse_pocket.size")
+        val deck = scene.num("base.deck_y"); val floor = scene.num("base.kb_pocket.floor_y"); val mat = scene.nums("deskmat.size")
+        val gap = footprint(scene).workGapMm
+        s.specs.map { r ->
+            when (r.label) {
+                "Work offset" -> r.copy(value = "${fmtNum(gap)} mm in front of the base")
+                "Keyboard pocket" -> kb?.takeIf { it.size >= 2 }?.let { r.copy(value = "${fmtNum(it[0])} × ${fmtNum(it[1])} mm") } ?: r
+                "Mouse pocket" -> ms?.takeIf { it.size >= 2 }?.let { r.copy(value = "${fmtNum(it[0])} × ${fmtNum(it[1])} mm") } ?: r
+                "Pocket depth" -> if (deck != null && floor != null) r.copy(value = "${fmtNum(deck - floor)} mm below the deck") else r
+                "Desk mat" -> mat?.takeIf { it.size >= 3 }?.let { r.copy(value = "${fmtNum(it[0])} × ${fmtNum(it[2])} mm felt") } ?: r
+                else -> r
+            }
+        }
+    }
+    "charge" -> {
+        val kbx = scene.nums("internals.qi_coils_kb_x"); val win = scene.num("base.coil_window_d"); val pad = scene.num("base.pad_t")
+        s.specs.map { r ->
+            when (r.label) {
+                "Keyboard" -> kbx?.let { r.copy(value = "${it.size} coils, at x = ${it.joinToString(" and ") { v -> fmtNum(v).replace("-", "−") }} mm") } ?: r
+                "Shielding" -> if (win != null) r.copy(value = "Ferrite under every coil; ${fmtNum(win)} mm windows in the titanium") else r
+                "Pad" -> if (pad != null) r.copy(value = "${fmtNum(pad)} mm soft-touch graphite") else r
+                else -> r
+            }
+        }
+    }
+    else -> s.specs
+}
+
+private fun dualSpecs(scene: Scene): List<StorySpec> {
     val sc = scene.screen
-    listOf(
+    return listOf(
         StorySpec("Panels", "${sc.panels} × ${fmtNum(sc.panelInch)}″ QHD IPS, off the shelf"),
         StorySpec("Canvas", "${sc.canvasW} × ${sc.canvasH}"),
         StorySpec("Each panel", "${sc.resEach[0]} × ${sc.resEach[1]}, ${fmtNum(sc.activeMm[0])} × ${fmtNum(sc.activeMm[1])} mm"),

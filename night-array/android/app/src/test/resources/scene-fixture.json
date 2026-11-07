@@ -1,0 +1,2539 @@
+{
+ "version": 1,
+ "units": "m",
+ "name": "Night Array — Work & Stow",
+ "tagline": "Your hardware. Your OS.",
+ "params": {
+  "units": "mm",
+  "axes": "+X right, +Y up, +Z toward the user; desk y=0; x=0 centre of base slab; z=0 base depth centre",
+  "pose": "stow",
+  "base": {
+   "x": [
+    -640.0,
+    650.0
+   ],
+   "z": [
+    -150.0,
+    150.0
+   ],
+   "height": 36.0,
+   "corner_r": 40.0,
+   "top_fillet": 6.0,
+   "bottom_fillet": 1.5,
+   "rim_w": 16.0,
+   "rim_inner_fillet": 2.5,
+   "deck_y": 30.0,
+   "deck_fillet": 3.0,
+   "wall": 4.0,
+   "floor_t": 2.5,
+   "deck_t": 2.5,
+   "liner_t": 1.0,
+   "liner_reveal": 1.2,
+   "pocket_wall": 2.0,
+   "kb_pocket": {
+    "c": [
+     -90.0,
+     62.0
+    ],
+    "size": [
+     376.0,
+     136.0
+    ],
+    "floor_y": 16.0,
+    "r": 12.0
+   },
+   "mouse_pocket": {
+    "c": [
+     250.0,
+     62.0
+    ],
+    "size": [
+     82.0,
+     134.0
+    ],
+    "floor_y": 16.0,
+    "r": 12.0
+   },
+   "pocket_edge_fillet": 1.5,
+   "pad_t": 2.0,
+   "pad_clear": 0.5,
+   "pad_ring_d": 58.0,
+   "coil_window_d": 54.0,
+   "plinth": {
+    "z_front": -58.0,
+    "half_w_front": 172.0,
+    "half_w_back": 196.0,
+    "r": 12.0
+   },
+   "cable_chase": {
+    "x": [
+     -50.0,
+     50.0
+    ],
+    "z": [
+     -122.0,
+     -96.0
+    ]
+   },
+   "undercut": {
+    "x": [
+     -575.0,
+     575.0
+    ],
+    "y": [
+     0.0,
+     6.0
+    ],
+    "depth": 4.0
+   },
+   "glow": {
+    "x": [
+     -560.0,
+     560.0
+    ],
+    "y": [
+     2.0,
+     5.0
+    ],
+    "z": [
+     146.0,
+     149.0
+    ]
+   },
+   "kb_led": {
+    "x": -90.0,
+    "w": 30.0,
+    "d": 2.0,
+    "z": 140.0,
+    "depth": 1.0
+   },
+   "mouse_led": {
+    "x": 250.0,
+    "w": 16.0,
+    "d": 2.0,
+    "z": 140.0,
+    "depth": 1.0
+   },
+   "feet": {
+    "x": [
+     -600.0,
+     610.0
+    ],
+    "z": [
+     -122.0,
+     122.0
+    ],
+    "w": 12.0,
+    "depth": 1.5
+   },
+   "io_bay": {
+    "x": [
+     -602.0,
+     -478.0
+    ],
+    "y": [
+     6.0,
+     27.0
+    ],
+    "depth": 1.5
+   },
+   "exhaust": {
+    "x": [
+     -468.0,
+     -322.0
+    ],
+    "y": [
+     9.0,
+     25.0
+    ],
+    "slot_w": 4.0,
+    "pitch": 9.0
+   },
+   "ac_inlet": {
+    "x": 400.0,
+    "y": 14.0
+   }
+  },
+  "neck": {
+   "y": [
+    36.0,
+    156.0
+   ],
+   "bottom_w": 320.0,
+   "top_w": 180.0,
+   "z_bottom": [
+    -130.0,
+    -70.0
+   ],
+   "z_top": [
+    -140.0,
+    -80.0
+   ],
+   "edge_fillet": 8.0,
+   "wall": 4.0,
+   "light": {
+    "w": 150.0,
+    "h": 5.0,
+    "depth": 3.0,
+    "y": [
+     148.0,
+     153.0
+    ]
+   },
+   "badge": {
+    "text": "NIGHT ARRAY",
+    "size": 8.5,
+    "tracking": 0.42,
+    "y": 104.0,
+    "depth": 0.5,
+    "font": "Inter",
+    "kind": "regular"
+   }
+  },
+  "display": {
+   "panel_inch": 27,
+   "panels": 2,
+   "resolution_each": [
+    2560,
+    1440
+   ],
+   "active": [
+    596.7,
+    335.7
+   ],
+   "toe_in_deg": 10.0,
+   "seam_axis_xz": [
+    0.0,
+    -62.0
+   ],
+   "seam_mm": 14.0,
+   "inner_border": 7.0,
+   "outer_border": 9.0,
+   "chin": 16.0,
+   "top_border": 9.0,
+   "glass_y": [
+    156.0,
+    516.7
+   ],
+   "active_y": [
+    172.0,
+    507.7
+   ],
+   "glass_t": 2.0,
+   "screen_proud": 0.3,
+   "glass_corner_r": 4.0,
+   "frame_w": 3.0,
+   "frame_proud": 1.0,
+   "frame_depth": 5.0,
+   "frame_corner_r": 7.0,
+   "mullion_w": 4.0,
+   "mullion_front_z": -60.6,
+   "shroud_thin": 14.0,
+   "shroud_depth": 45.0,
+   "shroud_wall": 2.5,
+   "bump_front": {
+    "u_max": 545.0,
+    "y": [
+     172.0,
+     458.0
+    ]
+   },
+   "bump_back": {
+    "u_max": 440.0,
+    "y": [
+     200.0,
+     405.0
+    ]
+   },
+   "keel": {
+    "bottom_w": 200.0,
+    "top_w": 116.0,
+    "y_top": 440.0,
+    "z_back_bottom": -143.0,
+    "z_back_top": -110.0,
+    "chamfer": 14.0,
+    "wall": 3.0
+   },
+   "vesa_hub": {
+    "d": 104.0,
+    "proud": 3.0,
+    "y": 262.0,
+    "pattern": 100.0
+   },
+   "vents": {
+    "count": 34,
+    "pitch": 12.5,
+    "u0": 70.0,
+    "w": 3.2,
+    "len": 26.0
+   },
+   "plate": {
+    "u": [
+     200.0,
+     420.0
+    ],
+    "y": [
+     255.0,
+     425.0
+    ],
+    "t": 2.5
+   },
+   "spine_arm": {
+    "u_max": 236.0,
+    "y": [
+     330.0,
+     352.0
+    ],
+    "w": [
+     -14.0,
+     -4.5
+    ]
+   },
+   "spine_post": {
+    "x": 18.0,
+    "y": [
+     160.0,
+     352.0
+    ],
+    "z": [
+     -104.0,
+     -66.0
+    ]
+   },
+   "spine_foot": {
+    "x": 88.0,
+    "y": [
+     156.0,
+     160.0
+    ],
+    "z": [
+     -137.0,
+     -83.0
+    ]
+   },
+   "board": {
+    "u": [
+     220.0,
+     410.0
+    ],
+    "y": [
+     262.0,
+     348.0
+    ],
+    "w_pcb": [
+     -24.0,
+     -22.4
+    ]
+   }
+  },
+  "dock": {
+   "x": [
+    650.0,
+    775.0
+   ],
+   "z": [
+    -130.0,
+    130.0
+   ],
+   "h_back": 120.0,
+   "h_front": 60.0,
+   "profile_pts": [
+    [
+     -130.0,
+     120.0
+    ],
+    [
+     -96.0,
+     120.0
+    ],
+    [
+     -58.0,
+     104.0
+    ],
+    [
+     -12.0,
+     80.0
+    ],
+    [
+     40.0,
+     64.5
+    ],
+    [
+     78.0,
+     60.0
+    ],
+    [
+     130.0,
+     60.0
+    ]
+   ],
+   "plan_r": 12.0,
+   "edge_fillet": 4.0,
+   "slot": {
+    "x": [
+     712.0,
+     732.0
+    ],
+    "z": [
+     -112.0,
+     112.0
+    ],
+    "floor_y": 24.0,
+    "r": 3.0,
+    "lead_in": 4.0
+   },
+   "wall": 3.0,
+   "cavity_y": [
+    2.5,
+    21.0
+   ],
+   "panel_t": 2.0,
+   "panel_inset": 7.0,
+   "front_panel": {
+    "x": [
+     657.0,
+     727.0
+    ],
+    "y": [
+     9.0,
+     51.0
+    ]
+   },
+   "latch": {
+    "x": [
+     735.0,
+     769.0
+    ],
+    "y": [
+     18.0,
+     40.0
+    ],
+    "z": [
+     124.0,
+     138.0
+    ],
+    "travel": 3.0,
+    "clear": 0.5,
+    "pocket_z0": 119.0
+   },
+   "latch_led": {
+    "w": 26.0,
+    "d": 3.0,
+    "z": [
+     133.0,
+     136.0
+    ],
+    "depth": 0.8
+   },
+   "connector": {
+    "z": -60.0,
+    "boot": [
+     7.0,
+     6.0,
+     14.0
+    ],
+    "plug": [
+     2.5,
+     6.5,
+     8.3
+    ],
+    "boot_y": [
+     18.0,
+     24.0
+    ]
+   }
+  },
+  "laptop": {
+   "x": [
+    714.5,
+    729.5
+   ],
+   "y": [
+    24.0,
+    328.0
+   ],
+   "z": [
+    -106.0,
+    106.0
+   ],
+   "corner_r": 6.0,
+   "edge_r": 2.5,
+   "lid_t": 5.0,
+   "seam_groove": 0.6,
+   "port_z": -60.0,
+   "port": [
+    3.2,
+    7.5,
+    8.9
+   ]
+  },
+  "keyboard": {
+   "size": [
+    360.0,
+    120.0
+   ],
+   "h_front": 9.0,
+   "h_back": 13.0,
+   "corner_r": 8.0,
+   "stow_c": [
+    -90.0,
+    62.0
+   ],
+   "stow_y": 18.0,
+   "unit": 18.5,
+   "cap_gap": 2.0,
+   "cap_h": 2.6,
+   "cap_r": 2.2,
+   "cap_taper": 12.0,
+   "well_depth": 1.0,
+   "well_margin": 2.5,
+   "coil_x": [
+    -80.0,
+    80.0
+   ],
+   "coil_d": [
+    40.0,
+    14.0
+   ],
+   "coil_t": 1.0,
+   "layout": "75% (84 keys, 16u x 6 rows)"
+  },
+  "mouse": {
+   "size": [
+    66.0,
+    118.0,
+    38.0
+   ],
+   "stow_c": [
+    250.0,
+    62.0
+   ],
+   "stow_y": 18.0,
+   "wheel_d": 18.0,
+   "wheel_w": 6.5,
+   "wheel_z": -32.0,
+   "wheel_cy": 27.0,
+   "coil_d": [
+    38.0,
+    12.0
+   ],
+   "coil_t": 1.0
+  },
+  "deskmat": {
+   "size": [
+    820.0,
+    3.0,
+    300.0
+   ],
+   "c": [
+    60.0,
+    385.0
+   ],
+   "corner_r": 12.0
+  },
+  "internals": {
+   "board": {
+    "x": [
+     -600.0,
+     -300.0
+    ],
+    "z": [
+     -120.0,
+     110.0
+    ],
+    "y": [
+     4.0,
+     5.6
+    ]
+   },
+   "vapor_chamber": {
+    "x": [
+     -470.0,
+     -322.0
+    ],
+    "z": [
+     -118.0,
+     -22.0
+    ],
+    "y": [
+     5.6,
+     8.0
+    ]
+   },
+   "fins": {
+    "x": [
+     -466.0,
+     -326.0
+    ],
+    "z": [
+     -116.0,
+     -24.0
+    ],
+    "y": [
+     8.0,
+     22.0
+    ],
+    "t": 0.8,
+    "pitch": 2.8
+   },
+   "fan": {
+    "x": [
+     -440.0,
+     -352.0
+    ],
+    "z": [
+     -20.0,
+     64.0
+    ],
+    "y": [
+     5.6,
+     19.6
+    ]
+   },
+   "psu": {
+    "x": [
+     330.0,
+     470.0
+    ],
+    "z": [
+     -138.0,
+     20.0
+    ],
+    "y": [
+     4.0,
+     24.0
+    ]
+   },
+   "qi_coils_kb_x": [
+    -170.0,
+    -10.0
+   ],
+   "qi_z": 62.0,
+   "qi_coil_mouse_x": 250.0,
+   "qi_coil": {
+    "d": [
+     50.0,
+     20.0
+    ],
+    "y": [
+     12.0,
+     15.0
+    ]
+   },
+   "ferrite": {
+    "size": 60.0,
+    "y": [
+     10.0,
+     12.0
+    ]
+   },
+   "dock_board": {
+    "x": [
+     662.0,
+     762.0
+    ],
+    "z": [
+     -112.0,
+     118.0
+    ],
+    "y": [
+     4.0,
+     5.6
+    ]
+   }
+  },
+  "poses_mm": {
+   "work_keyboard": [
+    0.0,
+    -15.0,
+    298.0
+   ],
+   "work_mouse": [
+    40.0,
+    -15.0,
+    298.0
+   ],
+   "dock_align_lift": 140.0,
+   "dock_lift_out": 160.0,
+   "latch_travel": 3.0
+  }
+ },
+ "bounds": {
+  "min": [
+   -0.64,
+   -0.0,
+   -0.15
+  ],
+  "max": [
+   0.775,
+   0.5197,
+   0.15
+  ]
+ },
+ "materials": {
+  "titanium": {
+   "label": "Neutral Titanium",
+   "color": "#BDB2A4",
+   "metallic": 1.0,
+   "roughness": 0.32,
+   "density_g_cm3": 4.43,
+   "spec": "Grade 5 titanium, bead-blasted and brushed"
+  },
+  "graphite": {
+   "label": "Charcoal Graphite",
+   "color": "#3A3735",
+   "metallic": 0.55,
+   "roughness": 0.48,
+   "density_g_cm3": 2.7,
+   "spec": "anodised aluminium, charcoal graphite finish"
+  },
+  "oxblood": {
+   "label": "Brushed Oxblood",
+   "color": "#7A2E2A",
+   "metallic": 0.75,
+   "roughness": 0.36,
+   "density_g_cm3": 2.7,
+   "spec": "brushed aluminium, oxblood anodise"
+  },
+  "glass_black": {
+   "label": "Black Glass",
+   "color": "#060606",
+   "metallic": 0.0,
+   "roughness": 0.06,
+   "density_g_cm3": 2.5,
+   "spec": "cover glass with black print"
+  },
+  "screen": {
+   "label": "Active Screen",
+   "color": "#08080A",
+   "metallic": 0.0,
+   "roughness": 0.12,
+   "density_g_cm3": 2.5,
+   "spec": "IPS active area (2560x1440 each)"
+  },
+  "keycap": {
+   "label": "PBT Keycap",
+   "color": "#1C1A19",
+   "metallic": 0.0,
+   "roughness": 0.62,
+   "density_g_cm3": 1.3,
+   "spec": "double-shot PBT"
+  },
+  "rubber": {
+   "label": "Rubber",
+   "color": "#141313",
+   "metallic": 0.0,
+   "roughness": 0.88,
+   "density_g_cm3": 1.2,
+   "spec": "silicone rubber"
+  },
+  "amber_led": {
+   "label": "Amber Light",
+   "color": "#F2A04A",
+   "metallic": 0.0,
+   "roughness": 0.4,
+   "density_g_cm3": 1.19,
+   "spec": "diffused amber LED under PMMA",
+   "emissive": true
+  },
+  "copper": {
+   "label": "Copper",
+   "color": "#C9805A",
+   "metallic": 1.0,
+   "roughness": 0.33,
+   "density_g_cm3": 8.96,
+   "spec": "copper windings"
+  },
+  "pcb": {
+   "label": "PCB",
+   "color": "#1D2A22",
+   "metallic": 0.0,
+   "roughness": 0.55,
+   "density_g_cm3": 1.85,
+   "spec": "FR-4 with components"
+  },
+  "ferrite": {
+   "label": "Ferrite",
+   "color": "#2A2828",
+   "metallic": 0.0,
+   "roughness": 0.8,
+   "density_g_cm3": 4.8,
+   "spec": "MnZn ferrite"
+  },
+  "laptop_alu": {
+   "label": "Laptop Aluminium",
+   "color": "#8C847B",
+   "metallic": 1.0,
+   "roughness": 0.38,
+   "density_g_cm3": 2.7,
+   "spec": "aluminium unibody"
+  },
+  "felt": {
+   "label": "Wool Felt",
+   "color": "#2B2724",
+   "metallic": 0.0,
+   "roughness": 0.96,
+   "density_g_cm3": 0.3,
+   "spec": "pressed wool felt"
+  },
+  "steel": {
+   "label": "Steel",
+   "color": "#9A9C9E",
+   "metallic": 1.0,
+   "roughness": 0.4,
+   "density_g_cm3": 7.85,
+   "spec": "stainless steel"
+  }
+ },
+ "groups": [
+  {
+   "id": "display",
+   "name": "Dual 27\" display",
+   "summary": "Two mainstream 27\" QHD panels, toed in 10 degrees, one 5120 x 1440 canvas with an honest titanium seam.",
+   "description": "Two off-the-shelf 27-inch 2560 x 1440 IPS monitors are stripped of their plastic and hung on one steel VESA spine inside a shared graphite shroud. Each panel is toed in 10 degrees about the seam, so the outer edges come 106 mm toward you and the 1.2 m wide canvas wraps your field of view like a 49-inch super-ultrawide. The 14 mm gap between the active areas is not hidden: a 4 mm titanium mullion runs the full height of the glass, and your OS already treats it as the border between two displays. A dead panel is a cheap swap, not a new monitor.",
+   "parts": [
+    "display_screen",
+    "display_glass",
+    "display_seam",
+    "display_frame",
+    "display_back",
+    "display_spine",
+    "display_boards"
+   ],
+   "pivot": [
+    0.0,
+    0.153,
+    -0.048645
+   ],
+   "bbox_mm": [
+    1217.6,
+    366.7,
+    188.7
+   ],
+   "mass_g": 11258.8,
+   "volume_cm3": 3118.8,
+   "materials": [
+    "screen",
+    "glass_black",
+    "titanium",
+    "graphite",
+    "steel",
+    "pcb"
+   ]
+  },
+  {
+   "id": "stand",
+   "name": "Neck & light bar",
+   "summary": "Trapezoid aluminium neck that carries the display and the cables, with the amber light bar under the screen.",
+   "description": "A hollow trapezoid neck (320 mm at the foot, 180 mm at the top) leans back 4.8 degrees and plugs 3 mm into the display's keel, so the steel spine sits directly on it. The hollow core is the cable chase from the compute board to the monitors' scaler boards. NIGHT ARRAY is inlaid in titanium on the front face and an amber light bar washes the top edge just below the glass.",
+   "parts": [
+    "neck",
+    "neck_light",
+    "neck_badge"
+   ],
+   "pivot": [
+    -0.0,
+    0.036,
+    -0.104948
+   ],
+   "bbox_mm": [
+    320.0,
+    120.0,
+    69.9
+   ],
+   "mass_g": 787.0,
+   "volume_cm3": 292.7,
+   "materials": [
+    "graphite",
+    "amber_led",
+    "titanium"
+   ]
+  },
+  {
+   "id": "base",
+   "name": "Base & charging trays",
+   "summary": "1.29 m machined titanium tray with a recessed deck and two Qi2 charging pockets.",
+   "description": "The base is one long titanium tray: a 16 mm rim, a deck recessed 6 mm, and two pockets that take the keyboard and mouse flush with the rim. Soft-touch pads cover non-metallic windows in the pocket floors, because titanium would block Qi2; set a device down and it charges. Amber indicators sit on the front lip, an under-glow strip lights the desk, and the shell is hollow inside to hold the compute, power and coils. Rear I/O and the exhaust grille are on the back face, left side.",
+   "parts": [
+    "base_shell",
+    "deck_liner",
+    "tray_pad_kb",
+    "tray_pad_mouse",
+    "base_glow",
+    "kb_charge_led",
+    "mouse_charge_led",
+    "base_feet"
+   ],
+   "pivot": [
+    0.005,
+    -0.0,
+    0.0
+   ],
+   "bbox_mm": [
+    1290.0,
+    36.0,
+    300.0
+   ],
+   "mass_g": 11522.3,
+   "volume_cm3": 2777.4,
+   "materials": [
+    "titanium",
+    "graphite",
+    "amber_led",
+    "rubber"
+   ]
+  },
+  {
+   "id": "dock",
+   "name": "Laptop dock",
+   "summary": "Right-wing cradle with a swept profile, lead-in slot, sprung USB-C and a press-release latch.",
+   "description": "The dock wing rises 120 mm at the back and sweeps down in a concave curve to a 60 mm front, wrapped in brushed oxblood panels. A 20 mm slot with 4 mm lead-in chamfers guides a closed laptop on its side onto a sprung USB-C plug standing up from the slot floor. Press the latch (3 mm travel) to release, then lift out; the amber strip on the latch shows charge and link state.",
+   "parts": [
+    "dock_cradle",
+    "dock_panels",
+    "dock_latch",
+    "dock_latch_led",
+    "dock_connector"
+   ],
+   "pivot": [
+    0.7125,
+    -0.0,
+    0.004
+   ],
+   "bbox_mm": [
+    125.0,
+    120.0,
+    268.0
+   ],
+   "mass_g": 2952.8,
+   "volume_cm3": 685.6,
+   "materials": [
+    "titanium",
+    "oxblood",
+    "graphite",
+    "amber_led",
+    "steel"
+   ],
+   "subgroups": {
+    "dock_latch": {
+     "parts": [
+      "dock_latch",
+      "dock_latch_led"
+     ],
+     "pivot": [
+      0.752,
+      0.018,
+      0.131
+     ]
+    }
+   }
+  },
+  {
+   "id": "laptop",
+   "name": "Laptop",
+   "summary": "Any slim laptop, standing closed on its side in the dock: your hardware.",
+   "description": "A generic 14-inch class laptop (304 x 212 x 15 mm) stands closed on its left side, hinge toward the back, with its USB-C port seated on the dock's sprung connector. Docked, it drives the dual display and charges; lifted out, the station keeps running on the compute in the base. Mass is an estimate for a real device.",
+   "parts": [
+    "laptop_body"
+   ],
+   "pivot": [
+    0.722,
+    0.024,
+    0.0
+   ],
+   "bbox_mm": [
+    15.0,
+    304.0,
+    212.0
+   ],
+   "mass_g": 1299.4,
+   "volume_cm3": 962.5,
+   "materials": [
+    "laptop_alu"
+   ]
+  },
+  {
+   "id": "keyboard",
+   "name": "Low-profile keyboard",
+   "summary": "75% low-profile keyboard that charges wirelessly in its pocket.",
+   "description": "A 360 x 120 mm aluminium wedge (9 mm at the front, 13 mm at the back) with an 84-key 75% layout on an 18.5 mm pitch. Two receiver coils under the chassis line up with the base's Qi2 coils when it is stowed. In work mode it comes 298 mm forward onto the felt mat, leaving 150 mm of open desk in front of the base.",
+   "parts": [
+    "keyboard_body",
+    "keyboard_keys",
+    "keyboard_coil"
+   ],
+   "pivot": [
+    -0.09,
+    0.018,
+    0.062
+   ],
+   "bbox_mm": [
+    360.0,
+    15.4,
+    120.0
+   ],
+   "mass_g": 616.8,
+   "volume_cm3": 534.1,
+   "materials": [
+    "graphite",
+    "keycap",
+    "copper"
+   ]
+  },
+  {
+   "id": "mouse",
+   "name": "Mouse",
+   "summary": "Ambidextrous ergonomic mouse with an amber tail light and a Qi2 receiver coil.",
+   "description": "A 66 x 118 x 38 mm ambidextrous shell lofted through fourteen sections, with a rubber scroll wheel, split buttons and an amber accent at the rear. Its receiver coil sits over the pocket's Qi2 coil when stowed. The mass is an effective estimate for a real hollow mouse.",
+   "parts": [
+    "mouse_shell",
+    "mouse_wheel",
+    "mouse_glow",
+    "mouse_coil"
+   ],
+   "pivot": [
+    0.25,
+    0.018,
+    0.062
+   ],
+   "bbox_mm": [
+    66.0,
+    38.0,
+    118.0
+   ],
+   "mass_g": 84.4,
+   "volume_cm3": 173.3,
+   "materials": [
+    "graphite",
+    "rubber",
+    "amber_led",
+    "copper"
+   ]
+  },
+  {
+   "id": "deskmat",
+   "name": "Felt desk mat",
+   "summary": "820 x 300 mm wool felt mat for work mode.",
+   "description": "A 3 mm pressed wool felt mat that defines the work zone in front of the base. It only appears in work and standalone modes, when the keyboard and mouse come out of their pockets.",
+   "parts": [
+    "deskmat"
+   ],
+   "pivot": [
+    0.06,
+    0.0,
+    0.385
+   ],
+   "bbox_mm": [
+    820.0,
+    3.0,
+    300.0
+   ],
+   "mass_g": 221.1,
+   "volume_cm3": 736.9,
+   "materials": [
+    "felt"
+   ]
+  },
+  {
+   "id": "internals",
+   "name": "Internals",
+   "summary": "Compute stays in the base: mainboard, vapor chamber, blower, PSU, Qi2 coils and the dock PCB.",
+   "description": "Inside the hollow base: a 300 x 230 mm compute board with a vapor chamber and fin stack exhausting through the rear grille, a slim blower, a 140 x 158 mm internal power supply, three Qi2 transmitter coils on ferrite shields under the pocket windows, and the dock PCB with its pogo contact under the cradle. Because compute stays in the base, the station works with or without the laptop.",
+   "parts": [
+    "compute_board",
+    "compute_heatsink",
+    "compute_fan",
+    "psu",
+    "qi_coil_kb",
+    "qi_coil_mouse",
+    "ferrite_kb",
+    "ferrite_mouse",
+    "dock_board"
+   ],
+   "pivot": [
+    0.081,
+    0.004,
+    -0.014
+   ],
+   "bbox_mm": [
+    1362.0,
+    20.0,
+    264.0
+   ],
+   "mass_g": 1777.1,
+   "volume_cm3": 808.5,
+   "materials": [
+    "pcb",
+    "steel",
+    "graphite",
+    "copper",
+    "ferrite"
+   ]
+  }
+ ],
+ "parts": [
+  {
+   "id": "display_screen",
+   "group": "display",
+   "name": "Active screen (2 x 27\" QHD)",
+   "material": "screen",
+   "internal": false,
+   "explode": [
+    0.0,
+    0.42,
+    0.2
+   ],
+   "bbox_mm": [
+    1189.1,
+    335.7,
+    103.9
+   ],
+   "volume_cm3": 120.19,
+   "mass_g": 300.5,
+   "density_g_cm3": 2.5,
+   "solids": 2
+  },
+  {
+   "id": "display_glass",
+   "group": "display",
+   "name": "Panel front glass & bezels",
+   "material": "glass_black",
+   "internal": false,
+   "explode": [
+    0.0,
+    0.42,
+    0.13
+   ],
+   "bbox_mm": [
+    1207.5,
+    360.7,
+    108.4
+   ],
+   "volume_cm3": 883.98,
+   "mass_g": 2209.9,
+   "density_g_cm3": 2.5,
+   "solids": 2
+  },
+  {
+   "id": "display_seam",
+   "group": "display",
+   "name": "Titanium seam mullion",
+   "material": "titanium",
+   "internal": false,
+   "explode": [
+    0.0,
+    0.42,
+    0.25
+   ],
+   "bbox_mm": [
+    4.0,
+    360.7,
+    1.4
+   ],
+   "volume_cm3": 1.71,
+   "mass_g": 7.6,
+   "density_g_cm3": 4.43
+  },
+  {
+   "id": "display_frame",
+   "group": "display",
+   "name": "Shroud front rim",
+   "material": "titanium",
+   "internal": false,
+   "explode": [
+    0.0,
+    0.42,
+    0.07
+   ],
+   "bbox_mm": [
+    1214.4,
+    366.7,
+    112.8
+   ],
+   "volume_cm3": 55.93,
+   "mass_g": 247.8,
+   "density_g_cm3": 4.43
+  },
+  {
+   "id": "display_back",
+   "group": "display",
+   "name": "Rear shroud & VESA keel",
+   "material": "graphite",
+   "internal": false,
+   "explode": [
+    0.0,
+    0.42,
+    -0.23
+   ],
+   "bbox_mm": [
+    1217.6,
+    366.7,
+    183.0
+   ],
+   "volume_cm3": 1361.56,
+   "mass_g": 3676.2,
+   "density_g_cm3": 2.7
+  },
+  {
+   "id": "display_spine",
+   "group": "display",
+   "name": "Steel VESA spine",
+   "material": "steel",
+   "internal": true,
+   "explode": [
+    0.0,
+    0.42,
+    -0.08
+   ],
+   "bbox_mm": [
+    828.8,
+    269.0,
+    146.0
+   ],
+   "volume_cm3": 600.28,
+   "mass_g": 4712.2,
+   "density_g_cm3": 7.85
+  },
+  {
+   "id": "display_boards",
+   "group": "display",
+   "name": "Monitor scaler & power boards",
+   "material": "pcb",
+   "internal": true,
+   "explode": [
+    0.0,
+    0.42,
+    -0.14
+   ],
+   "bbox_mm": [
+    815.9,
+    86.0,
+    55.8
+   ],
+   "volume_cm3": 95.12,
+   "mass_g": 104.6,
+   "density_g_cm3": 1.1,
+   "mass_note": "PCB + components, effective density",
+   "solids": 2
+  },
+  {
+   "id": "neck",
+   "group": "stand",
+   "name": "Trapezoid neck",
+   "material": "graphite",
+   "internal": false,
+   "explode": [
+    0.0,
+    0.22,
+    -0.03
+   ],
+   "bbox_mm": [
+    320.0,
+    120.0,
+    69.9
+   ],
+   "volume_cm3": 290.42,
+   "mass_g": 784.1,
+   "density_g_cm3": 2.7
+  },
+  {
+   "id": "neck_light",
+   "group": "stand",
+   "name": "Neck light bar",
+   "material": "amber_led",
+   "internal": false,
+   "explode": [
+    0.0,
+    0.22,
+    0.03
+   ],
+   "bbox_mm": [
+    150.0,
+    5.2,
+    3.4
+   ],
+   "volume_cm3": 2.25,
+   "mass_g": 2.7,
+   "density_g_cm3": 1.19
+  },
+  {
+   "id": "neck_badge",
+   "group": "stand",
+   "name": "NIGHT ARRAY inlay",
+   "material": "titanium",
+   "internal": false,
+   "explode": [
+    0.0,
+    0.22,
+    0.07
+   ],
+   "bbox_mm": [
+    83.0,
+    6.4,
+    1.0
+   ],
+   "volume_cm3": 0.05,
+   "mass_g": 0.2,
+   "density_g_cm3": 4.43,
+   "solids": 10
+  },
+  {
+   "id": "base_shell",
+   "group": "base",
+   "name": "Base shell",
+   "material": "titanium",
+   "internal": false,
+   "explode": [
+    0.0,
+    0.12,
+    0.0
+   ],
+   "bbox_mm": [
+    1290.0,
+    36.0,
+    300.0
+   ],
+   "volume_cm3": 2372.16,
+   "mass_g": 10508.7,
+   "density_g_cm3": 4.43
+  },
+  {
+   "id": "deck_liner",
+   "group": "base",
+   "name": "Graphite deck liner",
+   "material": "graphite",
+   "internal": false,
+   "explode": [
+    0.0,
+    0.145,
+    0.0
+   ],
+   "bbox_mm": [
+    1249.6,
+    1.0,
+    259.6
+   ],
+   "volume_cm3": 230.99,
+   "mass_g": 623.7,
+   "density_g_cm3": 2.7
+  },
+  {
+   "id": "tray_pad_kb",
+   "group": "base",
+   "name": "Keyboard charging pad",
+   "material": "graphite",
+   "internal": false,
+   "explode": [
+    0.0,
+    0.17,
+    0.0
+   ],
+   "bbox_mm": [
+    374.0,
+    2.0,
+    134.0
+   ],
+   "volume_cm3": 99.8,
+   "mass_g": 269.5,
+   "density_g_cm3": 2.7
+  },
+  {
+   "id": "tray_pad_mouse",
+   "group": "base",
+   "name": "Mouse charging pad",
+   "material": "graphite",
+   "internal": false,
+   "explode": [
+    0.0,
+    0.17,
+    0.0
+   ],
+   "bbox_mm": [
+    80.0,
+    2.0,
+    132.0
+   ],
+   "volume_cm3": 20.81,
+   "mass_g": 56.2,
+   "density_g_cm3": 2.7
+  },
+  {
+   "id": "base_glow",
+   "group": "base",
+   "name": "Front under-glow strip",
+   "material": "amber_led",
+   "internal": false,
+   "explode": [
+    0.0,
+    0.1,
+    0.07
+   ],
+   "bbox_mm": [
+    1120.0,
+    3.0,
+    3.0
+   ],
+   "volume_cm3": 10.08,
+   "mass_g": 12.0,
+   "density_g_cm3": 1.19
+  },
+  {
+   "id": "kb_charge_led",
+   "group": "base",
+   "name": "Keyboard charge indicator",
+   "material": "amber_led",
+   "internal": false,
+   "explode": [
+    0.0,
+    0.15,
+    0.06
+   ],
+   "bbox_mm": [
+    30.0,
+    1.0,
+    2.0
+   ],
+   "volume_cm3": 0.06,
+   "mass_g": 0.1,
+   "density_g_cm3": 1.19
+  },
+  {
+   "id": "mouse_charge_led",
+   "group": "base",
+   "name": "Mouse charge indicator",
+   "material": "amber_led",
+   "internal": false,
+   "explode": [
+    0.0,
+    0.15,
+    0.06
+   ],
+   "bbox_mm": [
+    16.0,
+    1.0,
+    2.0
+   ],
+   "volume_cm3": 0.03,
+   "mass_g": 0.0,
+   "density_g_cm3": 1.19
+  },
+  {
+   "id": "base_feet",
+   "group": "base",
+   "name": "Recessed rubber feet",
+   "material": "rubber",
+   "internal": false,
+   "explode": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "bbox_mm": [
+    1210.0,
+    1.5,
+    256.0
+   ],
+   "volume_cm3": 43.47,
+   "mass_g": 52.2,
+   "density_g_cm3": 1.2,
+   "solids": 2
+  },
+  {
+   "id": "dock_cradle",
+   "group": "dock",
+   "name": "Dock cradle",
+   "material": "titanium",
+   "internal": false,
+   "explode": [
+    0.24,
+    0.12,
+    0.0
+   ],
+   "bbox_mm": [
+    125.0,
+    120.0,
+    260.0
+   ],
+   "volume_cm3": 634.74,
+   "mass_g": 2811.9,
+   "density_g_cm3": 4.43
+  },
+  {
+   "id": "dock_panels",
+   "group": "dock",
+   "name": "Oxblood accent panels",
+   "material": "oxblood",
+   "internal": false,
+   "explode": [
+    0.33,
+    0.12,
+    0.05
+   ],
+   "bbox_mm": [
+    118.0,
+    106.0,
+    253.0
+   ],
+   "volume_cm3": 39.88,
+   "mass_g": 107.7,
+   "density_g_cm3": 2.7,
+   "solids": 2
+  },
+  {
+   "id": "dock_latch",
+   "group": "dock",
+   "name": "Press-release latch",
+   "material": "graphite",
+   "internal": false,
+   "explode": [
+    0.24,
+    0.12,
+    0.12
+   ],
+   "bbox_mm": [
+    34.0,
+    22.0,
+    14.0
+   ],
+   "volume_cm3": 10.24,
+   "mass_g": 27.6,
+   "density_g_cm3": 2.7
+  },
+  {
+   "id": "dock_latch_led",
+   "group": "dock",
+   "name": "Latch status light",
+   "material": "amber_led",
+   "internal": false,
+   "explode": [
+    0.24,
+    0.15,
+    0.12
+   ],
+   "bbox_mm": [
+    26.0,
+    0.8,
+    3.0
+   ],
+   "volume_cm3": 0.06,
+   "mass_g": 0.1,
+   "density_g_cm3": 1.19
+  },
+  {
+   "id": "dock_connector",
+   "group": "dock",
+   "name": "Sprung USB-C connector",
+   "material": "steel",
+   "internal": false,
+   "explode": [
+    0.24,
+    0.2,
+    0.0
+   ],
+   "bbox_mm": [
+    7.0,
+    12.5,
+    14.0
+   ],
+   "volume_cm3": 0.7,
+   "mass_g": 5.5,
+   "density_g_cm3": 7.85
+  },
+  {
+   "id": "laptop_body",
+   "group": "laptop",
+   "name": "Laptop",
+   "material": "laptop_alu",
+   "internal": false,
+   "explode": [
+    0.24,
+    0.5,
+    0.0
+   ],
+   "bbox_mm": [
+    15.0,
+    304.0,
+    212.0
+   ],
+   "volume_cm3": 962.53,
+   "mass_g": 1299.4,
+   "density_g_cm3": 1.35,
+   "mass_note": "solid envelope; effective density of a 14\" aluminium laptop"
+  },
+  {
+   "id": "keyboard_body",
+   "group": "keyboard",
+   "name": "Keyboard chassis",
+   "material": "graphite",
+   "internal": false,
+   "explode": [
+    0.0,
+    0.25,
+    0.12
+   ],
+   "bbox_mm": [
+    360.0,
+    12.9,
+    120.0
+   ],
+   "volume_cm3": 432.94,
+   "mass_g": 476.2,
+   "density_g_cm3": 1.1,
+   "mass_note": "solid envelope; aluminium chassis with internals, effective density"
+  },
+  {
+   "id": "keyboard_keys",
+   "group": "keyboard",
+   "name": "Keycaps (75%)",
+   "material": "keycap",
+   "internal": false,
+   "explode": [
+    0.0,
+    0.29,
+    0.12
+   ],
+   "bbox_mm": [
+    301.0,
+    7.3,
+    116.0
+   ],
+   "volume_cm3": 98.98,
+   "mass_g": 128.7,
+   "density_g_cm3": 1.3
+  },
+  {
+   "id": "keyboard_coil",
+   "group": "keyboard",
+   "name": "Keyboard receiver coils",
+   "material": "copper",
+   "internal": true,
+   "explode": [
+    0.0,
+    0.21,
+    0.12
+   ],
+   "bbox_mm": [
+    200.0,
+    1.0,
+    40.0
+   ],
+   "volume_cm3": 2.21,
+   "mass_g": 11.9,
+   "density_g_cm3": 5.4,
+   "mass_note": "litz-wire winding, ~60% copper fill",
+   "solids": 2
+  },
+  {
+   "id": "mouse_shell",
+   "group": "mouse",
+   "name": "Mouse shell",
+   "material": "graphite",
+   "internal": false,
+   "explode": [
+    0.0,
+    0.25,
+    0.12
+   ],
+   "bbox_mm": [
+    66.0,
+    38.0,
+    118.0
+   ],
+   "volume_cm3": 170.59,
+   "mass_g": 76.8,
+   "density_g_cm3": 0.45,
+   "mass_note": "solid envelope; hollow PC/ABS shell with internals, effective density"
+  },
+  {
+   "id": "mouse_wheel",
+   "group": "mouse",
+   "name": "Scroll wheel",
+   "material": "rubber",
+   "internal": false,
+   "explode": [
+    0.0,
+    0.3,
+    0.12
+   ],
+   "bbox_mm": [
+    6.5,
+    18.0,
+    18.0
+   ],
+   "volume_cm3": 1.62,
+   "mass_g": 1.9,
+   "density_g_cm3": 1.2
+  },
+  {
+   "id": "mouse_glow",
+   "group": "mouse",
+   "name": "Mouse amber accent",
+   "material": "amber_led",
+   "internal": false,
+   "explode": [
+    0.0,
+    0.25,
+    0.16
+   ],
+   "bbox_mm": [
+    30.0,
+    2.6,
+    6.0
+   ],
+   "volume_cm3": 0.12,
+   "mass_g": 0.1,
+   "density_g_cm3": 1.19
+  },
+  {
+   "id": "mouse_coil",
+   "group": "mouse",
+   "name": "Mouse receiver coil",
+   "material": "copper",
+   "internal": true,
+   "explode": [
+    0.0,
+    0.21,
+    0.12
+   ],
+   "bbox_mm": [
+    38.0,
+    1.0,
+    38.0
+   ],
+   "volume_cm3": 1.02,
+   "mass_g": 5.5,
+   "density_g_cm3": 5.4,
+   "mass_note": "litz-wire winding, ~60% copper fill"
+  },
+  {
+   "id": "deskmat",
+   "group": "deskmat",
+   "name": "Felt desk mat",
+   "material": "felt",
+   "internal": false,
+   "explode": [
+    0.0,
+    0.0,
+    0.08
+   ],
+   "bbox_mm": [
+    820.0,
+    3.0,
+    300.0
+   ],
+   "volume_cm3": 736.94,
+   "mass_g": 221.1,
+   "density_g_cm3": 0.3
+  },
+  {
+   "id": "compute_board",
+   "group": "internals",
+   "name": "Compute mainboard",
+   "material": "pcb",
+   "internal": true,
+   "explode": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "bbox_mm": [
+    300.0,
+    16.2,
+    230.0
+   ],
+   "volume_cm3": 133.87,
+   "mass_g": 214.2,
+   "density_g_cm3": 1.6,
+   "mass_note": "PCB + components, effective density"
+  },
+  {
+   "id": "compute_heatsink",
+   "group": "internals",
+   "name": "Vapor chamber & fin stack",
+   "material": "steel",
+   "internal": true,
+   "explode": [
+    0.0,
+    0.035,
+    0.0
+   ],
+   "bbox_mm": [
+    148.0,
+    16.4,
+    96.0
+   ],
+   "volume_cm3": 85.6,
+   "mass_g": 727.6,
+   "density_g_cm3": 8.5,
+   "mass_note": "copper vapor chamber + fins (nickel plated)"
+  },
+  {
+   "id": "compute_fan",
+   "group": "internals",
+   "name": "Slim blower",
+   "material": "graphite",
+   "internal": true,
+   "explode": [
+    0.0,
+    0.035,
+    0.03
+   ],
+   "bbox_mm": [
+    76.0,
+    14.0,
+    83.0
+   ],
+   "volume_cm3": 73.06,
+   "mass_g": 40.2,
+   "density_g_cm3": 0.55,
+   "mass_note": "solid envelope; blower housing and impeller, effective density"
+  },
+  {
+   "id": "psu",
+   "group": "internals",
+   "name": "Internal power supply",
+   "material": "graphite",
+   "internal": true,
+   "explode": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "bbox_mm": [
+    140.0,
+    20.0,
+    166.0
+   ],
+   "volume_cm3": 439.93,
+   "mass_g": 549.9,
+   "density_g_cm3": 1.25,
+   "mass_note": "solid envelope; GaN power supply, effective density"
+  },
+  {
+   "id": "qi_coil_kb",
+   "group": "internals",
+   "name": "Qi2 coils, keyboard pocket",
+   "material": "copper",
+   "internal": true,
+   "explode": [
+    0.0,
+    0.03,
+    0.0
+   ],
+   "bbox_mm": [
+    210.0,
+    3.0,
+    50.0
+   ],
+   "volume_cm3": 9.59,
+   "mass_g": 51.8,
+   "density_g_cm3": 5.4,
+   "mass_note": "litz-wire winding, ~60% copper fill",
+   "solids": 2
+  },
+  {
+   "id": "qi_coil_mouse",
+   "group": "internals",
+   "name": "Qi2 coil, mouse pocket",
+   "material": "copper",
+   "internal": true,
+   "explode": [
+    0.0,
+    0.03,
+    0.0
+   ],
+   "bbox_mm": [
+    50.0,
+    3.0,
+    50.0
+   ],
+   "volume_cm3": 4.79,
+   "mass_g": 25.9,
+   "density_g_cm3": 5.4,
+   "mass_note": "litz-wire winding, ~60% copper fill"
+  },
+  {
+   "id": "ferrite_kb",
+   "group": "internals",
+   "name": "Ferrite shields, keyboard",
+   "material": "ferrite",
+   "internal": true,
+   "explode": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "bbox_mm": [
+    220.0,
+    2.0,
+    60.0
+   ],
+   "volume_cm3": 14.35,
+   "mass_g": 68.9,
+   "density_g_cm3": 4.8,
+   "solids": 2
+  },
+  {
+   "id": "ferrite_mouse",
+   "group": "internals",
+   "name": "Ferrite shield, mouse",
+   "material": "ferrite",
+   "internal": true,
+   "explode": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "bbox_mm": [
+    60.0,
+    2.0,
+    60.0
+   ],
+   "volume_cm3": 7.17,
+   "mass_g": 34.4,
+   "density_g_cm3": 4.8
+  },
+  {
+   "id": "dock_board",
+   "group": "internals",
+   "name": "Dock PCB",
+   "material": "pcb",
+   "internal": true,
+   "explode": [
+    0.24,
+    0.0,
+    0.0
+   ],
+   "bbox_mm": [
+    100.0,
+    13.5,
+    230.0
+   ],
+   "volume_cm3": 40.16,
+   "mass_g": 64.2,
+   "density_g_cm3": 1.6,
+   "mass_note": "PCB + components, effective density"
+  }
+ ],
+ "poses": {
+  "stow": {
+   "deskmat": {
+    "hidden": true
+   }
+  },
+  "work": {
+   "keyboard": {
+    "t": [
+     0.0,
+     -0.015,
+     0.298
+    ]
+   },
+   "mouse": {
+    "t": [
+     0.04,
+     -0.015,
+     0.298
+    ]
+   }
+  },
+  "standalone": {
+   "keyboard": {
+    "t": [
+     0.0,
+     -0.015,
+     0.298
+    ]
+   },
+   "mouse": {
+    "t": [
+     0.04,
+     -0.015,
+     0.298
+    ]
+   },
+   "laptop": {
+    "hidden": true
+   }
+  }
+ },
+ "dock_sequence": [
+  {
+   "step": "align",
+   "title": "Align",
+   "caption": "Guide into the open cradle",
+   "laptop": {
+    "t": [
+     0,
+     0.14,
+     0
+    ]
+   }
+  },
+  {
+   "step": "lower",
+   "title": "Lower",
+   "caption": "Seat the laptop onto the connector",
+   "laptop": {
+    "t": [
+     0,
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "step": "release",
+   "title": "Press-release & lift",
+   "caption": "Press to release, then lift out",
+   "laptop": {
+    "t": [
+     0,
+     0,
+     0
+    ]
+   },
+   "dock_latch": {
+    "t": [
+     0,
+     0,
+     -0.003
+    ]
+   }
+  },
+  {
+   "step": "lift",
+   "title": "Lift out",
+   "caption": "Laptop free; compute stays in the base",
+   "laptop": {
+    "t": [
+     0,
+     0.16,
+     0
+    ]
+   }
+  }
+ ],
+ "dims": [
+  {
+   "id": "overall_w",
+   "label": "1 415 mm",
+   "a": [
+    -0.64,
+    0.0,
+    0.15
+   ],
+   "b": [
+    0.775,
+    0.0,
+    0.15
+   ],
+   "dir": [
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "id": "base_depth",
+   "label": "300 mm",
+   "a": [
+    -0.64,
+    0.0,
+    -0.15
+   ],
+   "b": [
+    -0.64,
+    0.0,
+    0.15
+   ],
+   "dir": [
+    -1,
+    0,
+    0
+   ]
+  },
+  {
+   "id": "overall_h",
+   "label": "520 mm",
+   "a": [
+    -0.608777,
+    0.0,
+    0.0459
+   ],
+   "b": [
+    -0.608777,
+    0.5197,
+    0.0459
+   ],
+   "dir": [
+    -1,
+    0,
+    0
+   ]
+  },
+  {
+   "id": "display_w",
+   "label": "1 218 mm",
+   "a": [
+    -0.606172,
+    0.5197,
+    0.0459
+   ],
+   "b": [
+    0.606172,
+    0.5197,
+    0.0459
+   ],
+   "dir": [
+    0,
+    1,
+    0
+   ]
+  },
+  {
+   "id": "panel_active_w",
+   "label": "596.7 mm · 27\" active",
+   "a": [
+    0.006842,
+    0.5077,
+    -0.060489
+   ],
+   "b": [
+    0.594476,
+    0.5077,
+    0.043127
+   ],
+   "dir": [
+    0,
+    1,
+    0
+   ]
+  },
+  {
+   "id": "seam",
+   "label": "14 mm seam",
+   "a": [
+    -0.006842,
+    0.172,
+    -0.060489
+   ],
+   "b": [
+    0.006842,
+    0.172,
+    -0.060489
+   ],
+   "dir": [
+    0,
+    -1,
+    0
+   ]
+  },
+  {
+   "id": "work_offset",
+   "label": "150 mm",
+   "pose": "work",
+   "a": [
+    -0.09,
+    0.003,
+    0.15
+   ],
+   "b": [
+    -0.09,
+    0.003,
+    0.3
+   ],
+   "dir": [
+    -1,
+    0,
+    0
+   ]
+  },
+  {
+   "id": "dock_h",
+   "label": "120 mm",
+   "a": [
+    0.775,
+    0.0,
+    -0.13
+   ],
+   "b": [
+    0.775,
+    0.12,
+    -0.13
+   ],
+   "dir": [
+    1,
+    0,
+    0
+   ]
+  },
+  {
+   "id": "base_h",
+   "label": "36 mm",
+   "a": [
+    0.61,
+    0.0,
+    0.15
+   ],
+   "b": [
+    0.61,
+    0.036,
+    0.15
+   ],
+   "dir": [
+    0,
+    0,
+    1
+   ]
+  }
+ ],
+ "screen": {
+  "part": "display_screen",
+  "layout": "dual",
+  "panels": 2,
+  "panel_inch": 27,
+  "panel_active_mm": [
+   596.7,
+   335.7
+  ],
+  "resolution_each": [
+   2560,
+   1440
+  ],
+  "seam_mm": 14.0,
+  "toe_in_deg": 10.0,
+  "seam_axis": [
+   0,
+   0,
+   -0.062
+  ],
+  "canvas": [
+   5120,
+   1440
+  ],
+  "active_y_mm": [
+   172.0,
+   507.7
+  ],
+  "uv": "TEXCOORD_0: left panel u 0->0.5 (outer edge -> seam), right panel u 0.5->1 (seam -> outer edge); v 0 = top"
+ },
+ "files": [
+  {
+   "id": "assembly-step",
+   "group": null,
+   "format": "STEP",
+   "label": "Full assembly",
+   "path": "files/night-array-assembly.step",
+   "bytes": 6075154
+  },
+  {
+   "id": "assembly-glb",
+   "group": null,
+   "format": "GLB",
+   "label": "Full assembly",
+   "path": "model/station.glb",
+   "bytes": 2775256
+  },
+  {
+   "id": "display-step",
+   "group": "display",
+   "format": "STEP",
+   "label": "Dual 27\" display",
+   "path": "files/parts/display.step",
+   "bytes": 1263694
+  },
+  {
+   "id": "display-stl",
+   "group": "display",
+   "format": "STL",
+   "label": "Dual 27\" display",
+   "path": "files/parts/display.stl",
+   "bytes": 704084
+  },
+  {
+   "id": "display-svg",
+   "group": "display",
+   "format": "SVG",
+   "label": "Dual 27\" display drawing",
+   "path": "files/drawings/display.svg",
+   "bytes": 351145
+  },
+  {
+   "id": "display-dxf",
+   "group": "display",
+   "format": "DXF",
+   "label": "Dual 27\" display top view",
+   "path": "files/drawings/display-top.dxf",
+   "bytes": 118281
+  },
+  {
+   "id": "stand-step",
+   "group": "stand",
+   "format": "STEP",
+   "label": "Neck & light bar",
+   "path": "files/parts/stand.step",
+   "bytes": 563792
+  },
+  {
+   "id": "stand-stl",
+   "group": "stand",
+   "format": "STL",
+   "label": "Neck & light bar",
+   "path": "files/parts/stand.stl",
+   "bytes": 133784
+  },
+  {
+   "id": "stand-svg",
+   "group": "stand",
+   "format": "SVG",
+   "label": "Neck & light bar drawing",
+   "path": "files/drawings/stand.svg",
+   "bytes": 60932
+  },
+  {
+   "id": "stand-dxf",
+   "group": "stand",
+   "format": "DXF",
+   "label": "Neck & light bar top view",
+   "path": "files/drawings/stand-top.dxf",
+   "bytes": 43728
+  },
+  {
+   "id": "base-step",
+   "group": "base",
+   "format": "STEP",
+   "label": "Base & charging trays",
+   "path": "files/parts/base.step",
+   "bytes": 734794
+  },
+  {
+   "id": "base-stl",
+   "group": "base",
+   "format": "STL",
+   "label": "Base & charging trays",
+   "path": "files/parts/base.stl",
+   "bytes": 602884
+  },
+  {
+   "id": "base-svg",
+   "group": "base",
+   "format": "SVG",
+   "label": "Base & charging trays drawing",
+   "path": "files/drawings/base.svg",
+   "bytes": 179905
+  },
+  {
+   "id": "base-dxf",
+   "group": "base",
+   "format": "DXF",
+   "label": "Base & charging trays top view",
+   "path": "files/drawings/base-top.dxf",
+   "bytes": 103000
+  },
+  {
+   "id": "dock-step",
+   "group": "dock",
+   "format": "STEP",
+   "label": "Laptop dock",
+   "path": "files/parts/dock.step",
+   "bytes": 540561
+  },
+  {
+   "id": "dock-stl",
+   "group": "dock",
+   "format": "STL",
+   "label": "Laptop dock",
+   "path": "files/parts/dock.stl",
+   "bytes": 162984
+  },
+  {
+   "id": "dock-svg",
+   "group": "dock",
+   "format": "SVG",
+   "label": "Laptop dock drawing",
+   "path": "files/drawings/dock.svg",
+   "bytes": 69893
+  },
+  {
+   "id": "dock-dxf",
+   "group": "dock",
+   "format": "DXF",
+   "label": "Laptop dock top view",
+   "path": "files/drawings/dock-top.dxf",
+   "bytes": 38041
+  },
+  {
+   "id": "laptop-step",
+   "group": "laptop",
+   "format": "STEP",
+   "label": "Laptop",
+   "path": "files/parts/laptop.step",
+   "bytes": 79756
+  },
+  {
+   "id": "laptop-stl",
+   "group": "laptop",
+   "format": "STL",
+   "label": "Laptop",
+   "path": "files/parts/laptop.stl",
+   "bytes": 61684
+  },
+  {
+   "id": "laptop-svg",
+   "group": "laptop",
+   "format": "SVG",
+   "label": "Laptop drawing",
+   "path": "files/drawings/laptop.svg",
+   "bytes": 27059
+  },
+  {
+   "id": "laptop-dxf",
+   "group": "laptop",
+   "format": "DXF",
+   "label": "Laptop top view",
+   "path": "files/drawings/laptop-top.dxf",
+   "bytes": 23397
+  },
+  {
+   "id": "keyboard-step",
+   "group": "keyboard",
+   "format": "STEP",
+   "label": "Low-profile keyboard",
+   "path": "files/parts/keyboard.step",
+   "bytes": 1300381
+  },
+  {
+   "id": "keyboard-stl",
+   "group": "keyboard",
+   "format": "STL",
+   "label": "Low-profile keyboard",
+   "path": "files/parts/keyboard.stl",
+   "bytes": 668484
+  },
+  {
+   "id": "keyboard-svg",
+   "group": "keyboard",
+   "format": "SVG",
+   "label": "Low-profile keyboard drawing",
+   "path": "files/drawings/keyboard.svg",
+   "bytes": 207832
+  },
+  {
+   "id": "keyboard-dxf",
+   "group": "keyboard",
+   "format": "DXF",
+   "label": "Low-profile keyboard top view",
+   "path": "files/drawings/keyboard-top.dxf",
+   "bytes": 342401
+  },
+  {
+   "id": "mouse-step",
+   "group": "mouse",
+   "format": "STEP",
+   "label": "Mouse",
+   "path": "files/parts/mouse.step",
+   "bytes": 558341
+  },
+  {
+   "id": "mouse-stl",
+   "group": "mouse",
+   "format": "STL",
+   "label": "Mouse",
+   "path": "files/parts/mouse.stl",
+   "bytes": 55084
+  },
+  {
+   "id": "mouse-svg",
+   "group": "mouse",
+   "format": "SVG",
+   "label": "Mouse drawing",
+   "path": "files/drawings/mouse.svg",
+   "bytes": 38489
+  },
+  {
+   "id": "mouse-dxf",
+   "group": "mouse",
+   "format": "DXF",
+   "label": "Mouse top view",
+   "path": "files/drawings/mouse-top.dxf",
+   "bytes": 36129
+  },
+  {
+   "id": "deskmat-step",
+   "group": "deskmat",
+   "format": "STEP",
+   "label": "Felt desk mat",
+   "path": "files/parts/deskmat.step",
+   "bytes": 22800
+  },
+  {
+   "id": "deskmat-stl",
+   "group": "deskmat",
+   "format": "STL",
+   "label": "Felt desk mat",
+   "path": "files/parts/deskmat.stl",
+   "bytes": 18284
+  },
+  {
+   "id": "deskmat-svg",
+   "group": "deskmat",
+   "format": "SVG",
+   "label": "Felt desk mat drawing",
+   "path": "files/drawings/deskmat.svg",
+   "bytes": 15261
+  },
+  {
+   "id": "deskmat-dxf",
+   "group": "deskmat",
+   "format": "DXF",
+   "label": "Felt desk mat top view",
+   "path": "files/drawings/deskmat-top.dxf",
+   "bytes": 21067
+  },
+  {
+   "id": "internals-step",
+   "group": "internals",
+   "format": "STEP",
+   "label": "Internals",
+   "path": "files/parts/internals.step",
+   "bytes": 830936
+  },
+  {
+   "id": "internals-stl",
+   "group": "internals",
+   "format": "STL",
+   "label": "Internals",
+   "path": "files/parts/internals.stl",
+   "bytes": 311484
+  },
+  {
+   "id": "internals-svg",
+   "group": "internals",
+   "format": "SVG",
+   "label": "Internals drawing",
+   "path": "files/drawings/internals.svg",
+   "bytes": 117611
+  },
+  {
+   "id": "internals-dxf",
+   "group": "internals",
+   "format": "DXF",
+   "label": "Internals top view",
+   "path": "files/drawings/internals-top.dxf",
+   "bytes": 120188
+  }
+ ],
+ "drawings": {
+  "display": "drawings/display.png",
+  "stand": "drawings/stand.png",
+  "base": "drawings/base.png",
+  "dock": "drawings/dock.png",
+  "laptop": "drawings/laptop.png",
+  "keyboard": "drawings/keyboard.png",
+  "mouse": "drawings/mouse.png",
+  "deskmat": "drawings/deskmat.png",
+  "internals": "drawings/internals.png"
+ },
+ "mass_note": "Masses are concept-level estimates from the B-rep volumes and real densities; solid envelopes of hollow devices use effective densities (see parts[].mass_note)."
+}

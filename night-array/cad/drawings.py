@@ -133,7 +133,110 @@ def project_poly(shape, view):
 
     vis = _chain(segs(h.VCompound(), h.OutLineVCompound(), h.Rg1LineVCompound()))
     hid = _chain(segs(h.HCompound(), h.OutLineHCompound()))
-    return vis, hid
+    ax = gp_Ax2(gp_Pnt(), gp_Dir(*d))
+    vis, hid = _promote_outline(s, ax, vis, hid)
+    return _bridge(vis), _bridge(hid)
+
+
+def _promote_outline(shape, ax, vis, hid, delta=0.25, samples=12):
+    """PolyAlgo sometimes files short stretches of the outer silhouette under 'hidden'.
+
+    Nothing can hide the outer outline of the group's own projection, so a hidden
+    polyline whose points all have material on exactly one side (ray cast along the
+    view direction, `delta` mm either side of the line) is moved to the visible set.
+    """
+    from OCP.IntCurvesFace import IntCurvesFace_ShapeIntersector
+    from OCP.gp import gp_Dir, gp_Lin, gp_Pnt
+    X, Y, Z = ax.XDirection(), ax.YDirection(), ax.Direction()
+    inter = IntCurvesFace_ShapeIntersector()
+    inter.Load(shape.wrapped, 1e-4)
+
+    def covered(u, v):
+        p = gp_Pnt(u * X.X() + v * Y.X(), u * X.Y() + v * Y.Y(), u * X.Z() + v * Y.Z())
+        inter.Perform(gp_Lin(p, gp_Dir(Z.X(), Z.Y(), Z.Z())), -1e5, 1e5)
+        return inter.IsDone() and inter.NbPnt() > 0
+
+    keep_hidden = []
+    for pl in hid:
+        if len(pl) < 2:
+            continue
+        L = sum(math.dist(pl[i], pl[i + 1]) for i in range(len(pl) - 1))
+        if L < 0.3:
+            keep_hidden.append(pl)
+            continue
+        # sample points along the polyline (with the local direction)
+        pts, acc, k = [], 0.0, 0
+        targets = [L * (i + 0.5) / samples for i in range(samples)]
+        for i in range(len(pl) - 1):
+            a, b = pl[i], pl[i + 1]
+            seg = math.dist(a, b)
+            while k < len(targets) and targets[k] <= acc + seg:
+                t = (targets[k] - acc) / seg if seg else 0.0
+                pts.append(((a[0] + t * (b[0] - a[0]), a[1] + t * (b[1] - a[1])), ((b[0] - a[0]) / (seg or 1), (b[1] - a[1]) / (seg or 1))))
+                k += 1
+            acc += seg
+        outer = True
+        for (u, v), (tx, ty) in pts:
+            nx, ny = -ty, tx
+            if covered(u + delta * nx, v + delta * ny) == covered(u - delta * nx, v - delta * ny):
+                outer = False
+                break
+        (vis if outer else keep_hidden).append(pl)
+    return vis, keep_hidden
+
+
+def _bridge(polys, tol=1.3, cos_min=0.95):
+    """Close the small breaks PolyAlgo leaves in smooth silhouettes.
+
+    Two polyline ends are joined only if they are within `tol` mm, their outward
+    tangents continue each other (cos >= cos_min) and the gap itself runs along
+    that tangent -- so parallel features a fraction of a mm apart (button split,
+    wheel slot) are never merged.
+    """
+    polys = [list(p) for p in polys if len(p) >= 2]
+    closed = [False] * len(polys)
+
+    def end(p, e):
+        a, b = (p[-1], p[-2]) if e else (p[0], p[1])
+        t = (a[0] - b[0], a[1] - b[1])
+        n = math.hypot(*t) or 1.0
+        return a, (t[0] / n, t[1] / n)
+
+    while True:
+        best = None
+        for i, pi in enumerate(polys):
+            if closed[i]:
+                continue
+            for ei in (0, 1):
+                a, ta = end(pi, ei)
+                for j in range(i, len(polys)):
+                    if closed[j]:
+                        continue
+                    for ej in (0, 1):
+                        if j == i and (ej <= ei or len(pi) < 4):
+                            continue
+                        b, tb = end(polys[j], ej)
+                        d = math.dist(a, b)
+                        if d > tol or -(ta[0] * tb[0] + ta[1] * tb[1]) < cos_min:
+                            continue
+                        if d > 1e-3:
+                            g = ((b[0] - a[0]) / d, (b[1] - a[1]) / d)
+                            if g[0] * ta[0] + g[1] * ta[1] < cos_min or -(g[0] * tb[0] + g[1] * tb[1]) < cos_min:
+                                continue
+                        if best is None or d < best[0]:
+                            best = (d, i, ei, j, ej)
+        if best is None:
+            return [simplify(p, 0.04) for p in polys]
+        _, i, ei, j, ej = best
+        if i == j:                      # closes a loop
+            polys[i].append(polys[i][0])
+            closed[i] = True
+            continue
+        pi = polys[i] if ei else polys[i][::-1]
+        pj = polys[j] if not ej else polys[j][::-1]
+        polys[i] = pi + pj
+        del polys[j]
+        del closed[j]
 
 
 def project(shape, view, poly=False):
@@ -195,6 +298,35 @@ def f2(v):
     return "0" if s in ("-0", "") else s
 
 
+def _num(h):
+    """Hundredths of a mm -> shortest decimal text ("-.05", "1.2", "12")."""
+    t = f"{abs(h) / 100:.2f}".rstrip("0").rstrip(".")
+    if t.startswith("0."):
+        t = t[1:]
+    return ("-" if h < 0 else "") + (t or "0")
+
+
+def path_d(polylines):
+    """Compact SVG path data: absolute M per polyline, then relative l-steps.
+
+    Points are snapped to a 0.01 mm grid first and the steps are exact differences
+    of snapped points, so the relative form carries no rounding drift."""
+    out = []
+    for pl in polylines:
+        q = [(round(x * 100), round(y * 100)) for x, y in pl]
+        pts = [q[0]] + [p for i, p in enumerate(q[1:], 1) if p != q[i - 1]]
+        if len(pts) < 2:
+            continue
+        toks = []
+        for (x0, y0), (x1, y1) in zip(pts, pts[1:]):
+            toks += [_num(x1 - x0), _num(y1 - y0)]
+        body = toks[0]
+        for t in toks[1:]:
+            body += t if t.startswith("-") else " " + t
+        out.append(f"M{_num(pts[0][0])} {_num(pts[0][1])}l{body}")
+    return "".join(out)
+
+
 class View:
     def __init__(self, name, vis, hid):
         self.name, self.vis, self.hid = name, vis, hid
@@ -214,10 +346,10 @@ class View:
     def svg(self, hidden=True, sw=0.28):
         out = []
         if hidden and self.hid:
-            d = " ".join("M" + " L".join(f"{f2(a)},{f2(b)}" for a, b in (self.to_sheet(*p) for p in pl)) for pl in self.hid)
+            d = path_d([self.to_sheet(*p) for p in pl] for pl in self.hid)
             out.append(f'<path d="{d}" fill="none" stroke="{AMBER}" stroke-opacity="0.38" stroke-width="0.16" '
                        f'stroke-dasharray="1.2,0.9" stroke-linecap="round"/>')
-        d = " ".join("M" + " L".join(f"{f2(a)},{f2(b)}" for a, b in (self.to_sheet(*p) for p in pl)) for pl in self.vis)
+        d = path_d([self.to_sheet(*p) for p in pl] for pl in self.vis)
         out.append(f'<path d="{d}" fill="none" stroke="{INK}" stroke-width="{sw}" stroke-linejoin="round" stroke-linecap="round"/>')
         return "\n".join(out)
 
@@ -310,11 +442,11 @@ def layout(views, n_rows):
         fw, fh = front.size(k)
         tw, th = top.size(k)
         sw, sh = side.size(k)
-        bw = dimpad + max(fw, tw) + gap + sw + 4
+        bw = dimpad + max(fw, tw) + gap + sw + 2
         bh = th + gap + fh + dimpad + 8
         # mode A: ortho block left, right column (iso, table, title block)
         col_w = TB_W
-        if inner_x0 + bw + 8 <= inner_x1 - col_w and inner_y0 + bh <= inner_y1:
+        if inner_x0 + bw + 4 <= inner_x1 - col_w and inner_y0 + bh <= inner_y1:
             right_free_h = (inner_y1 - inner_y0) - TB_H - table_h - 10
             if right_free_h > 50:
                 return dict(k=k, scale=(num, den), mode="A", bw=bw, bh=bh, iso_box=(inner_x1 - col_w, inner_y0, col_w, right_free_h),
@@ -344,10 +476,12 @@ def sheet_svg(gid, gname, views, info):
     front.place(x_views, inner_y0 + 4 + th + gap, k)
     side.place(x_views + max(fw, tw) + gap, inner_y0 + 4 + th + gap, k)
 
-    # iso: fit inside its box, same scale if it fits, else scaled down
+    # iso: at sheet scale when that fits its box; shrunk when it does not; on sparse sheets
+    # enlarged (up to 1.6x) to fill the box.  Any scale other than the sheet's is labelled NOT TO SCALE.
     bx, by, bw_, bh_ = L["iso_box"]
     iw, ih = iso.size(1.0)
-    ki = min(k, (bw_ - 12) / iw, (bh_ - 14) / ih)
+    fit = min((bw_ - 12) / iw, (bh_ - 14) / ih)
+    ki = fit if fit < k else (k if fit < 1.3 * k else min(fit, 1.6 * k))
     iw, ih = iso.size(ki)
     iso.place(bx + (bw_ - iw) / 2, by + 6 + (bh_ - 14 - ih) / 2, ki)
 
@@ -444,21 +578,23 @@ def sheet_svg(gid, gname, views, info):
 
 def write_dxf(path, top_view):
     import ezdxf
-    doc = ezdxf.new("R2010", setup=False)
-    doc.header["$INSUNITS"] = 4       # mm
-    doc.header["$MEASUREMENT"] = 1
-    # fixed metadata so rebuilds are byte-identical
-    for k_ in ("$TDCREATE", "$TDUCREATE", "$TDUPDATE", "$TDUUPDATE"):
-        doc.header[k_] = 2461352.0   # 2026-11-07 (Julian date)
-    for k_ in ("$TDINDWG", "$TDUSRTIMER"):
-        doc.header[k_] = 0.0
-    doc.header["$FINGERPRINTGUID"] = "{4E494748-5420-4152-5241-590000000001}"
-    doc.header["$VERSIONGUID"] = "{4E494748-5420-4152-5241-590000000002}"
-    doc.layers.add("OUTLINE", color=7)
-    msp = doc.modelspace()
-    for pl in top_view.vis:
-        msp.add_lwpolyline([(round(a, 3), round(b, 3)) for a, b in pl], dxfattribs={"layer": "OUTLINE"})
-    doc.saveas(path)
+    # ezdxf stamps the save time, a random $VERSIONGUID and an "ezdxf @ <now>" marker into every file;
+    # its fixed-metadata mode writes constants instead, so rebuilds are byte-identical.
+    prev = ezdxf.options.write_fixed_meta_data_for_testing
+    ezdxf.options.write_fixed_meta_data_for_testing = True
+    try:
+        doc = ezdxf.new("R2010", setup=False)
+        doc.header["$INSUNITS"] = 4       # mm
+        doc.header["$MEASUREMENT"] = 1
+        for k_ in ("$TDINDWG", "$TDUSRTIMER"):
+            doc.header[k_] = 0.0
+        doc.layers.add("OUTLINE", color=7)
+        msp = doc.modelspace()
+        for pl in top_view.vis:
+            msp.add_lwpolyline([(round(a, 3), round(b, 3)) for a, b in pl], dxfattribs={"layer": "OUTLINE"})
+        doc.saveas(path)
+    finally:
+        ezdxf.options.write_fixed_meta_data_for_testing = prev
 
 
 def rasterise(svg_paths, png_paths, width=2000):

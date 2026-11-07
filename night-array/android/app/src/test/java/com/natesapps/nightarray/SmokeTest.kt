@@ -57,7 +57,8 @@ class SmokeTest {
     private fun tag(t: String) = rule.onNodeWithTag(t)
     private fun act(t: String) { tag(t).performSemanticsAction(SemanticsActions.OnClick); tick() }
     private fun texts(s: String) = rule.onAllNodesWithText(s, substring = true, ignoreCase = true)
-    private fun shows(s: String) = texts(s).fetchSemanticsNodes().isNotEmpty()
+    /** Measurements are displayed with non-breaking spaces (see nbUnits), so accept either spelling. */
+    private fun shows(s: String) = texts(s).fetchSemanticsNodes().isNotEmpty() || texts(s.nbUnits()).fetchSemanticsNodes().isNotEmpty()
     /** Instant, key-based scrolling (animated scrolls never finish while the test clock is paused). */
     private fun scrollTo(list: String, key: String) { tag(list).performScrollToKey(key); tick(500) }
     private fun back() { rule.runOnUiThread { rule.activity.onBackPressedDispatcher.onBackPressed() }; tick(1200) }
@@ -245,6 +246,10 @@ class SmokeTest {
         tag("part-sheet").assertDoesNotExist()
         post("""{"type":"pick","group":null}""")
         tag("part-sheet").assertDoesNotExist()
+        // a group the scene doesn't know opens nothing, and Back still leaves normally afterwards
+        post("""{"type":"pick","group":"not_a_group"}""")
+        tag("part-sheet").assertDoesNotExist()
+        post("""{"type":"pick","group":null}""")
         // dockStep sequence highlights the active step
         tag("dock-panel").assertExists()
         post("""{"type":"dockStep","step":"align"}""")
@@ -270,6 +275,13 @@ class SmokeTest {
         // garbage is ignored
         post("not json"); post("""{"type":"mystery"}""")
         tag("studio").assertExists()
+    }
+
+    @Test fun unknownPickDoesNotSwallowBack() = show("studio") {
+        post("""{"type":"pick","group":"not_a_group"}""")
+        tag("part-sheet").assertDoesNotExist()
+        back()
+        assertEquals("explore", app.nav.top)
     }
 
     // ---------- Files ----------
@@ -438,6 +450,41 @@ class SmokeTest {
         assertEquals(Fallback.scene.groups.size, empty.groups.size)
         assertEquals(mimeOf("STEP"), "model/step"); assertEquals(mimeOf("STL"), "model/stl"); assertEquals(mimeOf("GLB"), "model/gltf-binary")
         assertEquals(mimeOf("SVG"), "image/svg+xml"); assertEquals(mimeOf("DXF"), "image/vnd.dxf")
+    }
+
+    /** A snapshot of the real cad/export/model/scene.json (build.py output), so the parser is pinned to the real format. */
+    @Test fun parsesTheRealCadExportFormat() {
+        val text = javaClass.classLoader!!.getResourceAsStream("scene-fixture.json")!!.bufferedReader().use { it.readText() }
+        val s = SceneParser.parse(text)
+        assertTrue(s.fromFile)
+        assertEquals(GROUP_ORDER, s.groups.map { it.id })
+        assertTrue(s.parts.size >= 40)
+        assertTrue("every part belongs to a known group", s.parts.all { it.group in GROUP_ORDER })
+        assertTrue("groups carry mass and size", s.groups.all { it.massG > 0 && it.bboxMm.size == 3 && it.bboxMm.all { v -> v > 0 } })
+        assertTrue(s.groups.all { g -> g.parts.isNotEmpty() && g.parts.all { pid -> s.parts.any { it.id == pid } } })
+        // files: assembly STEP + GLB, then STEP/STL/SVG/DXF per group, all with real sizes
+        assertEquals(setOf("STEP", "GLB"), s.filesOf(null).map { it.format }.toSet())
+        GROUP_ORDER.forEach { g -> assertEquals(g, setOf("STEP", "STL", "SVG", "DXF"), s.filesOf(g).map { it.format }.toSet()) }
+        assertTrue(s.files.all { it.bytes > 0 })
+        assertEquals(GROUP_ORDER.toSet(), s.drawings.keys)
+        // the dual display
+        assertEquals(5120, s.screen.canvasW); assertEquals(1440, s.screen.canvasH)
+        assertEquals(14.0, s.screen.seamMm, 0.0); assertEquals(10.0, s.screen.toeInDeg, 0.0)
+        assertTrue(s.displayWidthMm in 1150.0..1260.0)
+        // params drive the stories, the spec sheet and Desk fit
+        assertEquals(20.0, s.span("dock.slot.x")!!, 0.0)
+        assertEquals(listOf(376.0, 136.0), s.nums("base.kb_pocket.size"))
+        assertTrue(storySpecs(story("dock")!!, s).any { it.value.startsWith("20 × 224 mm") })
+        assertTrue(storySpecs(story("work-stow")!!, s).any { it.value == "14 mm below the deck" })
+        val fp = footprint(s)
+        assertEquals(150.0, fp.workGapMm, 0.5); assertEquals(1415.0, fp.widthMm, 1.0); assertEquals(685.0, fp.workDepthMm, 1.0)
+        assertTrue(s.stationMassG in 15_000.0..60_000.0)
+        assertEquals("Neutral Titanium", s.materialLabel("titanium"))
+        assertTrue(s.materialSpecs["titanium"].orEmpty().contains("titanium", ignoreCase = true))
+        assertEquals(listOf("align", "lower", "release", "lift"), s.dockSteps.map { it.step })
+        assertTrue(s.dims.any { it.id == "seam" } && s.dims.any { it.pose == "work" })
+        specSheet(s).flatMap { it.rows }.forEach { assertFalse(it.label, it.value.contains("null") || it.value.contains("NaN")) }
+        STORIES.forEach { st -> storySpecs(st, s).forEach { assertFalse(it.label, it.value.contains("null") || it.value.contains("NaN")) } }
     }
 
     @Test fun viewerHostQueuesUntilLoadedAndRestoresAfterNight() {

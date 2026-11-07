@@ -43,6 +43,9 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
@@ -97,6 +100,7 @@ fun Tracked(
     Text(
         text.uppercase(), modifier, color = color, fontSize = size, fontWeight = weight,
         letterSpacing = (size.value * tracking).sp, textAlign = align, maxLines = maxLines, lineHeight = (size.value * 1.45f).sp,
+        overflow = if (maxLines == 1) TextOverflow.Ellipsis else TextOverflow.Clip,
     )
 }
 
@@ -109,7 +113,7 @@ val Body = TextStyle(fontSize = 15.5.sp, lineHeight = 25.sp, color = C.ink.copy(
 
 @Composable
 fun BodyText(text: String, modifier: Modifier = Modifier, color: Color = C.ink.copy(alpha = .84f)) {
-    Text(text, modifier, style = Body.copy(color = color))
+    Text(text.nbUnits(), modifier, style = Body.copy(color = color))
 }
 
 /** "| WORK" — amber tick + thin tracked title + optional tracked subtitle. */
@@ -211,12 +215,17 @@ fun Panel(modifier: Modifier = Modifier, padding: Dp = 18.dp, content: @Composab
 }
 
 /** label ......... value row used in spec lists. */
+private val UNIT_GAP = Regex("""(\d) (mm|cm|kg|g|ppi|%|cm³|m|°)(?!\p{L})""")
+
+/** Keeps a number with its unit ("54 mm", "29.00 kg") and with "×", so a measurement never breaks across lines. */
+fun String.nbUnits(): String = UNIT_GAP.replace(this) { "${it.groupValues[1]}\u00A0${it.groupValues[2]}" }.replace(" × ", "\u00A0×\u00A0")
+
 @Composable
 fun SpecRow(label: String, value: String, modifier: Modifier = Modifier, last: Boolean = false) {
     Column(modifier) {
         Row(Modifier.fillMaxWidth().padding(vertical = 11.dp), verticalAlignment = Alignment.Top) {
             Tracked(label, Modifier.weight(0.42f).padding(top = 2.dp, end = 12.dp), size = 9.5.sp, color = C.muted, tracking = 0.2f)
-            Text(value, Modifier.weight(0.58f), color = C.ink, fontSize = 14.sp, lineHeight = 20.sp)
+            Text(value.nbUnits(), Modifier.weight(0.58f), color = C.ink, fontSize = 14.sp, lineHeight = 20.sp)
         }
         if (!last) Box(Modifier.fillMaxWidth().height(1.dp).background(C.line.copy(alpha = .7f)))
     }
@@ -295,7 +304,7 @@ fun Still(
     names: List<String>, modifier: Modifier = Modifier, contentScale: ContentScale = ContentScale.Crop,
     alignment: Alignment = Alignment.Center, maxDim: Int = 1600, kenBurns: Boolean = false, description: String? = null,
     sketchMode: String = "work", sketchHighlight: String? = null, sketchFinish: String = "titanium", animateSketch: Boolean = true,
-    sketchFocus: String? = null, sketchDockStep: String? = null,
+    sketchFocus: String? = null, sketchDockStep: String? = null, sketchPadding: PaddingValues = PaddingValues(0.dp),
 ) {
     val ctx = LocalContext.current
     val path = remember(names) { firstExisting(ctx, names.map { if (it.contains('/')) it else "renders/$it" }) }
@@ -315,9 +324,24 @@ fun Still(
             )
         } else if (path == null || Img.knownMissing(path)) {
             val first = names.firstOrNull().orEmpty()
-            StationSketch(Modifier.fillMaxSize(), mode = sketchMode, highlight = sketchHighlight, finish = sketchFinish, animate = animateSketch,
+            StationSketch(Modifier.fillMaxSize().padding(sketchPadding), mode = sketchMode, highlight = sketchHighlight, finish = sketchFinish, animate = animateSketch,
                 focus = sketchFocus ?: stillFocus(first), dockStep = sketchDockStep ?: stillDockStep(first))
         }
+    }
+}
+
+/**
+ * Like [ContentScale.Crop], but never zooms in so far that less than [minWidth] of the image's width stays visible.
+ * The renders are 16:9 with the station spanning the frame; in a tall box plain Crop would cut off the dock and the
+ * left panel, so tall boxes get a band of night above and below instead. `CoverWidth(1f)` keeps the whole width.
+ */
+class CoverWidth(private val minWidth: Float) : ContentScale {
+    override fun computeScaleFactor(srcSize: Size, dstSize: Size): androidx.compose.ui.layout.ScaleFactor {
+        if (srcSize.width <= 0f || srcSize.height <= 0f) return androidx.compose.ui.layout.ScaleFactor(1f, 1f)
+        val fill = max(dstSize.width / srcSize.width, dstSize.height / srcSize.height)
+        val cap = dstSize.width / (srcSize.width * minWidth.coerceIn(.1f, 1f))
+        val s = kotlin.math.min(fill, cap)
+        return androidx.compose.ui.layout.ScaleFactor(s, s)
     }
 }
 
@@ -395,9 +419,38 @@ fun IconCircle(
 fun BackButton(onClick: () -> Unit, modifier: Modifier = Modifier) =
     IconCircle(Icons.AutoMirrored.Outlined.ArrowBack, "Back", onClick, modifier)
 
+/** True once a list has scrolled [past] its first item's top by more than [threshold]. */
+@Composable
+fun rememberScrolledPast(list: LazyListState, threshold: Dp): State<Boolean> {
+    val px = with(LocalDensity.current) { threshold.toPx() }
+    return remember(list, px) { derivedStateOf { list.firstVisibleItemIndex > 0 || list.firstVisibleItemScrollOffset > px } }
+}
+
+/**
+ * Top chrome for scrolling detail screens: a floating back button over the hero image; once the page scrolls
+ * under it, a night-dark scrim and the screen title fade in so nothing reads through the button.
+ */
+@Composable
+fun DetailChrome(title: String, scrolled: Boolean, onBack: () -> Unit, modifier: Modifier = Modifier, actions: @Composable RowScope.() -> Unit = {}) {
+    val a by animateFloatAsState(if (scrolled) 1f else 0f, tween(280), label = "chrome")
+    Box(modifier.fillMaxWidth()) {
+        Box(Modifier.matchParentSize().graphicsLayer { alpha = a }
+            .background(Brush.verticalGradient(0f to C.bg, .8f to C.bg, 1f to Color.Transparent)))
+        Row(
+            Modifier.fillMaxWidth().statusBarsPadding().padding(start = 14.dp, end = 14.dp, top = 8.dp, bottom = 20.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            BackButton(onBack)
+            Spacer(Modifier.width(14.dp))
+            Tracked(title, Modifier.weight(1f).graphicsLayer { alpha = a }.testTag("chrome-title"), size = 11.sp, tracking = .26f, maxLines = 1)
+            actions()
+        }
+    }
+}
+
 /** Title block for tab roots: amber dash + kicker, thin wide-tracked title, optional muted line. */
 @Composable
-fun ScreenTitle(kicker: String, title: String, sub: String? = null, modifier: Modifier = Modifier) {
+fun ScreenTitle(kicker: String, title: String, modifier: Modifier = Modifier, sub: String? = null) {
     Column(modifier) {
         Row(verticalAlignment = Alignment.CenterVertically) { AmberDash(22.dp); Spacer(Modifier.width(10.dp)); Kicker(kicker) }
         Spacer(Modifier.height(14.dp))
@@ -491,7 +544,7 @@ fun Notice(text: String, modifier: Modifier = Modifier, dot: Color = C.amber, ac
         Box(Modifier.size(6.dp).clip(CircleShape).background(dot))
         Spacer(Modifier.width(9.dp))
         Text(text, color = C.ink.copy(alpha = .84f), fontSize = if (small) 11.sp else 12.sp, lineHeight = 15.sp, maxLines = 2,
-            modifier = Modifier.weight(1f, fill = false).padding(vertical = 5.dp))
+            overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false).padding(vertical = 5.dp))
         if (action != null) {
             Spacer(Modifier.width(8.dp))
             Box(Modifier.clip(shape).clickable(role = Role.Button, onClick = onAction).padding(horizontal = 12.dp, vertical = 6.dp)) {

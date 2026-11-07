@@ -163,6 +163,85 @@ def check_interference(parts, fast=False):
 # 3. STEP round trip
 # ----------------------------------------------------------------------------
 
+def xcaf_parts(path):
+    """Read a STEP with names + colours (XCAF): {leaf name: [sRGB colour of each solid]}."""
+    from OCP.Quantity import Quantity_Color, Quantity_TOC_sRGB
+    from OCP.STEPCAFControl import STEPCAFControl_Reader
+    from OCP.TCollection import TCollection_ExtendedString
+    from OCP.TDataStd import TDataStd_Name
+    from OCP.TDF import TDF_Label, TDF_LabelSequence
+    from OCP.TDocStd import TDocStd_Document
+    from OCP.TopAbs import TopAbs_SOLID
+    from OCP.TopExp import TopExp_Explorer
+    from OCP.XCAFDoc import XCAFDoc_ColorType, XCAFDoc_DocumentTool
+
+    doc = TDocStd_Document(TCollection_ExtendedString("XmlOcaf"))
+    r = STEPCAFControl_Reader()
+    r.SetColorMode(True)
+    r.SetNameMode(True)
+    r.ReadFile(path)
+    r.Transfer(doc)
+    st = XCAFDoc_DocumentTool.ShapeTool_s(doc.Main())
+    ct = XCAFDoc_DocumentTool.ColorTool_s(doc.Main())
+
+    def name(lab):
+        a = TDataStd_Name()
+        return a.Get().ToExtString() if lab.FindAttribute(TDataStd_Name.GetID_s(), a) else ""
+
+    def colour(shape):
+        c = Quantity_Color()
+        for t in (XCAFDoc_ColorType.XCAFDoc_ColorSurf, XCAFDoc_ColorType.XCAFDoc_ColorGen):
+            if ct.GetColor(shape, t, c):
+                v = c.Values(Quantity_TOC_sRGB)
+                return tuple(v)
+        return None
+
+    out = {}
+
+    def walk(lab, nm):
+        if st.IsAssembly_s(lab):
+            ch = TDF_LabelSequence()
+            st.GetComponents_s(lab, ch)
+            for i in range(1, ch.Length() + 1):
+                walk(ch.Value(i), name(ch.Value(i)))
+            return
+        if st.IsReference_s(lab):
+            ref = TDF_Label()
+            st.GetReferredShape_s(lab, ref)
+            walk(ref, nm)
+            return
+        shape = st.GetShape_s(lab)
+        cols = []
+        e = TopExp_Explorer(shape, TopAbs_SOLID)
+        while e.More():
+            cols.append(colour(e.Current()) or colour(shape))
+            e.Next()
+        out[nm] = cols
+
+    free = TDF_LabelSequence()
+    st.GetFreeShapes(free)
+    for i in range(1, free.Length() + 1):
+        walk(free.Value(i), name(free.Value(i)))
+    return out
+
+
+def check_step_colours(path, parts, pids):
+    sys.path.insert(0, HERE)
+    import build
+    got = xcaf_parts(path)
+    bad = []
+    for pid in pids:
+        hexc = build.MATERIALS[build.PART_INFO[pid]["material"]][1]
+        exp = [int(hexc[i:i + 2], 16) / 255.0 for i in (1, 3, 5)]
+        cols = got.get(pid)
+        ok = (cols is not None and len(cols) == len(parts[pid].Solids())
+              and all(c is not None and max(abs(a - b) for a, b in zip(c, exp)) < 3e-3 for c in cols))
+        if not ok:
+            bad.append(pid)
+    check(not bad, f"{os.path.relpath(path, EXPORT)}: every part named, every solid in its material colour"
+          + (f" (bad: {bad})" if bad else ""))
+
+
 def check_step(parts):
     print("\n[3] STEP re-import")
     from OCP.IFSelect import IFSelect_RetDone
@@ -189,6 +268,7 @@ def check_step(parts):
         total_n += exp_n
         check(n == exp_n and abs(v - exp_v) / exp_v < 1e-3,
               f"parts/{g}.step: {n} solids (expect {exp_n}), {v / 1000:.2f} cm3 (expect {exp_v / 1000:.2f})")
+        check_step_colours(path, parts, pids)
         stl = os.path.join(EXPORT, "files", "parts", g + ".stl")
         with open(stl, "rb") as f:
             f.seek(80)
@@ -205,6 +285,7 @@ def check_step(parts):
     missing = [p for p in names if f"'{p}'" not in txt]
     check(not missing, f"assembly STEP carries every part name (missing: {missing})")
     check("COLOUR_RGB" in txt, "assembly STEP carries colours")
+    check_step_colours(os.path.join(EXPORT, "files", "night-array-assembly.step"), parts, names)
 
 
 # ----------------------------------------------------------------------------

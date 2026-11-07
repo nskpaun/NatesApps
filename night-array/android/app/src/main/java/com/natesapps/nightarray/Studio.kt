@@ -38,10 +38,14 @@ private val PANEL_TABS = listOf("view" to "View", "finish" to "Finish", "tools" 
 @Composable
 fun StudioScreen(app: AppState, scene: Scene) {
     val host = app.host
-    BackHandler(enabled = host.picked != null) { host.closeSheet() }
+    // Only a group scene.json knows opens the sheet; Back closes it before leaving the Studio.
+    val sheet = host.picked?.let { scene.group(it) }
+    BackHandler(enabled = sheet != null) { host.closeSheet() }
     BoxWithConstraints(Modifier.fillMaxSize().background(C.bg).testTag("studio")) {
         val wide = maxWidth > maxHeight && maxWidth >= 600.dp
-        val sheet = host.picked?.let { scene.group(it) }
+        // Panels scale with the screen so the model always keeps roughly half of it, even on small phones.
+        val sheetMax = (maxHeight * .5f).coerceIn(220.dp, 380.dp)
+        val panelMax = (maxHeight * .34f).coerceIn(150.dp, 268.dp)
         if (wide) {
             Row(Modifier.fillMaxSize()) {
                 Stage(app, scene, Modifier.weight(1f).fillMaxHeight(), wide = true)
@@ -67,8 +71,9 @@ fun StudioScreen(app: AppState, scene: Scene) {
                     sheet, transitionSpec = { (slideInVertically { it / 3 } + fadeIn(tween(240))) togetherWith fadeOut(tween(140)) using SizeTransform(clip = true) },
                     label = "dock",
                 ) { g ->
-                    if (g != null) PartSheet(app, scene, g, Modifier.fillMaxWidth().background(C.panel).heightIn(max = 380.dp).verticalScroll(rememberScrollState()))
-                    else ControlDock(app, scene)
+                    if (g != null) PartSheet(app, scene, g, Modifier.fillMaxWidth().background(C.panel)
+                        .heightIn(max = sheetMax).verticalScroll(rememberScrollState()))
+                    else ControlDock(app, scene, panelMax)
                 }
             }
         }
@@ -88,7 +93,8 @@ private fun Stage(app: AppState, scene: Scene, modifier: Modifier, wide: Boolean
             val names = stillsFor(st, host.lastCamera, host.dockStep)
             val path = remember(names) { firstExisting(ctx, names.map { "renders/$it" }) }
             Crossfade(path, Modifier.fillMaxSize().graphicsLayer { alpha = stillA }, animationSpec = tween(450), label = "stillx") { p ->
-                Still(listOf(p?.removePrefix("renders/") ?: names.first()), Modifier.fillMaxSize(), sketchMode = st.mode,
+                // (nearly) the whole station stays in view, as the live renderer frames it
+                Still(listOf(p?.removePrefix("renders/") ?: names.first()), Modifier.fillMaxSize(), contentScale = CoverWidth(.85f), sketchMode = st.mode,
                     sketchHighlight = st.isolate ?: st.selected, sketchFinish = st.finish, sketchDockStep = host.dockStep,
                     description = "Still render matching the current view")
             }
@@ -145,13 +151,17 @@ private fun modeLabel(m: String) = MODE_TABS.firstOrNull { it.first == m }?.seco
 private fun LiveNotice(app: AppState) {
     val host = app.host
     val ctx = LocalContext.current
+    // A page that loads but never reports `ready` (a stalled GPU process, a viewer bug) gets a way out after a while.
+    var slow by remember { mutableStateOf(false) }
+    LaunchedEffect(host.status) { slow = false; if (host.status == LiveStatus.Loading) { kotlinx.coroutines.delay(20_000); slow = true } }
     AnimatedVisibility(host.status == LiveStatus.Error || host.status == LiveStatus.Loading, enter = fadeIn(), exit = fadeOut()) {
         if (host.status == LiveStatus.Error) {
             val bundled = remember { AssetIndex.exists(ctx, "viewer/index.html") }
             Notice("Still image · ${host.errorMessage ?: "live view stopped"}", Modifier.testTag("live-notice"), dot = C.warn,
                 action = if (bundled) "Retry" else null, small = true) { host.retry(ctx) }
         } else {
-            Notice("Still image · starting the live view", Modifier.testTag("live-notice"), dot = C.muted, small = true)
+            Notice(if (slow) "Still image · the live view is taking a while" else "Still image · starting the live view", Modifier.testTag("live-notice"),
+                dot = C.muted, small = true, action = if (slow) "Retry" else null) { host.retry(ctx) }
         }
     }
 }
@@ -171,13 +181,13 @@ private fun DockStepBadge(host: ViewerHost, scene: Scene, modifier: Modifier) {
 // ------------------------------------------------------------------------------------------------
 
 @Composable
-private fun ControlDock(app: AppState, scene: Scene) {
+private fun ControlDock(app: AppState, scene: Scene, contentMax: androidx.compose.ui.unit.Dp) {
     Column(Modifier.fillMaxWidth().background(C.panel).testTag("controls")) {
         Hairline()
         ModeBar(app, Modifier.padding(horizontal = 14.dp).padding(top = 12.dp))
         AnimatedVisibility(app.studioPanel != null, enter = expandVertically(tween(280)) + fadeIn(tween(280)), exit = shrinkVertically(tween(240)) + fadeOut(tween(160))) {
             val tab = app.studioPanel ?: "view"
-            Column(Modifier.fillMaxWidth().heightIn(max = 268.dp).verticalScroll(rememberScrollState()).padding(horizontal = 18.dp).padding(top = 16.dp, bottom = 6.dp)) {
+            Column(Modifier.fillMaxWidth().heightIn(max = contentMax).verticalScroll(rememberScrollState()).padding(horizontal = 18.dp).padding(top = 16.dp, bottom = 6.dp)) {
                 AnimatedContent(tab, transitionSpec = { fadeIn(tween(220)) togetherWith fadeOut(tween(120)) }, label = "tab") { t -> Column { PanelContent(app, scene, t) } }
             }
         }

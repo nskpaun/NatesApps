@@ -80,4 +80,29 @@ class Screenshots {
 
     @Config(qualifiers = "w891dp-h411dp-xxhdpi")
     @Test fun landscapeStudioSheet() = shoot("21-landscape-part-sheet", "studio", extra = { app.host.handle("""{"type":"pick","group":"display"}""") })
+
+    @Config(qualifiers = "w891dp-h411dp-xxhdpi")
+    @Test fun landscapeHome() = shoot("22-landscape-home", "explore")
+
+    @Config(qualifiers = "w891dp-h411dp-xxhdpi")
+    @Test fun landscapeSpecs() = shoot("23-landscape-specs", "specs")
+
+    @Config(qualifiers = "w1280dp-h800dp-mdpi")
+    @Test fun tabletStory() = shoot("24-tablet-story-dock", "story/dock")
+
+    @Config(qualifiers = "w1280dp-h800dp-mdpi")
+    @Test fun tabletGroup() = shoot("25-tablet-group-display", "group/display")
+
+    @Config(qualifiers = "w1280dp-h800dp-mdpi")
+    @Test fun tabletDeskFit() = shoot("26-tablet-desk-fit", "specs", prep = { it.specsTab = "fit"; it.deskW = 140; it.deskD = 70 })
+
+    @Test fun storyCharge() = shoot("27-story-charge-specs", "story/charge", extra = { scrollTo("story", 6) })
+    @Test fun filesGroups() = shoot("28-files-groups", "files", extra = { scrollTo("files", 3) })
+    @Test fun studioParts() = shoot("29-studio-parts", "studio", prep = { it.studioPanel = "parts" })
+
+    @Config(qualifiers = "w360dp-h640dp-xhdpi")
+    @Test fun smallPhoneStudio() = shoot("30-small-phone-studio-tools", "studio", prep = { it.studioPanel = "tools" })
+
+    @Config(qualifiers = "w360dp-h640dp-xhdpi")
+    @Test fun smallPhoneSheet() = shoot("31-small-phone-part-sheet", "studio", extra = { app.host.handle("""{"type":"pick","group":"internals"}""") })
 }

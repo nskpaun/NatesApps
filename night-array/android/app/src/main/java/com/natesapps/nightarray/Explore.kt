@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -94,32 +95,49 @@ fun ExploreScreen(app: AppState, scene: Scene) {
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun Hero(app: AppState, wide: Boolean) {
-    val screenH = LocalConfiguration.current.screenHeightDp
+    // Window height in dp (the configuration value only until the window has been measured).
+    val win = androidx.compose.ui.platform.LocalWindowInfo.current.containerSize
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val screenH = if (win.height > 0) with(density) { win.height.toDp().value.toInt() } else LocalConfiguration.current.screenHeightDp
     BoxWithConstraints(Modifier.fillMaxWidth().testTag("hero")) {
         val w = maxWidth
-        // Phone: a tall crop of the render with the title tucked under its fade. Wide: full-bleed, title over the image.
-        val imgH = if (wide) (w * 9f / 16f).coerceIn(420.dp, (screenH * .92f).dp.coerceAtLeast(420.dp)) else (w * .82f).coerceAtMost((screenH * .5f).dp.coerceAtLeast(300.dp))
+        // Tall wide screens (tablets): full-bleed render with the title over its lower part.
+        // Phones and short landscape screens: the render on top, the title tucked under its fade.
+        val overlay = wide && screenH >= 560
+        val oneLine = w >= 600.dp
+        val imgH = when {
+            overlay -> (w * 9f / 16f).coerceIn(420.dp, (screenH * .92f).dp)
+            wide -> (w * 9f / 16f).coerceAtMost((screenH * .8f).dp)
+            else -> (w * .82f).coerceAtMost((screenH * .5f).dp.coerceAtLeast(300.dp))
+        }
+        val titleSize = if (overlay) 38f else 31f
         Box(Modifier.fillMaxWidth()) {
             Box(Modifier.fillMaxWidth().height(imgH)) {
-                Still(listOf("hero-work.jpg", "hero-stow.jpg"), Modifier.fillMaxSize(), kenBurns = true, description = "Night Array in Work mode at night", sketchMode = "work")
+                // At least 90 % of the render's width stays visible (the dock sits at its right edge); any band of night
+                // this leaves goes to the bottom, under the fade.
+                Still(listOf("hero-work.jpg", "hero-stow.jpg"), Modifier.fillMaxSize(), contentScale = CoverWidth(.9f),
+                    alignment = Alignment.TopCenter, kenBurns = true,
+                    description = "Night Array in Work mode at night", sketchMode = "work",
+                    // keep the fallback drawing clear of the title block that sits over the lower part of a tablet hero
+                    sketchPadding = if (overlay) PaddingValues(top = 24.dp, bottom = imgH * .34f) else PaddingValues(0.dp))
                 Box(Modifier.fillMaxWidth().height(110.dp).background(Brush.verticalGradient(listOf(C.bg.copy(alpha = .75f), Color.Transparent))))
-                Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().fillMaxHeight(if (wide) .62f else .42f)
-                    .background(Brush.verticalGradient(listOf(Color.Transparent, C.bg.copy(alpha = if (wide) .82f else .9f), C.bg))))
+                Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().fillMaxHeight(if (overlay) .62f else .42f)
+                    .background(Brush.verticalGradient(listOf(Color.Transparent, C.bg.copy(alpha = if (overlay) .82f else .9f), C.bg))))
             }
             AmberGlow(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(imgH * .6f))
             Column(
                 Modifier.align(Alignment.BottomStart).fillMaxWidth()
-                    .padding(top = if (wide) 0.dp else imgH - 58.dp)
-                    .padding(horizontal = if (wide) 48.dp else 24.dp).padding(bottom = if (wide) 44.dp else 8.dp),
+                    .padding(top = if (overlay) 0.dp else imgH - if (oneLine) 34.dp else 58.dp)
+                    .padding(horizontal = if (wide) 48.dp else 24.dp).padding(bottom = if (overlay) 44.dp else 8.dp),
             ) {
                 Text(
                     buildAnnotatedString {
                         append("NIGHT ARRAY")
-                        if (wide) append("  ") else append("\n")
+                        if (oneLine) append("  ") else append("\n")
                         withStyle(SpanStyle(color = C.amber, fontStyle = FontStyle.Italic)) { append("/ WORK & STOW") }
                     },
-                    color = C.ink, fontSize = if (wide) 38.sp else 31.sp, fontWeight = FontWeight.Light,
-                    letterSpacing = (if (wide) 38f * .2f else 31f * .17f).sp, lineHeight = (if (wide) 48 else 40).sp,
+                    color = C.ink, fontSize = titleSize.sp, fontWeight = FontWeight.Light,
+                    letterSpacing = (titleSize * if (overlay) .2f else .17f).sp, lineHeight = (titleSize * 1.28f).sp,
                 )
                 Spacer(Modifier.height(18.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -128,7 +146,7 @@ private fun Hero(app: AppState, wide: Boolean) {
                     Tracked("Integrated superwide workstation", size = 10.sp, color = C.ink.copy(alpha = .8f), tracking = .34f)
                 }
                 Spacer(Modifier.height(16.dp))
-                Tagline(size = if (wide) 26.sp else 23.sp)
+                Tagline(size = if (overlay) 26.sp else 23.sp)
                 Spacer(Modifier.height(26.dp))
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     LineButton("Open the Studio", { app.openStudio(Preset(mode = "work", camera = "hero")) }, Modifier.testTag("cta-studio"), filled = true,
@@ -211,7 +229,7 @@ private fun ModeCard(app: AppState, m: ModeInfo, modifier: Modifier) {
         Column(Modifier.padding(18.dp)) {
             SectionHeader(m.title, m.sub, size = 15.sp)
             Spacer(Modifier.height(12.dp))
-            Text(m.body, color = C.ink.copy(alpha = .78f), fontSize = 14.sp, lineHeight = 21.sp, minLines = 4)
+            Text(m.body.nbUnits(), color = C.ink.copy(alpha = .78f), fontSize = 14.sp, lineHeight = 21.sp, minLines = 4)
             Spacer(Modifier.height(14.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Kicker("Open in Studio")
@@ -238,7 +256,7 @@ private fun StoryRow(s: Story, modifier: Modifier, onClick: () -> Unit) {
                 Spacer(Modifier.height(6.dp))
                 Text(s.title, color = C.ink, fontSize = 17.sp, lineHeight = 22.sp, fontWeight = FontWeight.Light)
                 Spacer(Modifier.height(3.dp))
-                Text(s.line, color = C.muted, fontSize = 12.5.sp, lineHeight = 17.sp, maxLines = 2)
+                Text(s.line, color = C.muted, fontSize = 12.5.sp, lineHeight = 17.sp, maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
             }
             Icon(Icons.AutoMirrored.Outlined.ArrowForward, null, tint = C.muted, modifier = Modifier.padding(end = 16.dp).size(16.dp))
         }
@@ -247,12 +265,13 @@ private fun StoryRow(s: Story, modifier: Modifier, onClick: () -> Unit) {
 
 @Composable
 fun DockSequenceStrip(scene: Scene, modifier: Modifier = Modifier, active: Int = 0, onStep: ((DockUiStep) -> Unit)? = null) {
-    Row(modifier, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+    // Equal-height cards, however the captions wrap.
+    Row(modifier.height(IntrinsicSize.Max), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         dockUiSteps(scene).forEach { st ->
             val on = st.n == active
             val shape = RoundedCornerShape(14.dp)
             Column(
-                Modifier.weight(1f).clip(shape).border(1.dp, if (on) C.amber.copy(alpha = .8f) else C.line, shape).background(C.panel)
+                Modifier.weight(1f).fillMaxHeight().clip(shape).border(1.dp, if (on) C.amber.copy(alpha = .8f) else C.line, shape).background(C.panel)
                     .then(if (onStep != null) Modifier.clickable { onStep(st) } else Modifier).testTag("dock-strip-${st.id}"),
             ) {
                 Box(Modifier.fillMaxWidth().aspectRatio(.82f)) {
@@ -432,10 +451,12 @@ private fun Footer(pad: androidx.compose.ui.unit.Dp) {
 @Composable
 fun StoryScreen(app: AppState, scene: Scene, id: String) {
     val s = story(id) ?: STORIES.first()
+    val list = rememberLazyListState()
+    val scrolled by rememberScrolledPast(list, 180.dp)
     BoxWithConstraints(Modifier.fillMaxSize().background(C.bg)) {
         val wide = maxWidth >= 600.dp
         val pad = if (wide) 40.dp else 22.dp
-        LazyColumn(Modifier.fillMaxSize().testTag("story"), contentPadding = PaddingValues(bottom = 48.dp)) {
+        LazyColumn(Modifier.fillMaxSize().testTag("story"), state = list, contentPadding = PaddingValues(bottom = 48.dp)) {
             item(key = "gallery") { StoryGallery(s, wide, maxHeight) }
             item(key = "head") {
                 Column(Modifier.readable().padding(horizontal = pad).padding(top = 22.dp)) {
@@ -449,7 +470,7 @@ fun StoryScreen(app: AppState, scene: Scene, id: String) {
                     Spacer(Modifier.height(10.dp))
                     Tagline(s.line, size = 18.sp, color = C.titanium)
                     Spacer(Modifier.height(22.dp))
-                    Text(s.lede, color = C.ink, fontSize = 18.sp, lineHeight = 28.sp, fontWeight = FontWeight.Light)
+                    Text(s.lede.nbUnits(), color = C.ink, fontSize = 18.sp, lineHeight = 28.sp, fontWeight = FontWeight.Light)
                 }
             }
             if (s.id == "dual") item(key = "diagram") {
@@ -463,7 +484,7 @@ fun StoryScreen(app: AppState, scene: Scene, id: String) {
                 }
             }
             items(s.body.size, key = { "p$it" }) { i ->
-                Text(s.body[i], Modifier.readable().padding(horizontal = pad).padding(top = 18.dp), style = Body)
+                Text(s.body[i].nbUnits(), Modifier.readable().padding(horizontal = pad).padding(top = 18.dp), style = Body)
             }
             item(key = "specs") {
                 Column(Modifier.readable().padding(horizontal = pad).padding(top = 30.dp)) {
@@ -497,7 +518,7 @@ fun StoryScreen(app: AppState, scene: Scene, id: String) {
                 }
             }
         }
-        BackButton({ app.nav.back() }, Modifier.statusBarsPadding().padding(start = 14.dp, top = 8.dp))
+        DetailChrome("${s.number} · ${s.title}", scrolled, { app.nav.back() })
     }
 }
 
@@ -509,7 +530,7 @@ private fun StoryGallery(s: Story, wide: Boolean, screenH: androidx.compose.ui.u
             val h = (maxWidth * 9f / 16f).coerceAtMost(if (wide) screenH * .72f else 600.dp) + if (wide) 0.dp else 40.dp
             Box(Modifier.fillMaxWidth().height(h)) {
                 HorizontalPager(pager, Modifier.fillMaxSize().testTag("gallery")) { i ->
-                    Still(listOf(s.stills[i].name) + s.stills.map { it.name }, Modifier.fillMaxSize(), sketchMode = s.preset.mode ?: "work",
+                    Still(listOf(s.stills[i].name) + s.stills.map { it.name }, Modifier.fillMaxSize(), contentScale = CoverWidth(.85f), sketchMode = s.preset.mode ?: "work",
                         sketchHighlight = storyHighlight(s.id), description = s.stills[i].caption,
                         sketchFinish = s.stills[i].name.takeIf { it.startsWith("finish-") }?.removePrefix("finish-")?.substringBefore('.') ?: "titanium")
                 }
@@ -662,7 +683,7 @@ fun BoardScreen(app: AppState) {
 @Composable
 fun NightShift(app: AppState, scene: Scene) {
     val host = app.host
-    BackHandler { app.stopNight() }
+    BackHandler(enabled = app.nightShift) { app.stopNight() } // not while fading out: a second Back should navigate
     val view = LocalView.current
     DisposableEffect(view) {
         view.keepScreenOn = true
@@ -685,7 +706,8 @@ fun NightShift(app: AppState, scene: Scene) {
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { poke++ },
     ) {
         Box(Modifier.fillMaxSize().graphicsLayer { alpha = stillA }) {
-            Still(listOf("night.jpg", "hero-stow.jpg", "hero-work.jpg"), Modifier.fillMaxSize(), kenBurns = true, sketchMode = "stow", sketchFinish = host.state.finish)
+            Still(listOf("night.jpg", "hero-stow.jpg", "hero-work.jpg"), Modifier.fillMaxSize(), contentScale = CoverWidth(.7f), kenBurns = true,
+                sketchMode = "stow", sketchFinish = host.state.finish, description = "Night Array at night")
         }
         ViewerSlot(host, Modifier.fillMaxSize())
         // vignette + floor glow

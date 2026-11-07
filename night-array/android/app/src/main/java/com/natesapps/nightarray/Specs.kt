@@ -19,6 +19,7 @@ import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Remove
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -55,17 +56,30 @@ fun SpecsScreen(app: AppState, scene: Scene, section: String?) {
     LaunchedEffect(section) { if (section != null && SPEC_TABS.any { it.first == section }) app.specsTab = section }
     BoxWithConstraints(Modifier.fillMaxSize().background(C.bg)) {
         val pad = if (maxWidth >= 600.dp) 40.dp else 20.dp
+        // On short screens (a phone in landscape) title and tabs share one row, leaving the height to the content.
+        val short = maxHeight < 520.dp && maxWidth >= 560.dp
+        // Tablets: one wider measure for header and every tab, so their edges line up.
+        val maxW = if (maxWidth >= 840.dp) 1120.dp else 760.dp
         Column(Modifier.fillMaxSize().testTag("specs")) {
-            Column(Modifier.readable().statusBarsPadding().padding(horizontal = pad).padding(top = 22.dp)) {
+            if (short) {
+                Row(Modifier.readable(maxW).statusBarsPadding().padding(horizontal = pad).padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) { AmberDash(22.dp); Spacer(Modifier.width(10.dp)); Kicker("Specifications") }
+                        Spacer(Modifier.height(8.dp))
+                        Tracked("Specs", size = 20.sp, tracking = .2f)
+                    }
+                    Segmented(SPEC_TABS, app.specsTab, { app.specsTab = it }, Modifier.width(340.dp), tagPrefix = "specs")
+                }
+            } else Column(Modifier.readable(maxW).statusBarsPadding().padding(horizontal = pad).padding(top = 22.dp)) {
                 ScreenTitle("Specifications", "Specs")
                 Spacer(Modifier.height(20.dp))
-                Segmented(SPEC_TABS, app.specsTab, { app.specsTab = it }, Modifier.fillMaxWidth(), tagPrefix = "specs")
+                Segmented(SPEC_TABS, app.specsTab, { app.specsTab = it }, Modifier.widthIn(max = 560.dp).fillMaxWidth(), tagPrefix = "specs")
             }
             AnimatedContent(app.specsTab, Modifier.weight(1f), transitionSpec = { fadeIn(tween(260, delayMillis = 40)) togetherWith fadeOut(tween(160)) }, label = "specs") { t ->
                 when (t) {
-                    "bom" -> BomList(scene, pad)
-                    "fit" -> DeskFit(app, scene, pad)
-                    else -> SpecSheet(scene, pad)
+                    "bom" -> BomList(scene, pad, maxW)
+                    "fit" -> DeskFit(app, scene, pad, maxW)
+                    else -> SpecSheet(scene, pad, maxW)
                 }
             }
         }
@@ -90,7 +104,7 @@ fun specSheet(scene: Scene): List<SpecSection> {
     fun box(b: List<Double>?, fallback: String) = b?.let { fmtBox(it) } ?: fallback
     val board = listOf(scene.span("internals.board.x"), scene.span("internals.board.z")).takeIf { it.all { v -> v != null } }?.map { it!! }
     val coilsKb = scene.nums("internals.qi_coils_kb_x")
-    val laptopT = scene.span("laptop.x"); val laptopD = scene.span("laptop.z")
+    val slotW = scene.span("dock.slot.x"); val slotL = scene.span("dock.slot.z")
     return listOf(
         SpecSection("Display", "Two mainstream panels, one shroud", listOf(
             StorySpec("Panels", "${sc.panels} × ${fmtNum(sc.panelInch)}″ QHD IPS, off the shelf"),
@@ -105,10 +119,10 @@ fun specSheet(scene: Scene): List<SpecSection> {
         )),
         SpecSection("Dock", "Right outer wing", listOf(
             StorySpec("Cradle", box(dock, "125 × 120 × 260 mm") + ", titanium + brushed oxblood"),
-            StorySpec("Slot", "${mm(scene.span("dock.slot.x"), "20 mm")} wide, ${mm(scene.num("dock.slot.lead_in"), "4 mm")} chamfered lead-ins"),
+            StorySpec("Slot", "${fmtNum(slotW ?: 20.0)} × ${fmtNum(slotL ?: 224.0)} mm, ${mm(scene.num("dock.slot.lead_in"), "4 mm")} chamfered lead-ins"),
             StorySpec("Connector", "Sprung USB-C on the slot floor"),
             StorySpec("Release", "Press latch on the front face, ${mm(scene.num("dock.latch.travel") ?: scene.num("poses_mm.latch_travel"), "3 mm")} travel"),
-            StorySpec("Laptops", "Up to ${mm(laptopT, "15 mm")} thick and ${mm(laptopD, "212 mm")} deep, standing on edge"),
+            StorySpec("Laptops", "Up to ${mm(slotW, "20 mm")} thick and ${mm(slotL, "224 mm")} deep, standing closed on edge"),
         )),
         SpecSection("Charging", "Qi2, in place", listOf(
             StorySpec("Keyboard pocket", mm2(scene.nums("base.kb_pocket.size"), "376 × 136 mm") + ", ${coilsKb?.size ?: 2} Qi2 coils"),
@@ -159,21 +173,33 @@ fun specSheet(scene: Scene): List<SpecSection> {
 }
 
 @Composable
-private fun SpecSheet(scene: Scene, pad: androidx.compose.ui.unit.Dp) {
+private fun SpecSheet(scene: Scene, pad: androidx.compose.ui.unit.Dp, maxW: androidx.compose.ui.unit.Dp) {
     val sections = remember(scene) { specSheet(scene) }
-    LazyColumn(Modifier.fillMaxSize().testTag("spec-sheet"), contentPadding = PaddingValues(top = 22.dp, bottom = 40.dp)) {
-        items(sections, key = { it.title }) { sec ->
-            Column(Modifier.readable().padding(horizontal = pad).padding(bottom = 26.dp)) {
-                SectionHeader(sec.title, sec.sub, size = 14.sp)
-                Spacer(Modifier.height(8.dp))
-                sec.rows.forEachIndexed { i, r -> SpecRow(r.label, r.value, last = i == sec.rows.lastIndex) }
-            }
+    @Composable fun SectionBlock(sec: SpecSection, modifier: Modifier) {
+        Column(modifier.padding(bottom = 26.dp)) {
+            SectionHeader(sec.title, sec.sub, size = 14.sp)
+            Spacer(Modifier.height(8.dp))
+            sec.rows.forEachIndexed { i, r -> SpecRow(r.label, r.value, last = i == sec.rows.lastIndex) }
         }
+    }
+    LazyColumn(Modifier.fillMaxSize().testTag("spec-sheet"), contentPadding = PaddingValues(top = 22.dp, bottom = 40.dp)) {
+        if (maxW > 900.dp) {
+            // two balanced columns, in reading order down the left then the right
+            item(key = "columns") {
+                val total = sections.sumOf { it.rows.size + 3 }
+                var acc = 0
+                val split = sections.indexOfFirst { acc += it.rows.size + 3; acc * 2 >= total } + 1
+                Row(Modifier.readable(maxW).padding(horizontal = pad), horizontalArrangement = Arrangement.spacedBy(48.dp)) {
+                    Column(Modifier.weight(1f)) { sections.take(split).forEach { SectionBlock(it, Modifier) } }
+                    Column(Modifier.weight(1f)) { sections.drop(split).forEach { SectionBlock(it, Modifier) } }
+                }
+            }
+        } else items(sections, key = { it.title }) { sec -> SectionBlock(sec, Modifier.readable().padding(horizontal = pad)) }
         item {
             Text(
                 if (scene.fromFile) "Numbers come from the CAD export (model/scene.json). Masses assume solid parts at real densities; treat them as concept estimates."
                 else "The CAD export isn't bundled in this build; numbers are the design envelope from the spec.",
-                color = C.muted, fontSize = 12.sp, lineHeight = 18.sp, modifier = Modifier.readable().padding(horizontal = pad),
+                color = C.muted, fontSize = 12.sp, lineHeight = 18.sp, modifier = Modifier.readable(maxW).padding(horizontal = pad),
             )
         }
     }
@@ -184,10 +210,12 @@ private fun SpecSheet(scene: Scene, pad: androidx.compose.ui.unit.Dp) {
 // ------------------------------------------------------------------------------------------------
 
 @Composable
-private fun BomList(scene: Scene, pad: androidx.compose.ui.unit.Dp) {
+private fun BomList(scene: Scene, pad: androidx.compose.ui.unit.Dp, maxW: androidx.compose.ui.unit.Dp) {
+    val matW = if (maxW > 900.dp) 280.dp else 118.dp
+    val massW = if (maxW > 900.dp) 90.dp else 62.dp
     LazyColumn(Modifier.fillMaxSize().testTag("bom"), contentPadding = PaddingValues(top = 22.dp, bottom = 40.dp)) {
         item {
-            Column(Modifier.readable().padding(horizontal = pad)) {
+            Column(Modifier.readable(maxW).padding(horizontal = pad)) {
                 Row(verticalAlignment = Alignment.Bottom) {
                     Column(Modifier.weight(1f)) {
                         Kicker("Bill of materials")
@@ -202,15 +230,15 @@ private fun BomList(scene: Scene, pad: androidx.compose.ui.unit.Dp) {
                 Spacer(Modifier.height(16.dp))
                 Row(Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
                     Tracked("Part", Modifier.weight(1f), size = 8.5.sp, color = C.muted, tracking = .26f)
-                    Tracked("Material", Modifier.width(118.dp), size = 8.5.sp, color = C.muted, tracking = .26f)
-                    Tracked("Mass", Modifier.width(62.dp), size = 8.5.sp, color = C.muted, tracking = .26f, align = TextAlign.End)
+                    Tracked("Material", Modifier.width(matW), size = 8.5.sp, color = C.muted, tracking = .26f)
+                    Tracked("Mass", Modifier.width(massW), size = 8.5.sp, color = C.muted, tracking = .26f, align = TextAlign.End)
                 }
                 Hairline()
             }
         }
         scene.groups.forEach { g ->
             item(key = "g-${g.id}") {
-                Row(Modifier.readable().padding(horizontal = pad).padding(top = 18.dp, bottom = 6.dp).testTag("bom-${g.id}"), verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.readable(maxW).padding(horizontal = pad).padding(top = 18.dp, bottom = 6.dp).testTag("bom-${g.id}"), verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.width(2.dp).height(13.dp).background(C.amber))
                     Spacer(Modifier.width(10.dp))
                     Tracked(g.name, Modifier.weight(1f), size = 10.5.sp, color = C.ink, weight = FontWeight.Normal, tracking = .16f)
@@ -219,17 +247,17 @@ private fun BomList(scene: Scene, pad: androidx.compose.ui.unit.Dp) {
             }
             val parts = scene.partsOf(g.id)
             items(parts, key = { "p-${it.id}" }) { p ->
-                Column(Modifier.readable().padding(horizontal = pad)) {
+                Column(Modifier.readable(maxW).padding(horizontal = pad)) {
                     Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                         Row(Modifier.weight(1f).padding(start = 12.dp, end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                             Text(p.name, color = if (p.internal) C.ink.copy(alpha = .7f) else C.ink.copy(alpha = .9f), fontSize = 13.sp, lineHeight = 17.sp, modifier = Modifier.weight(1f, fill = false))
                             if (p.internal) { Spacer(Modifier.width(6.dp)); Tracked("int.", size = 7.5.sp, color = C.amber, tracking = .14f, weight = FontWeight.Normal) }
                         }
-                        Row(Modifier.width(118.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Row(Modifier.width(matW), verticalAlignment = Alignment.CenterVertically) {
                             Swatch(p.material, 9.dp); Spacer(Modifier.width(6.dp))
-                            Text(scene.materialLabel(p.material), color = C.muted, fontSize = 11.5.sp, lineHeight = 15.sp, maxLines = 2)
+                            Text(scene.materialLabel(p.material), color = C.muted, fontSize = 11.5.sp, lineHeight = 15.sp, maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                         }
-                        Text(fmtMass(p.massG), Modifier.width(62.dp), color = C.ink.copy(alpha = .8f), fontSize = 12.sp, textAlign = TextAlign.End)
+                        Text(fmtMass(p.massG), Modifier.width(massW), color = C.ink.copy(alpha = .8f), fontSize = 12.sp, textAlign = TextAlign.End)
                     }
                     Hairline(color = C.line.copy(alpha = .45f))
                 }
@@ -239,7 +267,7 @@ private fun BomList(scene: Scene, pad: androidx.compose.ui.unit.Dp) {
             Text(
                 (scene.massNote.ifBlank { "Masses use real densities (titanium 4.43, steel 7.85, copper 8.96, glass 2.5 g/cm³…) and assume solid parts unless the model is hollow." }) +
                     " “Station” excludes the laptop and the desk mat.",
-                color = C.muted, fontSize = 12.sp, lineHeight = 18.sp, modifier = Modifier.readable().padding(horizontal = pad).padding(top = 22.dp),
+                color = C.muted, fontSize = 12.sp, lineHeight = 18.sp, modifier = Modifier.readable(maxW).padding(horizontal = pad).padding(top = 22.dp),
             )
         }
     }
@@ -293,36 +321,48 @@ fun fitOf(fp: Footprint, deskWcm: Int, deskDcm: Int): Fit {
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun DeskFit(app: AppState, scene: Scene, pad: androidx.compose.ui.unit.Dp) {
+private fun DeskFit(app: AppState, scene: Scene, pad: androidx.compose.ui.unit.Dp, maxW: androidx.compose.ui.unit.Dp) {
     val fp = remember(scene) { footprint(scene) }
     val fit = fitOf(fp, app.deskW, app.deskD)
-    var planMode by remember { mutableStateOf("work") }
-    LazyColumn(Modifier.fillMaxSize().testTag("desk-fit"), contentPadding = PaddingValues(top = 22.dp, bottom = 40.dp)) {
-        item {
-            Column(Modifier.readable().padding(horizontal = pad)) {
-                Text("Enter your desk and see the station on it, from above, with the 15 cm work zone.", color = C.muted, fontSize = 14.sp, lineHeight = 21.sp)
-                Spacer(Modifier.height(18.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    CmField("Desk width", app.deskW, { app.deskW = it }, Modifier.weight(1f), "desk-width")
-                    CmField("Desk depth", app.deskD, { app.deskD = it }, Modifier.weight(1f), "desk-depth")
-                }
-                Spacer(Modifier.height(12.dp))
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf(120 to 60, 140 to 70, 160 to 80, 180 to 90).forEach { (w, d) ->
-                        Chip("$w × $d", app.deskW == w && app.deskD == d, { app.deskW = w; app.deskD = d }, Modifier.testTag("desk-$w"), compact = true)
+    var planMode by rememberSaveable { mutableStateOf("work") }
+    val inputs: @Composable ColumnScope.() -> Unit = {
+        Text("Enter your desk and see the station on it, from above, with the ${cm(fp.workGapMm)} cm work zone.", color = C.muted, fontSize = 14.sp, lineHeight = 21.sp)
+        Spacer(Modifier.height(18.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            CmField("Desk width", app.deskW, { app.deskW = it }, Modifier.weight(1f), "desk-width")
+            CmField("Desk depth", app.deskD, { app.deskD = it }, Modifier.weight(1f), "desk-depth")
+        }
+        Spacer(Modifier.height(12.dp))
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf(120 to 60, 140 to 70, 160 to 80, 180 to 90).forEach { (w, d) ->
+                Chip("$w × $d", app.deskW == w && app.deskD == d, { app.deskW = w; app.deskD = d }, Modifier.testTag("desk-$w"), compact = true)
+            }
+        }
+        Spacer(Modifier.height(20.dp))
+        Verdict(fp, fit, app.deskW, app.deskD)
+    }
+    val plan: @Composable ColumnScope.() -> Unit = {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Tracked("Plan view", Modifier.weight(1f), size = 9.sp, color = C.muted, tracking = .3f)
+            Segmented(listOf("work" to "Work", "stow" to "Stow"), planMode, { planMode = it }, Modifier.width(190.dp), tagPrefix = "plan")
+        }
+        Spacer(Modifier.height(12.dp))
+        DeskPlan(fp, app.deskW, app.deskD, planMode, Modifier.fillMaxWidth().testTag("desk-plan"))
+        Spacer(Modifier.height(14.dp))
+        Legend()
+    }
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        val twoColumns = maxW > 900.dp && maxWidth >= 840.dp
+        LazyColumn(Modifier.fillMaxSize().testTag("desk-fit"), contentPadding = PaddingValues(top = 22.dp, bottom = 40.dp)) {
+            item {
+                if (twoColumns) {
+                    Row(Modifier.readable(maxW).padding(horizontal = pad), horizontalArrangement = Arrangement.spacedBy(36.dp)) {
+                        Column(Modifier.weight(.42f), content = inputs)
+                        Column(Modifier.weight(.58f), content = plan)
                     }
+                } else {
+                    Column(Modifier.readable().padding(horizontal = pad)) { inputs(); Spacer(Modifier.height(18.dp)); plan() }
                 }
-                Spacer(Modifier.height(20.dp))
-                Verdict(fp, fit, app.deskW, app.deskD)
-                Spacer(Modifier.height(18.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Tracked("Plan view", Modifier.weight(1f), size = 9.sp, color = C.muted, tracking = .3f)
-                    Segmented(listOf("work" to "Work", "stow" to "Stow"), planMode, { planMode = it }, Modifier.width(190.dp), tagPrefix = "plan")
-                }
-                Spacer(Modifier.height(12.dp))
-                DeskPlan(fp, app.deskW, app.deskD, planMode, Modifier.fillMaxWidth().testTag("desk-plan"))
-                Spacer(Modifier.height(14.dp))
-                Legend()
             }
         }
     }
@@ -352,7 +392,7 @@ private fun Verdict(fp: Footprint, fit: Fit, wcm: Int, dcm: Int) {
     Column(Modifier.fillMaxWidth().clip(shape).background(color.copy(alpha = .08f)).border(1.dp, color.copy(alpha = .5f), shape).padding(18.dp).testTag("fit-verdict")) {
         Tracked(title, size = 16.sp, color = color, tracking = .26f, weight = FontWeight.Normal)
         Spacer(Modifier.height(8.dp))
-        Text(text, color = C.ink.copy(alpha = .86f), fontSize = 14.sp, lineHeight = 21.sp)
+        Text(text.nbUnits(), color = C.ink.copy(alpha = .86f), fontSize = 14.sp, lineHeight = 21.sp)
     }
 }
 

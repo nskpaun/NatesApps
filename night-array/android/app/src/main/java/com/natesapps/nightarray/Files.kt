@@ -12,6 +12,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Download
@@ -55,6 +56,9 @@ object Exporter {
     /** Copies the asset to cacheDir/share/ (the only directory the FileProvider exposes). */
     fun copyForShare(ctx: Context, f: CadFile): File {
         val dir = File(ctx.cacheDir, "share").apply { mkdirs() }
+        // Copies only need to outlive the share sheet; drop ones from earlier days so the cache doesn't keep ~20 MB of CAD.
+        val stale = System.currentTimeMillis() - 24L * 3600 * 1000
+        dir.listFiles()?.forEach { if (it.lastModified() < stale) it.delete() }
         val out = File(dir, fileName(f))
         ctx.assets.open(f.path).use { input -> out.outputStream().use { input.copyTo(it, 64 * 1024) } }
         return out
@@ -143,8 +147,8 @@ fun FilesScreen(app: AppState, scene: Scene) {
             item(key = "head") {
                 ScreenTitle(
                     "CAD library", "Files",
-                    "Every part of the station as STEP, STL, drawing sheets and DXF outlines, all generated from one parametric model.",
-                    Modifier.readable().statusBarsPadding().padding(horizontal = pad).padding(top = 22.dp, bottom = 22.dp),
+                    sub = "Every part of the station as STEP, STL, drawing sheets and DXF outlines, all generated from one parametric model.",
+                    modifier = Modifier.readable().statusBarsPadding().padding(horizontal = pad).padding(top = 22.dp, bottom = 22.dp),
                 )
             }
             item(key = "assembly") { AssemblyCard(app, scene, actions, Modifier.readable().padding(horizontal = pad)) }
@@ -194,7 +198,7 @@ private fun GroupRow(scene: Scene, g: Group, modifier: Modifier, onClick: () -> 
             Column(Modifier.weight(1f).padding(start = 14.dp, end = 6.dp)) {
                 Tracked(g.name, size = 12.5.sp, color = C.ink, weight = FontWeight.Normal, tracking = .14f, maxLines = 2)
                 Spacer(Modifier.height(5.dp))
-                Text(g.summary, color = C.muted, fontSize = 12.5.sp, lineHeight = 17.sp, maxLines = 2)
+                Text(g.summary, color = C.muted, fontSize = 12.5.sp, lineHeight = 17.sp, maxLines = 3, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                 Spacer(Modifier.height(8.dp))
                 Text(listOf(fmtBox(g.bboxMm), fmtMass(g.massG)).filter { it != "—" }.joinToString("  ·  ").ifBlank { "${g.parts.size} parts" },
                     color = C.ink.copy(alpha = .75f), fontSize = 11.5.sp)
@@ -205,9 +209,10 @@ private fun GroupRow(scene: Scene, g: Group, modifier: Modifier, onClick: () -> 
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun FormatsLine(files: List<CadFile>) {
-    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         files.forEach { f ->
             val size = rememberFileSize(f)
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -276,10 +281,12 @@ fun FileRow(f: CadFile, actions: FileActions, last: Boolean = false) {
 fun GroupScreen(app: AppState, scene: Scene, id: String) {
     val g = scene.group(id) ?: scene.groups.first()
     val actions = rememberFileActions(app, scene)
+    val list = rememberLazyListState()
+    val scrolled by rememberScrolledPast(list, 220.dp)
     BoxWithConstraints(Modifier.fillMaxSize().background(C.bg)) {
         val wide = maxWidth >= 600.dp
         val pad = if (wide) 40.dp else 20.dp
-        LazyColumn(Modifier.fillMaxSize().testTag("group"), contentPadding = PaddingValues(bottom = 44.dp)) {
+        LazyColumn(Modifier.fillMaxSize().testTag("group"), state = list, contentPadding = PaddingValues(bottom = 44.dp)) {
             item(key = "hero") {
                 val h = minOf(maxWidth * (if (wide) .5f else .9f), 460.dp)
                 Box(Modifier.fillMaxWidth().height(h).background(C.panel)) {
@@ -295,7 +302,7 @@ fun GroupScreen(app: AppState, scene: Scene, id: String) {
                     Tracked(g.name, size = if (wide) 28.sp else 23.sp, tracking = .16f)
                     Spacer(Modifier.height(10.dp))
                     Tagline(g.summary, size = 17.sp, color = C.titanium)
-                    if (g.description.isNotBlank()) { Spacer(Modifier.height(16.dp)); Text(g.description, style = Body) }
+                    if (g.description.isNotBlank()) { Spacer(Modifier.height(16.dp)); Text(g.description.nbUnits(), style = Body) }
                 }
             }
             item(key = "facts") {
@@ -353,7 +360,7 @@ fun GroupScreen(app: AppState, scene: Scene, id: String) {
                 }
             }
         }
-        BackButton({ app.nav.back() }, Modifier.statusBarsPadding().padding(start = 14.dp, top = 8.dp))
+        DetailChrome(g.name, scrolled, { app.nav.back() })
     }
 }
 

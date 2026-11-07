@@ -10,24 +10,27 @@ Outputs (SPEC.md section 3) under cad/export/:
   files/drawings/<group>.svg|<group>-top.dxf, drawings/<group>.png
 """
 
-import argparse
-import json
-import math
 import os
-import re
-import shutil
-import struct
-import subprocess
 import sys
-import time
 
-import numpy as np
+if __name__ == "__main__" and os.environ.get("PYTHONHASHSEED") != "0":
+    # Python salts str hashes per process, and ezdxf writes a few DXF objects in set order:
+    # pin the seed (re-exec before the heavy imports) so every build is byte-identical.
+    os.environ["PYTHONHASHSEED"] = "0"
+    os.execv(sys.executable, [sys.executable] + sys.argv)
+
+import argparse  # noqa: E402
+import json  # noqa: E402
+import shutil  # noqa: E402
+import struct  # noqa: E402
+import time  # noqa: E402
+
+import numpy as np  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
 import cadquery as cq  # noqa: E402
-from cadquery import Vector  # noqa: E402
 from OCP.BRep import BRep_Tool  # noqa: E402
 from OCP.BRepAdaptor import BRepAdaptor_Curve  # noqa: E402
 from OCP.BRepLib import BRepLib_ToolTriangulatedShape  # noqa: E402
@@ -41,6 +44,7 @@ from OCP.TopoDS import TopoDS  # noqa: E402
 from OCP.TopTools import TopTools_IndexedMapOfShape  # noqa: E402
 
 import model  # noqa: E402
+import stepfile  # noqa: E402
 from params import P, COS_T, SIN_T, facet_point  # noqa: E402
 
 EXPORT = os.path.join(HERE, "export")
@@ -224,6 +228,12 @@ TESS = {
     "dock_cradle": (0.2, 0.25), "display_screen": (0.5, 0.5), "display_glass": (0.3, 0.35),
     "deskmat": (0.4, 0.4),
 }
+
+# STL tessellation per group: (absolute linear deflection mm, angular deflection rad).  Organic and
+# small parts get finer meshes; the big, mostly planar groups stay coarse to keep export/ ~20 MB.
+STL_TESS_DEFAULT = (0.3, 0.6)
+STL_TESS = {"mouse": (0.15, 0.4), "dock": (0.2, 0.5), "base": (0.25, 0.5), "stand": (0.2, 0.5),
+            "laptop": (0.2, 0.5), "deskmat": (0.2, 0.5)}
 
 
 # ----------------------------------------------------------------------------
@@ -538,11 +548,8 @@ def cq_color(key):
 
 
 def normalise_step(path):
-    with open(path, "r", encoding="utf-8", errors="replace") as f:
-        txt = f.read()
-    txt = re.sub(r"FILE_NAME\('([^']*)','[^']*'", lambda m: "FILE_NAME('%s','2026-11-07T00:00:00'" % os.path.basename(path), txt, count=1)
-    with open(path, "w", encoding="utf-8") as f:
-        f.write(txt)
+    """Fixed FILE_NAME stamp + canonical order of the colour/style tail (see stepfile.py) -> reproducible bytes."""
+    stepfile.canonicalise_file(path)
 
 
 def export_step_stl(parts, files_dir):
@@ -566,7 +573,9 @@ def export_step_stl(parts, files_dir):
         normalise_step(p)
         comp = cq.Compound.makeCompound(solids)
         BRepTools.Clean_s(comp.wrapped)   # drop the finer GLB triangulation so the STL tolerance applies
-        comp.exportStl(os.path.join(pdir, gid + ".stl"), tolerance=0.4, angularTolerance=0.6, ascii=False)
+        lin, ang = STL_TESS.get(gid, STL_TESS_DEFAULT)
+        # absolute deflection (CadQuery's default is relative to edge length, which faceted the mouse badly)
+        comp.exportStl(os.path.join(pdir, gid + ".stl"), tolerance=lin, angularTolerance=ang, ascii=False, relative=False)
     p = os.path.join(files_dir, "night-array-assembly.step")
     root.export(p, "STEP", write_pcurves=False)
     normalise_step(p)
@@ -739,9 +748,13 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--only", choices=["glb", "step", "drawings", "all"], default="all")
     ap.add_argument("--keep", action="store_true", help="do not wipe export/ first")
+    ap.add_argument("--out", default=None, help="write somewhere other than cad/export (e.g. to diff two builds)")
     args = ap.parse_args()
+    EXPORT = os.path.abspath(args.out) if args.out else globals()["EXPORT"]
     t0 = time.time()
     if args.only == "all" and not args.keep and os.path.isdir(EXPORT):
+        if os.listdir(EXPORT) and not os.path.isdir(os.path.join(EXPORT, "model")):
+            sys.exit(f"refusing to wipe {EXPORT}: it does not look like an export directory")
         shutil.rmtree(EXPORT)
     for d in ("model", "files/parts", "files/drawings", "drawings"):
         os.makedirs(os.path.join(EXPORT, d), exist_ok=True)
