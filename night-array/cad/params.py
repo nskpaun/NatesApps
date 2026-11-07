@@ -67,7 +67,7 @@ P = {
         "z_top": [-140.0, -80.0],     # slight rearward lean (4.8 deg)
         "edge_fillet": 8.0,
         "wall": 4.0,
-        "light": {"w": 150.0, "h": 5.0, "depth": 3.0, "y": [148.0, 153.0]},
+        "light": {"w": 150.0, "h": 5.0, "depth": 3.0, "y": [126.0, 131.0]},   # clear of the display overhang, seen from the seat
         "badge": {"text": "NIGHT ARRAY", "size": 8.5, "tracking": 0.42, "y": 104.0, "depth": 0.5,
                   "font": "Inter", "kind": "regular"},
     },
@@ -88,6 +88,8 @@ P = {
         "glass_y": [156.0, 516.7],
         "active_y": [172.0, 507.7],
         "glass_t": 2.0,
+        "module_t": 10.0,                      # stripped LCD module (cell, backlight, steel tray) behind the black front
+        "module_inset": 1.5,                   # module body stops short of the glass's outer edge
         "screen_proud": 0.3,
         "glass_corner_r": 4.0,
         "frame_w": 3.0,
@@ -96,20 +98,20 @@ P = {
         "frame_corner_r": 7.0,
         "mullion_w": 4.0,
         "mullion_front_z": -60.6,
-        "shroud_thin": 14.0,                   # thin edge zone behind the faces
+        "shroud_thin": 16.0,                   # thin edge zone behind the faces (inner wall 1.5 mm behind the modules)
         "shroud_depth": 45.0,                  # behind the panel faces
         "shroud_wall": 2.5,
-        "bump_front": {"u_max": 545.0, "y": [172.0, 458.0]},   # at w = -14
+        "bump_front": {"u_max": 545.0, "y": [172.0, 458.0]},   # at w = -shroud_thin
         "bump_back": {"u_max": 440.0, "y": [200.0, 405.0]},    # at w = -45
         "keel": {"bottom_w": 200.0, "top_w": 116.0, "y_top": 440.0, "z_back_bottom": -143.0,
                  "z_back_top": -110.0, "chamfer": 14.0, "wall": 3.0},
         "vesa_hub": {"d": 104.0, "proud": 3.0, "y": 262.0, "pattern": 100.0},
         "vents": {"count": 34, "pitch": 12.5, "u0": 70.0, "w": 3.2, "len": 26.0},
-        "plate": {"u": [200.0, 420.0], "y": [255.0, 425.0], "t": 2.5},
-        "spine_arm": {"u_max": 236.0, "y": [330.0, 352.0], "w": [-14.0, -4.5]},
-        "spine_post": {"x": 18.0, "y": [160.0, 352.0], "z": [-104.0, -66.0]},
+        "plate": {"u": [200.0, 420.0], "y": [255.0, 425.0], "t": 2.0},   # bolted to the module backs
+        "spine_arm": {"u_max": 236.0, "y": [330.0, 352.0], "w": [-23.5, -14.0]},
+        "spine_post": {"x": 18.0, "y": [160.0, 352.0], "z": [-114.0, -76.0], "wall": 3.0},   # 36 x 38 RHS
         "spine_foot": {"x": 88.0, "y": [156.0, 160.0], "z": [-137.0, -83.0]},
-        "board": {"u": [220.0, 410.0], "y": [262.0, 348.0], "w_pcb": [-24.0, -22.4]},
+        "board": {"u": [220.0, 410.0], "y": [262.0, 348.0], "w_pcb": [-25.6, -24.0]},
     },
 
     # ------------------------------------------------------------------ dock
@@ -177,7 +179,9 @@ P = {
     "poses_mm": {
         "work_keyboard": [0.0, -15.0, 298.0],
         "work_mouse": [40.0, -15.0, 298.0],
-        "dock_align_lift": 140.0,
+        "work_lift": 30.0,           # stow <-> work path: lift clear of the 36 mm rim ...
+        "work_clear_z": 200.0,       # ... slide forward until the back edge is past the base front, then set down
+        "dock_align_lift": 70.0,     # laptop part-way into the cradle lead-in, above the 60 mm front lip
         "dock_lift_out": 160.0,
         "latch_travel": 3.0,
     },

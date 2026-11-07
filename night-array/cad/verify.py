@@ -1,15 +1,20 @@
 #!/usr/bin/env python3
 """Night Array -- verification of the CAD deliverables.
 
-    cad/.venv/bin/python cad/verify.py [--fast]
+    cad/.venv/bin/python cad/verify.py [--fast] [--export DIR]
 
 Checks
   1. every part's bounding box against the SPEC.md section 2 envelope numbers
   2. interference (boolean intersection volume) between every pair of parts in
-     the stow pose, the work / standalone poses and every dock_sequence step
+     the stow pose, the work / standalone poses and every dock_sequence step, plus
+     the paths between them: the stow <-> work waypoints, the laptop lift and the
+     explode slider part-way (0.1 .. 0.9)
   3. re-imports every STEP file and compares solid counts and volumes
-  4. scene.json shape (keys, group order, parts, files index with real sizes)
-  5. GLB node names / extras / translations against scene.json
+  4. scene.json shape (keys, group order, parts, files index with real sizes), and
+     its numbers against a fresh model build (params, part bbox / volume / mass,
+     pose paths, dimension labels against their end points)
+  5. GLB node names / extras / translations against scene.json, and each node's
+     mesh bounds against the fresh B-rep
 Exit code 1 on any failure.
 """
 
@@ -64,6 +69,7 @@ ENV = {
     "ferrite_kb": {"y": (10, 12)},
     "ferrite_mouse": {"y": (10, 12)},
     "dock_latch": {"y": (18, 40)},
+    "neck_light": {"x": (-75, 75), "y": (126, 131)},
 }
 TOL = 0.6
 
@@ -103,8 +109,13 @@ def bb_overlap(a, b, pad=0.05):
     return all(a[i] - pad <= b[i + 3] and b[i] - pad <= a[i + 3] for i in range(3))
 
 
-def interference(parts, moved=None, only=None, label="", hidden=()):
-    """Pairwise intersection volumes. `moved` = {pid: (dx,dy,dz)}; `only` limits pairs to those involving these parts."""
+PATH_SAMPLES = 8
+EXPLODE_SAMPLES = [k / 10 for k in range(1, 10)]
+
+
+def interference(parts, moved=None, only=None, label="", hidden=(), skip=None, quiet=False):
+    """Pairwise intersection volumes. `moved` = {pid: (dx,dy,dz)}; `only` limits pairs to those involving these parts;
+    `skip(a, b)` -> True leaves a pair out."""
     moved = moved or {}
     shapes = {}
     for pid, s in parts.items():
@@ -121,6 +132,8 @@ def interference(parts, moved=None, only=None, label="", hidden=()):
         for b in ids[i + 1:]:
             if only and a not in only and b not in only:
                 continue
+            if skip and skip(a, b):
+                continue
             if not bb_overlap(boxes[a], boxes[b]):
                 continue
             n += 1
@@ -132,8 +145,9 @@ def interference(parts, moved=None, only=None, label="", hidden=()):
             if not (abs(v) <= 0.5):
                 worst.append((v, a, b))
     worst.sort(reverse=True)
-    check(not worst, f"{label}: {n} candidate pairs, {len(worst)} interfering"
-          + ("".join(f"\n          {a} x {b}: {v:.2f} mm3" for v, a, b in worst[:20])))
+    if not (quiet and not worst):
+        check(not worst, f"{label}: {n} candidate pairs, {len(worst)} interfering"
+              + ("".join(f"\n          {a} x {b}: {v:.2f} mm3" for v, a, b in worst[:20])))
     return worst
 
 
@@ -157,6 +171,66 @@ def check_interference(parts, fast=False):
     if not fast:
         for dy in (10, 40, 80):
             interference(parts, {p: (0, dy, 0) for p in lp}, only=set(lp), label=f"laptop lifted {dy} mm")
+    if fast:
+        return
+    check_paths(parts, kb, ms)
+    check_explode(parts, kb, ms)
+
+
+def path_points(via, t, n=PATH_SAMPLES):
+    """Points along stow -> via[0] -> ... -> t, n per segment (the stow end is the stow pose itself)."""
+    pts, prev = [], np.zeros(3)
+    for q in [np.array(v, float) for v in via] + [np.array(t, float)]:
+        pts += [prev + (q - prev) * k / n for k in range(1, n + 1)]
+        prev = q
+    return pts
+
+
+def check_paths(parts, kb, ms):
+    """The stow <-> work / standalone move follows the waypoints the scene gives (lift, slide, set down), desk mat shown.
+    Both poses share the keyboard / mouse path, and the laptop never comes near it, so one pass covers both."""
+    import build
+    pm = P["poses_mm"]
+    kp = path_points(build.work_path("work_keyboard"), pm["work_keyboard"])
+    mp = path_points(build.work_path("work_mouse"), pm["work_mouse"])
+    worst = 0
+    for i, (a, b) in enumerate(zip(kp, mp)):
+        mv = {p: tuple(a) for p in kb}
+        mv.update({p: tuple(b) for p in ms})
+        worst += len(interference(parts, mv, only=set(kb + ms), label=f"stow -> work path {i + 1}/{len(kp)}", quiet=True))
+    check(worst == 0, f"stow <-> work path: {len(kp)} samples ({PATH_SAMPLES} per segment), {worst} interfering")
+
+
+# Explode moves every part along its own vector.  A shell with a closed floor that lifts off parts staying at desk
+# level must pass through them on the way up (the base over its internals, the dock cradle over its PCB): those pairs
+# are expected to cross part-way and are left out.  Everything else must stay clear for the whole slider travel.
+EXPLODE_CROSSING = {
+    "base_shell": {"compute_board", "compute_heatsink", "compute_fan", "psu", "qi_coil_kb", "qi_coil_mouse",
+                   "ferrite_kb", "ferrite_mouse"},
+    "dock_cradle": {"dock_board"},
+}
+
+
+def check_explode(parts, kb, ms):
+    import build
+    ex = {pid: np.array(v) * 1000.0 for pid, v in build.EXPLODE.items()}
+
+    def skip(a, b):
+        return (np.allclose(ex[a], ex[b])        # no relative motion: same as the pose itself
+                or b in EXPLODE_CROSSING.get(a, ()) or a in EXPLODE_CROSSING.get(b, ()))
+
+    pm = P["poses_mm"]
+    work = {p: np.array(pm["work_keyboard"]) for p in kb}
+    work.update({p: np.array(pm["work_mouse"]) for p in ms})
+    bad = 0
+    for e in EXPLODE_SAMPLES:
+        mv = {pid: tuple(ex[pid] * e) for pid in parts}
+        bad += len(interference(parts, mv, hidden={"deskmat"}, skip=skip, label=f"explode {e:.1f} (stow)", quiet=True))
+        mv = {pid: tuple(work.get(pid, 0) + ex[pid] * e) for pid in parts}
+        bad += len(interference(parts, mv, only=set(kb + ms + ["deskmat"]), skip=skip, label=f"explode {e:.1f} (work)",
+                                quiet=True))
+    check(bad == 0, f"explode 0.1 .. 0.9 in the stow and work poses: {bad} interfering"
+          + f" (closed-floor shells over their contents left out: {sorted(EXPLODE_CROSSING)})")
 
 
 # ----------------------------------------------------------------------------
@@ -299,8 +373,9 @@ def read_glb_json(path):
         return json.loads(f.read(ln))
 
 
-def check_scene():
+def check_scene(parts):
     print("\n[4] scene.json")
+    import build
     sc = json.load(open(os.path.join(EXPORT, "model", "scene.json")))
     for k in ("version", "units", "name", "params", "bounds", "materials", "groups", "parts", "poses", "dock_sequence",
               "dims", "screen", "files", "drawings"):
@@ -327,6 +402,43 @@ def check_scene():
     dims = {d["id"] for d in sc["dims"]}
     need = {"overall_w", "base_depth", "overall_h", "display_w", "panel_active_w", "seam", "work_offset"}
     check(need <= dims, f"dims include {sorted(need)}")
+
+    # numbers against the fresh build: a stale export (geometry or params changed, not rebuilt) fails here
+    check(sc["params"] == json.loads(json.dumps(P)), "params == params.py")
+    stale = []
+    for p in sc["parts"]:
+        s = parts[p["id"]]
+        x0, y0, z0, x1, y1, z1 = tight_bbox(s)
+        bb = [x1 - x0, y1 - y0, z1 - z0]
+        vol = s.Volume()
+        mass = build.part_mass(p["id"], vol)[0]
+        if (max(abs(a - b) for a, b in zip(bb, p["bbox_mm"])) > 0.06 or abs(vol / 1000 - p["volume_cm3"]) > 0.006
+                or abs(mass - p["mass_g"]) > 0.06 or p["explode"] != build.EXPLODE[p["id"]]):
+            stale.append(p["id"])
+    check(not stale, "parts[] bbox / volume / mass / explode match a fresh build" + (f" (stale: {stale})" if stale else ""))
+    mm = 0.001
+    pm = P["poses_mm"]
+    for pose in ("work", "standalone"):
+        for g, key in (("keyboard", "work_keyboard"), ("mouse", "work_mouse")):
+            e = sc["poses"][pose][g]
+            via = [list(np.array(v) * mm) for v in build.work_path(key)]
+            ok = (np.allclose(e["t"], np.array(pm[key]) * mm, atol=1e-9) and len(e.get("via", [])) == len(via)
+                  and all(np.allclose(a, b, atol=1e-9) for a, b in zip(e["via"], via)))
+            check(ok, f"poses.{pose}.{g}: t {e['t']} via {e.get('via')}")
+    seq = {s["step"]: s for s in sc["dock_sequence"]}
+    check(np.isclose(seq["align"]["laptop"]["t"][1], pm["dock_align_lift"] * mm)
+          and np.isclose(seq["lift"]["laptop"]["t"][1], pm["dock_lift_out"] * mm), "dock_sequence lifts = params.poses_mm")
+    nominal = {"seam", "panel_active_w"}   # nominal along-facet values, not chord lengths
+    for d in sc["dims"]:
+        if d["id"] in nominal:
+            continue
+        length = float(np.linalg.norm(np.array(d["b"]) - np.array(d["a"]))) / mm
+        try:
+            val = float(d["label"].replace("mm", "").replace(" ", "").replace("\u00a0", ""))
+        except ValueError:
+            check(False, f"dim {d['id']}: label '{d['label']}' is not a length")
+            continue
+        check(abs(val - length) <= 1.0, f"dim {d['id']}: label '{d['label']}' vs end points {length:.2f} mm apart")
     check(sc["screen"]["panels"] == 2 and sc["screen"]["seam_mm"] == 14 and sc["screen"]["toe_in_deg"] == 10, "screen block")
     for f in sc["files"]:
         p = os.path.join(EXPORT, f["path"])
@@ -354,6 +466,19 @@ def check_scene():
             check(sorted(mnames) == sorted(mats), "station.glb: materials named by key")
             scr = js["meshes"][js["nodes"][[n["name"] for n in js["nodes"]].index("display_screen")]["mesh"]]
             check("TEXCOORD_0" in scr["primitives"][0]["attributes"], "display_screen has TEXCOORD_0")
+        if name == "station.glb":
+            # node translation + POSITION accessor bounds = the fresh B-rep's bounding box (to within the tessellation)
+            off = []
+            for n in js["nodes"]:
+                acc = js["accessors"][js["meshes"][n["mesh"]]["primitives"][0]["attributes"]["POSITION"]]
+                lo = (np.array(n["translation"]) + acc["min"]) * 1000.0
+                hi = (np.array(n["translation"]) + acc["max"]) * 1000.0
+                bb = np.array(tight_bbox(parts[n["name"]]))
+                dev = max(np.abs(lo - bb[:3]).max(), np.abs(hi - bb[3:]).max())
+                if dev > GLB_BBOX_TOL:
+                    off.append(f"{n['name']} {dev:.2f} mm")
+            check(not off, f"station.glb: every node's mesh bounds match the B-rep within {GLB_BBOX_TOL} mm"
+                  + (f" (off: {off})" if off else ""))
         size = os.path.getsize(path)
         check(size < 6e6, f"{name}: {size / 1e6:.2f} MB < 6 MB")
     # groups that animate share the group pivot
@@ -373,7 +498,14 @@ def check_scene():
     check(total < 21e6, f"export/ total {total / 1e6:.2f} MB (budget ~20 MB)")
 
 
+GLB_BBOX_TOL = 0.6   # mm; the coarsest tessellation is 0.5 mm chord deflection
+
+
 def main():
+    global EXPORT
+    if "--export" in sys.argv:
+        EXPORT = os.path.abspath(sys.argv[sys.argv.index("--export") + 1])
+        print("export:", EXPORT)
     fast = "--fast" in sys.argv
     t = time.time()
     parts = model.build_all(verbose=False)
@@ -386,7 +518,7 @@ def main():
         check_interference(parts, fast)
     if "--geometry-only" not in sys.argv:
         check_step(parts)
-        check_scene()
+        check_scene(parts)
     print(f"\n{len(FAIL)} failure(s) in {time.time() - t:.0f}s")
     sys.exit(1 if FAIL else 0)
 

@@ -45,22 +45,23 @@ Never write outside your own directories (plus the two asset dirs the viewer own
 | Group | Part id | Material | Notes |
 |---|---|---|---|
 | `base` | `base_shell` | titanium | Main slab x∈[-640,650], z∈[-150,150], y∈[0,36]. Plan corner R40, soft top-edge fillet. 16 mm perimeter rim at y=36; inner deck recessed to y=30. Keyboard pocket 376×136 (x×z) centred (-90, 62), floor y=16. Mouse pocket 82×134 centred (250, 62), floor y=16. Rear I/O cut-outs on the back face (left side). |
-| `base` | `tray_pad_kb` | graphite | Soft-touch charging pad filling the keyboard pocket floor, y∈[16,18]. Device rests on y=18. |
+| `base` | `deck_liner` | graphite | Inlaid deck liner, 1 mm, flush with the deck (y∈[29,30]), 1.2 mm titanium reveal. |
+| `base` | `tray_pad_kb` | graphite | Soft-touch charging pad filling the keyboard pocket floor, y∈[16,18]. Device rests on y=18. Non-metallic (soft-touch PU over a glass-fibre carrier, so Qi2 passes; `graphite` is its colour): mass from an effective density of 1.2 g/cm³. |
 | `base` | `tray_pad_mouse` | graphite | Same for mouse pocket, y∈[16,18]. |
 | `base` | `base_glow` | amber_led | Thin under-glow strip, front bottom edge, x∈[-560,560], z≈148, y∈[2,5]. |
 | `base` | `kb_charge_led` | amber_led | 30×2 mm indicator on the keyboard pocket's front lip (x=-90). |
 | `base` | `mouse_charge_led` | amber_led | 16×2 mm indicator on the mouse pocket's front lip (x=250). |
 | `base` | `base_feet` | rubber | Recessed feet strips (do not lift the base: base still sits at y=0). |
 | `stand` | `neck` | graphite | Trapezoid neck: bottom width 320, top width 180, y∈[36,156], z∈[-140,-70], slight rearward lean. Joins display back. |
-| `stand` | `neck_light` | amber_led | Light bar along the neck's top-front edge, ~150×5×3, y≈148–153. |
+| `stand` | `neck_light` | amber_led | Light bar on the neck's front face just below the display, ~150×5×3, y≈126–131 (low enough to clear the display's overhang, so it shows from the seat). |
 | `stand` | `neck_badge` | titanium | Inlaid "NIGHT ARRAY" lettering on the neck front face (CadQuery `text`). |
 | `display` | `display_screen` | screen | **Dual 27" display (design decision — replaces the old single ultrawide).** Two off-the-shelf 27" QHD IPS monitors (2560×1440 each, active area 596.7 × 335.7 mm), stripped of their plastic housings and mounted side by side. Each panel is **toed in 10°** toward the user about a vertical axis through the seam at x=0, z=-62 (front surface at the seam), so the outer edges come forward (left facet runs along (−cos10°, 0, +sin10°) from the seam, right facet along (+cos10°, 0, +sin10°)). The visible seam between the two active areas is **14 mm** (7 mm each side of x=0). Active areas y∈[172,507.7], 0.3 mm proud of the bezel faces. One part, two facets. **Must carry TEXCOORD_0** (glTF convention, v 0 = top edge, 1 = bottom): the left panel maps u 0→0.5 (outer-left edge → seam), the right panel u 0.5→1 (seam → outer-right edge) — i.e. one 5120×1440 canvas split exactly like an OS spans two displays; the seam has no pixels. |
-| `display` | `display_glass` | glass_black | The two monitors' black front faces / bezels, one facet per panel, from the seam out to 7+596.7+9 mm along each facet; height 360.7 (y∈[156,516.7]: 16 mm chin, 9 mm top). ~2 mm thick. Two solids, one part. |
+| `display` | `display_glass` | glass_black | The two stripped monitors' LCD modules with their black front faces / bezels, one facet per panel, from the seam out to 7+596.7+9 mm along each facet; height 360.7 (y∈[156,516.7]: 16 mm chin, 9 mm top). 2 mm black front plus the 10 mm module body behind it (12 mm deep, w∈[-12,0] along the facet normal; the body stops 1.5 mm short of the outer edge). Two solids, one part. Mass from an effective density (solid envelope of the modules). |
 | `display` | `display_seam` | titanium | "The honest seam": a 4 mm wide titanium mullion running the full height of the glass at x=0, slightly proud, covering the joint between the two panels' inner borders. |
 | `display` | `display_frame` | titanium | Shared shroud front rim (~3 mm) that wraps the outer edges of both panels (hides their outer bezels) and follows the 10° fold at the seam. |
-| `display` | `display_back` | graphite | Shared rear shroud following both facets (~45 mm deep behind the panel faces), vent slots, central spine cover with the VESA hub where the neck joins. |
-| `display` | `display_spine` | steel | **internal: true.** Steel mounting spine with two VESA 100 plates angled ±10°, one per monitor. |
-| `display` | `display_boards` | pcb | **internal: true.** Each monitor's own scaler + power board, kept as-is and mounted on the spine (two solids, one part). |
+| `display` | `display_back` | graphite | Shared rear shroud following both facets (~45 mm deep behind the panel faces; 16 mm thin rim zone, inner wall 1.5 mm behind the modules), vent slots, central spine cover (keel) with the VESA hub where the neck joins. |
+| `display` | `display_spine` | steel | **internal: true.** Steel mounting spine with two 2 mm VESA 100 plates angled ±10°, one bolted to the back of each module, on arms from a 36×38 rectangular hollow post that stands on the neck. |
+| `display` | `display_boards` | pcb | **internal: true.** Each monitor's own scaler + power board, kept as-is and mounted on standoffs behind the spine arms (two solids, one part). |
 | `dock` | `dock_cradle` | titanium | Right wing x∈[650,775], z∈[-130,130]. Side profile: ~120 tall at the back, sweeping down to ~60 at the front (concave curve). Laptop slot 20 wide (x∈[712,732]), z∈[-112,112], floor y=24, lead-in chamfers. |
 | `dock` | `dock_panels` | oxblood | 2 mm accent panels on the outer (+x) face and front face of the cradle. |
 | `dock` | `dock_latch` | graphite | Press-release button on the cradle's front face, right side, ~34×22×14, y≈18–40. Its own sub-group pivot so it can be pressed (moves −z ~3 mm). |
@@ -118,6 +119,8 @@ Internal parts (`internal: true`) are hidden in the `studio` style and shown in 
   "params": { /* the full params.py dict, mm */ },
   "bounds": { "min": [x,y,z], "max": [x,y,z] },                // stow pose, metres
   "materials": { "titanium": { "label": "Neutral Titanium" }, ... },  // every key from the list above
+  // optional per material: "color" (sRGB hex), "metallic", "roughness", "density_g_cm3", "spec" (one-line finish text),
+  // "emissive": true
   "groups": [
     { "id": "base", "name": "Base & charging trays", "summary": "one line", "description": "2–4 sentences",
       "parts": ["base_shell", "tray_pad_kb", ...],
@@ -125,20 +128,27 @@ Internal parts (`internal: true`) are hidden in the `studio` style and shown in 
       "bbox_mm": [w, h, d], "mass_g": 0, "volume_cm3": 0,
       "materials": ["titanium", "graphite", "amber_led"] }
     // groups, in this order: display, stand, base, dock, laptop, keyboard, mouse, deskmat, internals
+    // optional: "subgroups": { "dock_latch": { "parts": ["dock_latch", "dock_latch_led"], "pivot": [x,y,z] } } (dock)
   ],
   "parts": [
     { "id": "base_shell", "group": "base", "name": "Base shell", "material": "titanium", "internal": false,
       "explode": [dx,dy,dz],             // metres, offset at explode = 1
       "bbox_mm": [w,h,d], "volume_cm3": 0, "mass_g": 0 }
+    // optional: "density_g_cm3" (the density used), "mass_note" (why it is an effective density), "solids" (when > 1)
   ],
   "poses": {                              // per-GROUP delta transforms relative to the stow (CAD) pose
     "stow":       { "deskmat": { "hidden": true } },
-    "work":       { "keyboard": { "t": [0, -0.015, 0.298] }, "mouse": { "t": [0.04, -0.015, 0.298] } },
-    "standalone": { "keyboard": {"t": [...]}, "mouse": {"t": [...]}, "laptop": { "hidden": true } }
+    "work":       { "keyboard": { "t": [0, -0.015, 0.298], "via": [[0, 0.03, 0], [0, 0.03, 0.2]] },
+                    "mouse":    { "t": [0.04, -0.015, 0.298], "via": [[0, 0.03, 0], [0.04, 0.03, 0.2]] } },
+    "standalone": { "keyboard": {"t": [...], "via": [...]}, "mouse": {"t": [...], "via": [...]}, "laptop": { "hidden": true } }
   },
   // "t" = translation in metres, "r" = rotation in degrees [rx,ry,rz] about the group pivot (optional), "hidden" optional.
+  // "via" (optional) = waypoints, same frame as "t", that the group passes through in order on its way from the stow pose
+  // to this pose (play them reversed going back to stow). The keyboard and mouse lift 30 mm clear of the 36 mm rim, slide
+  // forward until their back edge is past the base front (z = +200 mm), then set down on the mat; a straight line from
+  // stow to "t" would run through the titanium rim. Animate each segment in turn (same timing for both groups).
   "dock_sequence": [                       // laptop / dock_latch deltas for each step
-    { "step": "align",   "title": "Align",               "caption": "Guide into the open cradle",       "laptop": { "t": [0, 0.14, 0] } },
+    { "step": "align",   "title": "Align",               "caption": "Guide into the open cradle",       "laptop": { "t": [0, 0.07, 0] } },
     { "step": "lower",   "title": "Lower",               "caption": "Seat the laptop onto the connector", "laptop": { "t": [0, 0, 0] } },
     { "step": "release", "title": "Press-release & lift", "caption": "Press to release, then lift out",  "laptop": { "t": [0, 0, 0] }, "dock_latch": { "t": [0, 0, -0.003] } },
     { "step": "lift",    "title": "Lift out",            "caption": "Laptop free; compute stays in the base", "laptop": { "t": [0, 0.16, 0] } }
@@ -147,18 +157,24 @@ Internal parts (`internal: true`) are hidden in the `studio` style and shown in 
   "dims": [ { "id": "overall_w", "label": "1 474 mm", "a": [x,y,z], "b": [x,y,z], "dir": [0,1,0] } ],
   // dims: measured points (metres, stow pose) + "dir" = which way to offset the dimension line. Include at least:
   // overall width, base depth, overall height, display width, one panel's active width, the seam, work offset 150 mm (pose "work"; add "pose": "work").
+  // Length labels are the distance between "a" and "b"; only "seam" and "panel_active_w" carry nominal along-facet text.
+  // CAD also writes "dock_h" and "base_h".
   "screen": { "part": "display_screen", "layout": "dual", "panels": 2, "panel_inch": 27, "panel_active_mm": [596.7, 335.7],
-              "resolution_each": [2560, 1440], "seam_mm": 14, "toe_in_deg": 10, "seam_axis": [0, 0, -0.062] },
+              "resolution_each": [2560, 1440], "seam_mm": 14, "toe_in_deg": 10, "seam_axis": [0, 0, -0.062],
+              "canvas": [5120, 1440], "active_y_mm": [172, 507.7], "uv": "..." },   // last three optional
   "files": [
     { "id": "assembly-step", "group": null, "format": "STEP", "label": "Full assembly", "path": "files/night-array-assembly.step", "bytes": 0 },
     { "id": "assembly-glb",  "group": null, "format": "GLB",  "label": "Full assembly", "path": "model/station.glb", "bytes": 0 },
     { "id": "base-step",     "group": "base", "format": "STEP", "label": "Base & charging trays", "path": "files/parts/base.step", "bytes": 0 },
     { "id": "base-stl", ... "format": "STL" }, { "id": "base-svg", ... "format": "SVG" }, { "id": "base-dxf", ... "format": "DXF" }
   ],
-  "drawings": { "base": "drawings/base.png", ... }
+  "drawings": { "base": "drawings/base.png", ... },
+  "tagline": "Your hardware. Your OS.",   // optional
+  "mass_note": "..."                      // optional: how the masses were estimated
 }
 ```
 Masses use real densities (titanium 4.43, aluminium 2.70, steel 7.85, copper 8.96, ABS/PBT 1.05–1.3, glass 2.5, felt 0.3, pcb 1.85, ferrite 4.8, rubber 1.2 g/cm³). Assume shells are solid unless you model them hollow; a concept-level number is fine but say so in the description.
+A part whose solid stands for a hollow or composite device (laptop, keyboard, mouse, the LCD modules, the soft-touch pads, PSU, boards, coils) uses an effective density instead, and its `parts[]` entry says so in `mass_note`.
 
 ## 4. Viewer (three.js) — the live CAD renderer
 

@@ -65,10 +65,11 @@ def srgb_to_lin(h):
 # key: label, sRGB colour, metallic, roughness, density g/cm3, (emissive sRGB)
 MATERIALS = {
     "titanium":    ("Neutral Titanium", "#BDB2A4", 1.0, 0.32, 4.43, None, "Grade 5 titanium, bead-blasted and brushed"),
-    "graphite":    ("Charcoal Graphite", "#3A3735", 0.55, 0.48, 2.70, None, "anodised aluminium, charcoal graphite finish"),
+    "graphite":    ("Charcoal Graphite", "#3A3735", 0.55, 0.48, 2.70, None,
+                    "charcoal graphite finish: anodised aluminium on metal parts, soft-touch polymer on the charging pads and mouse"),
     "oxblood":     ("Brushed Oxblood", "#7A2E2A", 0.75, 0.36, 2.70, None, "brushed aluminium, oxblood anodise"),
     "glass_black": ("Black Glass", "#060606", 0.0, 0.06, 2.50, None, "cover glass with black print"),
-    "screen":      ("Active Screen", "#08080A", 0.0, 0.12, 2.50, None, "IPS active area (2560x1440 each)"),
+    "screen":      ("Active Screen", "#08080A", 0.0, 0.12, 2.50, None, "IPS active area (2560 × 1440 each)"),
     "keycap":      ("PBT Keycap", "#1C1A19", 0.0, 0.62, 1.30, None, "double-shot PBT"),
     "rubber":      ("Rubber", "#141313", 0.0, 0.88, 1.20, None, "silicone rubber"),
     "amber_led":   ("Amber Light", "#F2A04A", 0.0, 0.40, 1.19, "#F2A04A", "diffused amber LED under PMMA"),
@@ -84,7 +85,12 @@ MATERIAL_ORDER = list(MATERIALS.keys())
 # Parts modelled as a solid envelope of a hollow device: effective density
 # (the material's real density x fill factor) so masses read like real devices.
 EFFECTIVE_DENSITY = {
-    "laptop_body": (1.35, "solid envelope; effective density of a 14\" aluminium laptop"),
+    "display_screen": (2.50, "visual skin only (0.3 mm over the active areas); the LCD modules are part of display_glass"),
+    "display_glass": (0.90, "solid envelope of the two stripped 27″ QHD LCD modules (black front, cell, backlight, steel tray), "
+                            "effective density"),
+    "tray_pad_kb": (1.20, "soft-touch PU over a glass-fibre carrier; non-metallic so Qi2 passes"),
+    "tray_pad_mouse": (1.20, "soft-touch PU over a glass-fibre carrier; non-metallic so Qi2 passes"),
+    "laptop_body": (1.35, "solid envelope; effective density of a 14″ aluminium laptop"),
     "keyboard_body": (1.10, "solid envelope; aluminium chassis with internals, effective density"),
     "mouse_shell": (0.45, "solid envelope; hollow PC/ABS shell with internals, effective density"),
     "psu": (1.25, "solid envelope; GaN power supply, effective density"),
@@ -106,26 +112,28 @@ LATCH_PARTS = {"dock_latch", "dock_latch_led"}
 
 GROUP_TEXT = {
     "display": dict(
-        name="Dual 27\" display",
-        summary="Two mainstream 27\" QHD panels, toed in 10 degrees, one 5120 x 1440 canvas with an honest titanium seam.",
-        description=("Two off-the-shelf 27-inch 2560 x 1440 IPS monitors are stripped of their plastic and hung on one steel "
-                     "VESA spine inside a shared graphite shroud. Each panel is toed in 10 degrees about the seam, so the outer "
-                     "edges come 106 mm toward you and the 1.2 m wide canvas wraps your field of view like a 49-inch "
+        name="Dual 27″ display",
+        summary="Two mainstream 27″ QHD panels, toed in 10°, one 5120 × 1440 canvas with an honest titanium seam.",
+        description=("Two off-the-shelf 27″ 2560 × 1440 IPS monitors are stripped of their plastic housings, and their "
+                     "LCD modules hang on one steel VESA spine inside a shared graphite shroud. Each panel is toed in 10° "
+                     "about the seam, so the outer edges come 106 mm toward you and the 1.2 m wide canvas wraps your field of "
+                     "view like a 49-inch "
                      "super-ultrawide. The 14 mm gap between the active areas is not hidden: a 4 mm titanium mullion runs the "
                      "full height of the glass, and your OS already treats it as the border between two displays. A dead panel "
                      "is a cheap swap, not a new monitor.")),
     "stand": dict(
         name="Neck & light bar",
         summary="Trapezoid aluminium neck that carries the display and the cables, with the amber light bar under the screen.",
-        description=("A hollow trapezoid neck (320 mm at the foot, 180 mm at the top) leans back 4.8 degrees and plugs 3 mm into "
+        description=("A hollow trapezoid neck (320 mm at the foot, 180 mm at the top) leans back 4.8° and plugs 3 mm into "
                      "the display's keel, so the steel spine sits directly on it. The hollow core is the cable chase from the "
-                     "compute board to the monitors' scaler boards. NIGHT ARRAY is inlaid in titanium on the front face and an "
-                     "amber light bar washes the top edge just below the glass.")),
+                     "compute board to the monitors' scaler boards. NIGHT ARRAY is inlaid in titanium on the front face, and an "
+                     "amber light bar glows on the neck face just below the display.")),
     "base": dict(
         name="Base & charging trays",
         summary="1.29 m machined titanium tray with a recessed deck and two Qi2 charging pockets.",
-        description=("The base is one long titanium tray: a 16 mm rim, a deck recessed 6 mm, and two pockets that take the "
-                     "keyboard and mouse flush with the rim. Soft-touch pads cover non-metallic windows in the pocket floors, "
+        description=("The base is one long titanium tray: a 16 mm rim, a deck recessed 6 mm, and two pockets that sink the "
+                     "keyboard to about deck level (its keycaps stay just below the rim) and cradle the mouse. Soft-touch "
+                     "polymer pads cover non-metallic windows in the pocket floors, "
                      "because titanium would block Qi2; set a device down and it charges. Amber indicators sit on the front "
                      "lip, an under-glow strip lights the desk, and the shell is hollow inside to hold the compute, power and "
                      "coils. Rear I/O and the exhaust grille are on the back face, left side.")),
@@ -135,36 +143,37 @@ GROUP_TEXT = {
         description=("The dock wing rises 120 mm at the back and sweeps down in a concave curve to a 60 mm front, wrapped in "
                      "brushed oxblood panels. A 20 mm slot with 4 mm lead-in chamfers guides a closed laptop on its side onto a "
                      "sprung USB-C plug standing up from the slot floor. Press the latch (3 mm travel) to release, then lift "
-                     "out; the amber strip on the latch shows charge and link state.")),
+                     "out; the amber strip on the latch glows while the laptop is locked in and goes dark when you press it.")),
     "laptop": dict(
         name="Laptop",
         summary="Any slim laptop, standing closed on its side in the dock: your hardware.",
-        description=("A generic 14-inch class laptop (304 x 212 x 15 mm) stands closed on its left side, hinge toward the back, "
+        description=("A generic 14-inch class laptop (304 × 212 × 15 mm) stands closed on its left side, hinge toward the back, "
                      "with its USB-C port seated on the dock's sprung connector. Docked, it drives the dual display and charges; "
                      "lifted out, the station keeps running on the compute in the base. Mass is an estimate for a real device.")),
     "keyboard": dict(
         name="Low-profile keyboard",
         summary="75% low-profile keyboard that charges wirelessly in its pocket.",
-        description=("A 360 x 120 mm aluminium wedge (9 mm at the front, 13 mm at the back) with an 84-key 75% layout on an "
+        description=("A 360 × 120 mm aluminium wedge (9 mm at the front, 13 mm at the back) with an 84-key 75% layout on an "
                      "18.5 mm pitch. Two receiver coils under the chassis line up with the base's Qi2 coils when it is stowed. "
-                     "In work mode it comes 298 mm forward onto the felt mat, leaving 150 mm of open desk in front of the base.")),
+                     "In work mode it lifts clear of the rim and comes 298 mm forward onto the felt mat, leaving 150 mm of open "
+                     "desk in front of the base.")),
     "mouse": dict(
         name="Mouse",
         summary="Ambidextrous ergonomic mouse with an amber tail light and a Qi2 receiver coil.",
-        description=("A 66 x 118 x 38 mm ambidextrous shell lofted through fourteen sections, with a rubber scroll wheel, split "
+        description=("A 66 × 118 × 38 mm ambidextrous shell lofted through fourteen sections, with a rubber scroll wheel, split "
                      "buttons and an amber accent at the rear. Its receiver coil sits over the pocket's Qi2 coil when stowed. "
                      "The mass is an effective estimate for a real hollow mouse.")),
     "deskmat": dict(
         name="Felt desk mat",
-        summary="820 x 300 mm wool felt mat for work mode.",
+        summary="820 × 300 mm wool felt mat for work mode.",
         description=("A 3 mm pressed wool felt mat that defines the work zone in front of the base. It only appears in work and "
                      "standalone modes, when the keyboard and mouse come out of their pockets.")),
     "internals": dict(
         name="Internals",
         summary="Compute stays in the base: mainboard, vapor chamber, blower, PSU, Qi2 coils and the dock PCB.",
-        description=("Inside the hollow base: a 300 x 230 mm compute board with a vapor chamber and fin stack exhausting through "
-                     "the rear grille, a slim blower, a 140 x 158 mm internal power supply, three Qi2 transmitter coils on "
-                     "ferrite shields under the pocket windows, and the dock PCB with its pogo contact under the cradle. "
+        description=("Inside the hollow base: a 300 × 230 mm compute board with a vapor chamber and fin stack exhausting through "
+                     "the rear grille, a slim blower, a 140 × 158 mm internal power supply, three Qi2 transmitter coils on "
+                     "ferrite shields under the pocket windows and, under the cradle, the dock PCB that feeds the sprung USB-C plug. "
                      "Because compute stays in the base, the station works with or without the laptop.")),
 }
 
@@ -174,14 +183,14 @@ EXPLODE = {
     "display_screen": [0.0, 0.42, 0.20],
     "display_seam": [0.0, 0.42, 0.25],
     "display_glass": [0.0, 0.42, 0.13],
-    "display_frame": [0.0, 0.42, 0.07],
+    "display_frame": [0.0, 0.42, 0.16],   # ahead of the glass: the rim wraps the modules' outer edges flush
     "display_spine": [0.0, 0.42, -0.08],
     "display_boards": [0.0, 0.42, -0.14],
     "display_back": [0.0, 0.42, -0.23],
     # stand
     "neck": [0.0, 0.22, -0.03],
-    "neck_light": [0.0, 0.22, 0.03],
-    "neck_badge": [0.0, 0.22, 0.07],
+    "neck_light": [0.0, 0.225, 0.03],     # relative to the neck: straight out along the face normal (4.8 deg lean)
+    "neck_badge": [0.0, 0.2283, 0.07],
     # base: the shell lifts off its internals, which stay at desk level
     "base_shell": [0.0, 0.12, 0.0],
     "deck_liner": [0.0, 0.145, 0.0],
@@ -199,13 +208,13 @@ EXPLODE = {
     "dock_connector": [0.24, 0.20, 0.0],
     "laptop_body": [0.24, 0.50, 0.0],
     # devices rise above their pads, receiver coils between pad and device
-    "keyboard_body": [0.0, 0.25, 0.12],
-    "keyboard_keys": [0.0, 0.29, 0.12],
-    "keyboard_coil": [0.0, 0.21, 0.12],
-    "mouse_shell": [0.0, 0.25, 0.12],
-    "mouse_wheel": [0.0, 0.30, 0.12],
-    "mouse_glow": [0.0, 0.25, 0.16],
-    "mouse_coil": [0.0, 0.21, 0.12],
+    "keyboard_body": [0.0, 0.25, 0.05],
+    "keyboard_keys": [0.0, 0.29, 0.05],
+    "keyboard_coil": [0.0, 0.21, 0.05],
+    "mouse_shell": [0.0, 0.25, 0.05],
+    "mouse_wheel": [0.0, 0.30, 0.05],
+    "mouse_glow": [0.0, 0.25, 0.09],
+    "mouse_coil": [0.0, 0.21, 0.05],
     "deskmat": [0.0, 0.0, 0.08],
     # internals stay on the desk, slightly fanned out
     "compute_board": [0.0, 0.0, 0.0],
@@ -595,6 +604,13 @@ def fmt_mm(v):
     return f"{s} mm"
 
 
+def work_path(key):
+    """Waypoints (mm deltas from stow) a device passes through on its way from its pocket to `key`'s work position."""
+    pm = P["poses_mm"]
+    t = pm[key]
+    return [[0.0, pm["work_lift"], 0.0], [t[0], pm["work_lift"], pm["work_clear_z"]]]
+
+
 def build_scene(parts, gp, latch_pivot, files_index, drawings):
     mm = 0.001
     # bounds (stow pose, all parts except the hidden desk mat)
@@ -640,12 +656,15 @@ def build_scene(parts, gp, latch_pivot, files_index, drawings):
         plist.append(e)
 
     pm = P["poses_mm"]
+
+    def out_of_pocket(key):
+        # the straight line from the pocket to the mat runs through the 36 mm rim: lift clear, slide out, set down
+        return {"t": r6(np.array(pm[key]) * mm), "via": [r6(np.array(v) * mm) for v in work_path(key)]}
+
     poses = {
         "stow": {"deskmat": {"hidden": True}},
-        "work": {"keyboard": {"t": r6(np.array(pm["work_keyboard"]) * mm)},
-                 "mouse": {"t": r6(np.array(pm["work_mouse"]) * mm)}},
-        "standalone": {"keyboard": {"t": r6(np.array(pm["work_keyboard"]) * mm)},
-                       "mouse": {"t": r6(np.array(pm["work_mouse"]) * mm)},
+        "work": {"keyboard": out_of_pocket("work_keyboard"), "mouse": out_of_pocket("work_mouse")},
+        "standalone": {"keyboard": out_of_pocket("work_keyboard"), "mouse": out_of_pocket("work_mouse"),
                        "laptop": {"hidden": True}},
     }
     dock_sequence = [
@@ -662,10 +681,11 @@ def build_scene(parts, gp, latch_pivot, files_index, drawings):
     fr_a, fr_b = tight_bbox(parts["display_frame"])
     disp_a, disp_b = tight_bbox(parts["display_back"])
     dmin_x = min(fr_a[0], disp_a[0])
-    dmax_x = max(fr_b[0], disp_b[0])
     L_out = d["inner_border"] + d["active"][0] + d["outer_border"] + d["frame_w"]
-    outer_r = facet_point(1, L_out, d["glass_y"][1] + d["frame_w"], d["frame_proud"])
-    outer_l = facet_point(-1, L_out, d["glass_y"][1] + d["frame_w"], d["frame_proud"])
+    # display width at its true extremes: the shroud's outer back corners, just below the R7 top corners
+    y_w = d["glass_y"][1] + d["frame_w"] - d["frame_corner_r"]
+    outer_r = facet_point(1, L_out, y_w, -d["shroud_thin"])
+    outer_l = facet_point(-1, L_out, y_w, -d["shroud_thin"])
     a_in = facet_point(1, d["inner_border"], d["active_y"][1], d["screen_proud"])
     a_out = facet_point(1, d["inner_border"] + d["active"][0], d["active_y"][1], d["screen_proud"])
     s_l = facet_point(-1, d["inner_border"], d["active_y"][0], d["screen_proud"])
@@ -674,25 +694,28 @@ def build_scene(parts, gp, latch_pivot, files_index, drawings):
     bz0, bz1 = P["base"]["z"]
     kbz = P["keyboard"]["stow_c"][1] - P["keyboard"]["size"][1] / 2 + pm["work_keyboard"][2]
     dims = [
-        {"id": "overall_w", "label": fmt_mm(bmax[0] - bmin[0]), "a": r6([bmin[0] * mm, 0, bz1 * mm]),
-         "b": r6([bmax[0] * mm, 0, bz1 * mm]), "dir": [0, 0, 1]},
-        {"id": "base_depth", "label": fmt_mm(bz1 - bz0), "a": r6([bx0 * mm, 0, bz0 * mm]), "b": r6([bx0 * mm, 0, bz1 * mm]),
-         "dir": [-1, 0, 0]},
-        {"id": "overall_h", "label": fmt_mm(bmax[1] - bmin[1]), "a": r6([dmin_x * mm, 0, outer_l[2] * mm]),
+        {"id": "overall_w", "a": r6([bmin[0] * mm, 0, bz1 * mm]), "b": r6([bmax[0] * mm, 0, bz1 * mm]), "dir": [0, 0, 1]},
+        {"id": "base_depth", "a": r6([bx0 * mm, 0, bz0 * mm]), "b": r6([bx0 * mm, 0, bz1 * mm]), "dir": [-1, 0, 0]},
+        {"id": "overall_h", "a": r6([dmin_x * mm, 0, outer_l[2] * mm]),
          "b": r6([dmin_x * mm, bmax[1] * mm, outer_l[2] * mm]), "dir": [-1, 0, 0]},
-        {"id": "display_w", "label": fmt_mm(dmax_x - dmin_x), "a": r6(np.array(outer_l) * mm), "b": r6(np.array(outer_r) * mm),
-         "dir": [0, 1, 0]},
-        {"id": "panel_active_w", "label": "596.7 mm · 27\" active", "a": r6(np.array(a_in) * mm),
+        {"id": "display_w", "a": r6(np.array(outer_l) * mm), "b": r6(np.array(outer_r) * mm), "dir": [0, 1, 0]},
+        {"id": "panel_active_w", "label": "596.7 mm · 27″ active", "a": r6(np.array(a_in) * mm),
          "b": r6(np.array(a_out) * mm), "dir": [0, 1, 0]},
         {"id": "seam", "label": "14 mm seam", "a": r6(np.array(s_l) * mm), "b": r6(np.array(s_r) * mm), "dir": [0, -1, 0]},
-        {"id": "work_offset", "label": "150 mm", "pose": "work",
+        {"id": "work_offset", "pose": "work",
          "a": r6([P["keyboard"]["stow_c"][0] * mm, 0.003, bz1 * mm]), "b": r6([P["keyboard"]["stow_c"][0] * mm, 0.003, kbz * mm]),
          "dir": [-1, 0, 0]},
-        {"id": "dock_h", "label": fmt_mm(P["dock"]["h_back"]), "a": r6([P["dock"]["x"][1] * mm, 0, P["dock"]["z"][0] * mm]),
+        {"id": "dock_h", "a": r6([P["dock"]["x"][1] * mm, 0, P["dock"]["z"][0] * mm]),
          "b": r6([P["dock"]["x"][1] * mm, P["dock"]["h_back"] * mm, P["dock"]["z"][0] * mm]), "dir": [1, 0, 0]},
-        {"id": "base_h", "label": fmt_mm(P["base"]["height"]), "a": r6([bx1 * mm - 0.04, 0, bz1 * mm]),
+        {"id": "base_h", "a": r6([bx1 * mm - 0.04, 0, bz1 * mm]),
          "b": r6([bx1 * mm - 0.04, P["base"]["height"] * mm, bz1 * mm]), "dir": [0, 0, 1]},
     ]
+    # length labels are the measured distance between the two points (seam and panel_active_w keep their nominal text)
+    order = ("id", "label", "pose", "a", "b", "dir")
+    for i, dm in enumerate(dims):
+        if "label" not in dm:
+            dm["label"] = fmt_mm(np.linalg.norm(np.array(dm["b"]) - np.array(dm["a"])) / mm)
+        dims[i] = {k: dm[k] for k in order if k in dm}
     screen = {"part": "display_screen", "layout": "dual", "panels": 2, "panel_inch": d["panel_inch"],
               "panel_active_mm": d["active"], "resolution_each": d["resolution_each"], "seam_mm": d["seam_mm"],
               "toe_in_deg": d["toe_in_deg"], "seam_axis": [0, 0, round(d["seam_axis_xz"][1] * mm, 6)],

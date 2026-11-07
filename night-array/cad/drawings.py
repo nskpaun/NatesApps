@@ -347,7 +347,7 @@ class View:
         out = []
         if hidden and self.hid:
             d = path_d([self.to_sheet(*p) for p in pl] for pl in self.hid)
-            out.append(f'<path d="{d}" fill="none" stroke="{AMBER}" stroke-opacity="0.38" stroke-width="0.16" '
+            out.append(f'<path d="{d}" fill="none" stroke="{AMBER}" stroke-opacity="0.6" stroke-width="0.22" '
                        f'stroke-dasharray="1.2,0.9" stroke-linecap="round"/>')
         d = path_d([self.to_sheet(*p) for p in pl] for pl in self.vis)
         out.append(f'<path d="{d}" fill="none" stroke="{INK}" stroke-width="{sw}" stroke-linejoin="round" stroke-linecap="round"/>')
@@ -520,7 +520,7 @@ def sheet_svg(gid, gname, views, info):
     fx, fy, fw_, fh_ = front.rect()
     out.append(dim_h(fx, fx + fw_, fy + fh_, fy + fh_ + 8.5, fmt_len(W)))
     out.append(dim_v(fy, fy + fh_, fx, fx - 7.5, fmt_len(H)))
-    out.append(text(fx, fy + fh_ + 15.5, "FRONT", 2.3, MUTED, "start", 400, 0.9))
+    out.append(text(fx, fy - 2.2, "FRONT", 2.3, MUTED, "start", 400, 0.9))
     sx, sy, sw_, sh_ = side.rect()
     out.append(dim_h(sx, sx + sw_, sy + sh_, sy + sh_ + 8.5, fmt_len(D)))
     tx, ty, tw_, th_ = top.rect()
@@ -570,7 +570,7 @@ def sheet_svg(gid, gname, views, info):
     out.append(field(x + w * 0.50 + 3, y + 31.4, "MASS (EST.)", fmt_mass(info["mass_g"]), 3.0))
     out.append(field(x + w * 0.74 + 3, y + 31.4, "SCALE \u00b7 SHEET", f"{L['scale'][0]}:{L['scale'][1]:g} \u00b7 A3", 3.0))
     out.append(text(x + 4, y + 47.6, f"OVERALL {fmt_len(W)} \u00d7 {fmt_len(H)} \u00d7 {fmt_len(D)} mm (W \u00d7 H \u00d7 D)  \u00b7  "
-                    "UNITS mm  \u00b7  THIRD-ANGLE  \u00b7  REV A", 1.85, MUTED, "start", 400, 0.45))
+                    "UNITS mm  \u00b7  THIRD-ANGLE  \u00b7  REV A", 2.2, MUTED, "start", 400, 0.3))
     out.append(projection_symbol(SHEET_W - MARGIN - 26, MARGIN + 3.2))
     out.append("</svg>")
     return "\n".join(out), L

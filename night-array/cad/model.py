@@ -604,9 +604,18 @@ def display_screen():
     return compound([l, r])
 
 
+def _module_back_w():
+    """Facet-frame w of the LCD modules' back face (the black front is w -glass_t..0, the module behind it)."""
+    return -(D["glass_t"] + D["module_t"])
+
+
 def display_glass():
+    """The two stripped monitors: black front glass / bezels plus the LCD module body behind it, one slab per panel."""
     gy0, gy1 = D["glass_y"]
-    loc = lrr(0.0, _glass_len(), gy0, gy1, -D["glass_t"], 0.0, D["glass_corner_r"])
+    gl, r, m = _glass_len(), D["glass_corner_r"], D["module_inset"]
+    front = lrr(0.0, gl, gy0, gy1, -D["glass_t"], 0.0, r)
+    module = lrr(0.0, gl - m, gy0, gy1, _module_back_w(), -D["glass_t"] + 0.5, r - m)
+    loc = fuse(front, module)
     r, l = both_facets(loc, trim=False)
     return compound([l, r])
 
@@ -678,9 +687,10 @@ def _keel(inset=0.0):
     s = chamfer(s, ch, es, "keel rear edges")
     es = edges_where(s, lambda c, bb, e: near(bb.ymin, yt, 0.2) and near(bb.ymax, yt, 0.2) and c.z < -95)
     s = chamfer(s, 18.0 - i * 0.4, es, "keel top")
-    # never in front of the shroud front plane
+    # never in front of the shroud front plane: each facet trims its own half (x >= 0 / x <= 0), so the keel meets the
+    # shroud's thin zone across its full width instead of leaving a notch between them under the bump
     fr = lbox(-200, 900, -100, 900, -D["frame_depth"] + (3.0 if inset else 0.0), 300)
-    fr_r, fr_l = both_facets(fr, trim=False)
+    fr_r, fr_l = both_facets(fr, trim=True)
     s = cut(s, fr_r, fr_l)
     return s
 
@@ -752,8 +762,8 @@ def _plate_local():
     pt = D["plate"]
     u0, u1 = pt["u"]
     y0, y1 = pt["y"]
-    gt = D["glass_t"]
-    p = box(u0, u1, y0, y1, -gt - pt["t"], -gt)
+    wm = _module_back_w()
+    p = box(u0, u1, y0, y1, wm - pt["t"], wm)
     p = fillet(p, 8.0, edges_where(p, lambda c, bb, e: (bb.zmax - bb.zmin) > 1), "plate corners")
     uc, yc = (u0 + u1) / 2, (y0 + y1) / 2
     holes = [cyl_z(uc + a, yc + b, 3.0, -10, 0) for a in (-50, 50) for b in (-50, 50)]
@@ -770,6 +780,8 @@ def display_spine():
     ar, al = both_facets(a)
     sp, ft = D["spine_post"], D["spine_foot"]
     post = box(-sp["x"], sp["x"], sp["y"][0], sp["y"][1], sp["z"][0], sp["z"][1])
+    t = sp["wall"]   # rectangular hollow section, closed by the foot below and a cap at the top
+    post = cut(post, box(-sp["x"] + t, sp["x"] - t, sp["y"][0] - 1, sp["y"][1] - t, sp["z"][0] + t, sp["z"][1] - t))
     foot = box(-ft["x"], ft["x"], ft["y"][0], ft["y"][1], ft["z"][0], ft["z"][1])
     foot = fillet(foot, 6.0, edges_where(foot, lambda c, bb, e: (bb.ymax - bb.ymin) > 1), "foot")
     gus = box(-sp["x"], sp["x"], ft["y"][1], ft["y"][1] + 40, ft["z"][0] + 6, sp["z"][0])
@@ -783,7 +795,7 @@ def _board_local():
     w0, w1 = bd["w_pcb"]
     pcb = box(u0, u1, y0, y1, w0, w1)
     parts = [pcb]
-    pw = D["glass_t"] + D["plate"]["t"]
+    pw = -_module_back_w() + D["plate"]["t"]
     for su in (u0 + 24, u1 - 8):
         for sy in (y0 + 8, y1 - 8):
             parts.append(cyl_z(su, sy, 3.0, w1, -pw))
@@ -1345,12 +1357,12 @@ def dock_board():
     y0, y1 = db["y"]
     pcb = prism_y(x0, x1, z0, z1, y0, y1, 3.0)
     cn = K["connector"]
-    pogo = box(719, 725, y1, cn["boot_y"][0] - 0.5, cn["z"] - 6, cn["z"] + 6)
+    riser = box(719, 725, y1, cn["boot_y"][0] - 0.5, cn["z"] - 6, cn["z"] + 6)   # feeds the USB-C boot
     chip = box(690, 712, y1, y1 + 1.4, -20, 2)
     pd = box(740, 756, y1, y1 + 2.0, -40, -24)
     lt = K["latch"]
     switch = box(744, 760, y1, lt["y"][0] - 0.5 - 6, 104, lt["pocket_z0"] - 1)
-    return fuse(pcb, pogo, chip, pd, switch)
+    return fuse(pcb, riser, chip, pd, switch)
 
 
 # ----------------------------------------------------------------------------
@@ -1359,8 +1371,8 @@ def dock_board():
 
 #  id, group, display name, material, internal, builder
 PARTS = [
-    ("display_screen", "display", "Active screen (2 x 27\" QHD)", "screen", False, display_screen),
-    ("display_glass", "display", "Panel front glass & bezels", "glass_black", False, display_glass),
+    ("display_screen", "display", "Active area (visual skin, 2 × 27″)", "screen", False, display_screen),
+    ("display_glass", "display", "LCD modules & black fronts (2 × 27″)", "glass_black", False, display_glass),
     ("display_seam", "display", "Titanium seam mullion", "titanium", False, display_seam),
     ("display_frame", "display", "Shroud front rim", "titanium", False, display_frame),
     ("display_back", "display", "Rear shroud & VESA keel", "graphite", False, display_back),

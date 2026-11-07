@@ -24,7 +24,7 @@ part ids, file paths and the `scene.json` shape.
 |---|---|
 | `model/station.glb` | glTF 2.0, metres. One node per part (`node.name` = part id, translation = pivot, no rotation/scale), `extras {group, material, internal}`, PBR materials named by material key. Tessellated per B-rep face, so normals are smooth within a face and crisp across edges. `display_screen` carries `TEXCOORD_0`: one 5120 × 1440 canvas split across the two panels (left u 0→0.5 outer edge → seam, right u 0.5→1; v 0 = top). |
 | `model/station-edges.glb` | Same nodes; each mesh is one `LINES` primitive of the part's B-rep edges (seam and degenerate edges dropped). |
-| `model/scene.json` | Params, bounds, materials, groups (with names and descriptions, pivots, mass, volume), parts (with explode vectors, bbox, mass), poses (`stow`, `work`, `standalone`), `dock_sequence`, dimension callouts, the `screen` block, the files index with real byte sizes, and the drawing index. |
+| `model/scene.json` | Params, bounds, materials (with a one-line `spec` of the finish), groups (with names and descriptions, pivots, mass, volume), parts (with explode vectors, bbox, mass, and a `mass_note` where an effective density is used), poses (`stow`, `work`, `standalone`; the keyboard and mouse carry `via` waypoints so they lift clear of the rim before sliding out), `dock_sequence`, dimension callouts (length labels measured between their end points), the `screen` block, the files index with real byte sizes, and the drawing index. |
 | `files/night-array-assembly.step` | Full assembly, AP214, mm, stow pose. Nested by group (`NA-display`, `NA-stand`, …); every part named by its id; every solid coloured by its material. |
 | `files/parts/<group>.step` | One coloured, multi-solid STEP per group. |
 | `files/parts/<group>.stl` | One binary STL per group (mm). |
@@ -42,11 +42,13 @@ pivot (it moves −z by 3 mm in the `release` dock step).
 cd night-array/cad
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt   # once
 .venv/bin/python build.py            # wipes export/ and regenerates everything (about a minute)
-.venv/bin/python verify.py           # geometry + file checks (~45 s); exit code 1 on any failure
+.venv/bin/python verify.py           # geometry + file checks (~2.5 min); exit code 1 on any failure
 ```
 
 * `build.py --only glb|step|drawings` regenerates one stage (no wipe). `--out DIR` writes somewhere
   else, which is how reproducibility is checked: `build.py --out /tmp/na && diff -r export /tmp/na`.
+  `verify.py --export DIR` checks such a build before it replaces `export/`; `--fast` skips the
+  sampled paths (laptop lift, stow ↔ work waypoints, explode).
 * Rasterising the PNG sheets needs Node 22 with the `playwright` package and its Chromium.
   `drawings.py` adds the global module dirs (`/usr/local/lib/node_modules_global`,
   `/opt/node22/lib/node_modules`) to `NODE_PATH`; set `NODE_PATH` yourself if Playwright lives elsewhere.
@@ -88,15 +90,17 @@ Everything is exported in the stow pose (laptop docked, keyboard and mouse in th
   at x = 0, z = −62. Each facet is modelled once in a local "facet frame" (u along the panel away from
   the seam, w = panel normal) and placed with `place_facet()`, which rotates it, moves it to the seam
   axis, trims it at x = 0 and mirrors it for the left panel. The 14 mm gap between the active areas is
-  covered by a 4 mm titanium mullion. The shared titanium rim, faceted graphite rear shroud (vents,
-  keel, VESA hub), internal steel VESA spine and the two monitors' own scaler/power boards follow the
-  same frame.
+  covered by a 4 mm titanium mullion. `display_glass` is each stripped monitor's LCD module: the 2 mm
+  black front plus a 10 mm module body behind it. The 2 mm VESA plates bolt to the module backs, on
+  arms from a 36 × 38 mm hollow steel post; the monitors' own scaler/power boards sit on standoffs
+  behind the arms. The shared titanium rim and the faceted graphite rear shroud (16 mm thin rim zone,
+  vents, keel, VESA hub) follow the same frame.
 * **Stand:** a hollow trapezoid neck (320 → 180 mm, 4.8° rearward lean) from planar half-space
-  cuts, filleted. `NIGHT ARRAY` is inlaid in titanium (CadQuery `text`), and an amber light bar sits
-  under the glass.
+  cuts, filleted. `NIGHT ARRAY` is inlaid in titanium (CadQuery `text`), and an amber light bar sits on
+  the front face 22 mm below the display, low enough to show under its overhang from the seat.
 * **Base:** a 1.29 m titanium tray with a 16 mm rim, a deck recessed to y = 30 (graphite liner with a
-  titanium reveal), and keyboard and mouse pockets with floors at y = 16. Soft-touch pads sit over
-  non-metallic coil windows. The shell is hollow, with mounting bosses. Rear I/O, exhaust grille and AC
+  titanium reveal), and keyboard and mouse pockets with floors at y = 16. Soft-touch polymer pads
+  (non-metallic, so Qi2 passes) sit over non-metallic coil windows. The shell is hollow, with mounting bosses. Rear I/O, exhaust grille and AC
   inlet are on the back face, with an amber under-glow and charge indicators at the front.
 * **Dock:** a swept side profile (spline, 120 mm at the back down to 60 at the front), a 20 mm slot
   with 4 mm lead-in chamfers, oxblood panels inlaid flush, a press-release latch with an LED strip,
@@ -106,23 +110,31 @@ Everything is exported in the stow pose (laptop docked, keyboard and mouse in th
 * **Internals:** the compute board with vapor chamber, fin stack and blower, the PSU, three Qi2 coils on
   ferrite shields, and the dock PCB.
 
-Masses use real densities. Solid envelopes of hollow devices (laptop, keyboard, mouse, PSU, boards)
-use the effective densities listed in `build.py`, and each such part's `mass_note` in `scene.json`
-says so.
+Masses use real densities. Solid envelopes of hollow or composite devices (laptop, keyboard, mouse,
+LCD modules, charging pads, PSU, boards, coils) use the effective densities listed in `build.py`, and
+each such part's `mass_note` in `scene.json` says so.
 
 ## Verification (`verify.py`)
 
 1. Every part's bounding box is checked against the SPEC envelope numbers (±0.6 mm), along with the
    display chord, the forward offset of the outer edges, and the latch size.
 2. Interference: boolean intersection volume ≤ 0.5 mm³ for every overlapping pair of parts in the stow
-   pose, the work and standalone poses, each `dock_sequence` step, and the laptop part-way out (10, 40
-   and 80 mm).
+   pose, the work and standalone poses, each `dock_sequence` step, and along the paths between them:
+   the laptop part-way out (10, 40 and 80 mm), the keyboard and mouse along their `via` waypoints
+   (8 samples per segment, desk mat shown), and the explode slider at 0.1 … 0.9 in the stow and work
+   poses. Two kinds of pair are expected to cross while exploding and are left out by name: the base
+   shell and the dock cradle have closed floors, so lifting them off the internals that stay on the
+   desk passes the floor through those parts.
 3. Every STEP is re-imported, checking solid counts and volumes against the model (to 0.1 %). An XCAF
    read checks that every part is named and every solid carries its material colour. Each STL is
    checked as a valid binary file.
 4. `scene.json` is checked against the SPEC shape, including that every file in the files index
-   exists with exactly the listed byte size.
-5. GLB nodes, extras, pivots, primitive modes, `TEXCOORD_0` on the screen, and file-size budgets.
+   exists with exactly the listed byte size, and against a fresh model build: `params` equals
+   `params.py`, every part's bbox, volume, mass and explode vector match, the pose waypoints and dock
+   lifts match `params.poses_mm`, and every length label is within 1 mm of the distance between its
+   end points (`seam` and `panel_active_w` are nominal along-facet values).
+5. GLB nodes, extras, pivots, primitive modes, `TEXCOORD_0` on the screen, each node's mesh bounds
+   against the fresh B-rep (within 0.6 mm, the coarsest tessellation), and file-size budgets.
 
 Separately (not in the repo), both GLBs pass the Khronos `gltf-validator` with 0 errors and 0
 warnings.
