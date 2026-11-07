@@ -71,7 +71,7 @@ fun ExploreScreen(app: AppState, scene: Scene) {
         val wide = maxWidth >= 600.dp
         val pad = if (wide) 40.dp else 22.dp
         LazyColumn(Modifier.fillMaxSize().testTag("explore"), state = app.exploreList, contentPadding = PaddingValues(bottom = 40.dp)) {
-            item(key = "hero") { Hero(app, wide) }
+            item(key = "hero") { Hero(app, wide, pad) }
             item(key = "intro") { Intro(scene, pad) }
             item(key = "modes") { ModesSection(app, wide, pad) }
             item(key = "stories-h") { SectionHeader("Stories", "Eight ways into the station", Modifier.readable().padding(start = pad, end = pad, top = 44.dp, bottom = 18.dp)) }
@@ -94,7 +94,7 @@ fun ExploreScreen(app: AppState, scene: Scene) {
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun Hero(app: AppState, wide: Boolean) {
+private fun Hero(app: AppState, wide: Boolean, pad: androidx.compose.ui.unit.Dp) {
     // Window height in dp (the configuration value only until the window has been measured).
     val win = androidx.compose.ui.platform.LocalWindowInfo.current.containerSize
     val density = androidx.compose.ui.platform.LocalDensity.current
@@ -125,10 +125,11 @@ private fun Hero(app: AppState, wide: Boolean) {
                     .background(Brush.verticalGradient(listOf(Color.Transparent, C.bg.copy(alpha = if (overlay) .82f else .9f), C.bg))))
             }
             AmberGlow(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(imgH * .6f))
+            // Same measure and gutter as the intro below, so the title and the text under it share one left edge.
             Column(
-                Modifier.align(Alignment.BottomStart).fillMaxWidth()
+                Modifier.align(Alignment.BottomStart).readable(HERO_MEASURE)
                     .padding(top = if (overlay) 0.dp else imgH - if (oneLine) 34.dp else 58.dp)
-                    .padding(horizontal = if (wide) 48.dp else 24.dp).padding(bottom = if (overlay) 44.dp else 8.dp),
+                    .padding(horizontal = pad).padding(bottom = if (overlay) 44.dp else 8.dp),
             ) {
                 Text(
                     buildAnnotatedString {
@@ -143,7 +144,7 @@ private fun Hero(app: AppState, wide: Boolean) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     AmberDash(26.dp)
                     Spacer(Modifier.width(12.dp))
-                    Tracked("Integrated superwide workstation", size = 10.sp, color = C.ink.copy(alpha = .8f), tracking = .34f)
+                    Tracked("Integrated superwide workstation", size = Type.Micro, color = C.ink.copy(alpha = .8f), tracking = .34f)
                 }
                 Spacer(Modifier.height(16.dp))
                 Tagline(size = if (overlay) 26.sp else 23.sp)
@@ -170,10 +171,14 @@ fun AmberGlow(modifier: Modifier = Modifier, strength: Float = 1f) {
     }
 }
 
+/** The hero's text block and the intro share this measure (and the page gutter), so they line up on wide screens. */
+private val HERO_MEASURE = 980.dp
+
 @Composable
 private fun Intro(scene: Scene, pad: androidx.compose.ui.unit.Dp) {
     val sc = scene.screen
-    Column(Modifier.readable().padding(horizontal = pad).padding(top = 18.dp)) {
+    // left-aligned under the hero title; the paragraph itself keeps a readable line length
+    Column(Modifier.readable(HERO_MEASURE).padding(horizontal = pad).padding(top = 18.dp).wrapContentWidth(Alignment.Start).widthIn(max = 760.dp)) {
         Text(
             "A double-wide display on a long titanium base, a vertical laptop dock on the right wing, and pockets in the deck that charge your keyboard and mouse while they're put away.",
             color = C.ink.copy(alpha = .9f), fontSize = 18.sp, lineHeight = 28.sp, fontWeight = FontWeight.Light,
@@ -192,7 +197,7 @@ private fun Intro(scene: Scene, pad: androidx.compose.ui.unit.Dp) {
                     Column(Modifier.weight(1f).padding(vertical = 16.dp).padding(start = if (i == 1) 18.dp else 0.dp)) {
                         Text(v, color = C.ink, fontSize = 23.sp, fontWeight = FontWeight.Light, letterSpacing = 1.sp)
                         Spacer(Modifier.height(5.dp))
-                        Tracked(l, size = 9.sp, color = C.muted, tracking = .28f)
+                        MicroLabel(l, color = C.muted, tracking = .26f, weight = FontWeight.Light)
                     }
                     if (i == 0) Box(Modifier.width(1.dp).height(74.dp).background(C.line))
                 }
@@ -224,7 +229,8 @@ private fun ModeCard(app: AppState, m: ModeInfo, modifier: Modifier) {
     PressCard({ app.openStudio(Preset(mode = m.id, style = "studio", camera = m.camera, explode = 0f)) }, modifier.testTag("mode-${m.id}")) {
         Box(Modifier.fillMaxWidth().aspectRatio(16f / 10f)) {
             Still(listOf(m.still), Modifier.fillMaxSize(), sketchMode = m.id, animateSketch = false, maxDim = 900)
-            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, C.panel.copy(alpha = .85f)), startY = 140f)))
+            // fractional stops: the same fade at every screen density
+            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to Color.Transparent, .4f to Color.Transparent, 1f to C.panel.copy(alpha = .85f))))
         }
         Column(Modifier.padding(18.dp)) {
             SectionHeader(m.title, m.sub, size = 15.sp)
@@ -251,7 +257,7 @@ private fun StoryRow(s: Story, modifier: Modifier, onClick: () -> Unit) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(s.number, color = C.amber, fontSize = 12.sp, fontWeight = FontWeight.Light, letterSpacing = 1.sp)
                     Spacer(Modifier.width(10.dp))
-                    Tracked(s.kicker, size = 9.sp, color = C.muted, tracking = .3f)
+                    MicroLabel(s.kicker, color = C.muted, tracking = .26f, weight = FontWeight.Light)
                 }
                 Spacer(Modifier.height(6.dp))
                 Text(s.title, color = C.ink, fontSize = 17.sp, lineHeight = 22.sp, fontWeight = FontWeight.Light)
@@ -265,6 +271,15 @@ private fun StoryRow(s: Story, modifier: Modifier, onClick: () -> Unit) {
 
 @Composable
 fun DockSequenceStrip(scene: Scene, modifier: Modifier = Modifier, active: Int = 0, onStep: ((DockUiStep) -> Unit)? = null) {
+    BoxWithConstraints(modifier) {
+        // At large font sizes three narrow columns are too tight for the words: one row per step instead.
+        if (largeFont() && maxWidth < 560.dp) DockSequenceList(scene, Modifier.fillMaxWidth(), active, onStep)
+        else DockSequenceColumns(scene, Modifier.fillMaxWidth(), active, onStep)
+    }
+}
+
+@Composable
+private fun DockSequenceColumns(scene: Scene, modifier: Modifier, active: Int, onStep: ((DockUiStep) -> Unit)?) {
     // Equal-height cards, however the captions wrap.
     Row(modifier.height(IntrinsicSize.Max), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         dockUiSteps(scene).forEach { st ->
@@ -281,9 +296,9 @@ fun DockSequenceStrip(scene: Scene, modifier: Modifier = Modifier, active: Int =
                 Column(Modifier.fillMaxWidth().padding(horizontal = 10.dp).padding(top = 10.dp, bottom = 12.dp)) {
                     Text("${st.n}", color = C.amber, fontSize = 18.sp, fontWeight = FontWeight.Light)
                     Spacer(Modifier.height(4.dp))
-                    Tracked(st.title, size = 9.sp, color = C.ink, weight = FontWeight.Normal, tracking = .1f)
+                    DockStepTitle(st.title)
                     Spacer(Modifier.height(6.dp))
-                    Tracked(st.caption, size = 7.5.sp, color = C.muted, tracking = .16f)
+                    Caption(st.caption, color = C.ink.copy(alpha = .75f))
                 }
             }
         }
@@ -291,13 +306,42 @@ fun DockSequenceStrip(scene: Scene, modifier: Modifier = Modifier, active: Int =
 }
 
 @Composable
+private fun DockSequenceList(scene: Scene, modifier: Modifier, active: Int, onStep: ((DockUiStep) -> Unit)?) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        dockUiSteps(scene).forEach { st ->
+            val on = st.n == active
+            val shape = RoundedCornerShape(14.dp)
+            Row(
+                Modifier.fillMaxWidth().height(IntrinsicSize.Min).clip(shape).border(1.dp, if (on) C.amber.copy(alpha = .8f) else C.line, shape).background(C.panel)
+                    .then(if (onStep != null) Modifier.clickable { onStep(st) } else Modifier).testTag("dock-strip-${st.id}"),
+            ) {
+                Box(Modifier.width(96.dp).fillMaxHeight().heightIn(min = 110.dp)) {
+                    Still(listOf(st.still), Modifier.fillMaxSize(), maxDim = 500, sketchMode = "stow", sketchFocus = "dock", sketchDockStep = st.id, animateSketch = false,
+                        description = "Docking step ${st.n}: ${st.title}")
+                }
+                Column(Modifier.weight(1f).padding(12.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("${st.n}", color = C.amber, fontSize = 18.sp, fontWeight = FontWeight.Light)
+                        Spacer(Modifier.width(10.dp))
+                        DockStepTitle(st.title)
+                    }
+                    Spacer(Modifier.height(6.dp))
+                    Caption(st.caption, color = C.ink.copy(alpha = .75f))
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
 private fun DockingSection(app: AppState, scene: Scene, pad: androidx.compose.ui.unit.Dp) {
     Column(Modifier.readable().padding(horizontal = pad).padding(top = 46.dp)) {
         SectionHeader("Docking sequence", "At the right outer wing")
         Spacer(Modifier.height(18.dp))
         DockSequenceStrip(scene, Modifier.fillMaxWidth().testTag("dock-strip")) { app.openStudio(Preset(mode = "stow", camera = "dock", dock = it.id)) }
         Spacer(Modifier.height(18.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             LineButton("Play it live", { app.openStudio(story("dock")!!.preset) }, filled = true)
             LineButton("The dock story", { app.nav.go("story/dock") }, color = C.ink.copy(alpha = .8f))
         }
@@ -316,7 +360,7 @@ private fun MaterialsSection(app: AppState, pad: androidx.compose.ui.unit.Dp) {
                 }) {
                     BrushedSwatch(k, Modifier.fillMaxWidth().aspectRatio(1.5f))
                     Spacer(Modifier.height(10.dp))
-                    Tracked(label, size = 8.5.sp, color = C.ink.copy(alpha = .8f), tracking = .26f, align = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+                    MicroLabel(label, Modifier.fillMaxWidth(), color = C.ink.copy(alpha = .8f), tracking = .2f, align = TextAlign.Center, weight = FontWeight.Light)
                 }
             }
         }
@@ -327,7 +371,7 @@ private fun MaterialsSection(app: AppState, pad: androidx.compose.ui.unit.Dp) {
             Column {
                 AmberLine(Modifier.width(120.dp).height(18.dp))
                 Spacer(Modifier.height(6.dp))
-                Tracked("Subtle amber lighting", size = 9.sp, color = C.ink.copy(alpha = .8f), tracking = .3f)
+                MicroLabel("Subtle amber lighting", color = C.ink.copy(alpha = .8f), tracking = .26f, weight = FontWeight.Light)
             }
         }
         Spacer(Modifier.height(14.dp))
@@ -411,20 +455,21 @@ private fun NightCard(app: AppState, pad: androidx.compose.ui.unit.Dp) {
     Column(Modifier.readable().padding(horizontal = pad).padding(top = 40.dp)) {
         SectionHeader("Night shift", "Ambient mode")
         Spacer(Modifier.height(18.dp))
+        // The words sit under the picture, not over it: at 16:9 they would cover most of the station.
         PressCard({ app.startNight() }, Modifier.fillMaxWidth().testTag("night-card"), background = C.bg) {
             Box(Modifier.fillMaxWidth().aspectRatio(16f / 9f)) {
                 Still(listOf("night.jpg", "hero-stow.jpg"), Modifier.fillMaxSize(), maxDim = 1200, sketchMode = "stow")
-                Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, C.bg.copy(alpha = .9f)), startY = 200f)))
-                Column(Modifier.align(Alignment.BottomStart).padding(20.dp)) {
-                    Tagline("Leave it running at the end of the day.", size = 19.sp)
-                    Spacer(Modifier.height(8.dp))
-                    Text("A slow orbit around the station in the dark, lit only by its own amber. Tap Back to leave.", color = C.ink.copy(alpha = .72f), fontSize = 13.5.sp, lineHeight = 20.sp)
-                    Spacer(Modifier.height(14.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Outlined.DarkMode, null, tint = C.amber, modifier = Modifier.size(15.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Kicker("Start Night shift")
-                    }
+                Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to Color.Transparent, .7f to Color.Transparent, 1f to C.bg)))
+            }
+            Column(Modifier.padding(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 20.dp)) {
+                Tagline("Leave it running at the end of the day.", size = 19.sp)
+                Spacer(Modifier.height(8.dp))
+                Text("A slow orbit around the station in the dark, lit only by its own amber. Tap Back to leave.", color = C.ink.copy(alpha = .72f), fontSize = 13.5.sp, lineHeight = 20.sp)
+                Spacer(Modifier.height(14.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Outlined.DarkMode, null, tint = C.amber, modifier = Modifier.size(15.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Kicker("Start Night shift")
                 }
             }
         }
@@ -438,9 +483,9 @@ private fun Footer(pad: androidx.compose.ui.unit.Dp) {
         Spacer(Modifier.height(18.dp))
         Tagline(size = 22.sp)
         Spacer(Modifier.height(12.dp))
-        Tracked("Night Array · Work & Stow", size = 9.sp, color = C.muted, tracking = .34f)
+        MicroLabel("Night Array · Work & Stow", color = C.muted, tracking = .3f, weight = FontWeight.Light)
         Spacer(Modifier.height(8.dp))
-        Text("Every number in this app comes from the parametric CAD model.", color = C.muted.copy(alpha = .8f), fontSize = 12.sp, textAlign = TextAlign.Center)
+        Text("Dimensions come from the parametric CAD model.", color = C.muted.copy(alpha = .8f), fontSize = 12.sp, textAlign = TextAlign.Center)
     }
 }
 
@@ -659,7 +704,7 @@ fun BoardScreen(app: AppState) {
                 Spacer(Modifier.width(14.dp))
                 Column {
                     Tracked("Where it started", size = 13.sp, tracking = .26f)
-                    Tracked("Pinch or double-tap to zoom", size = 8.5.sp, color = C.muted, tracking = .26f, modifier = Modifier.padding(top = 3.dp))
+                    MicroLabel("Pinch or double-tap to zoom", Modifier.padding(top = 3.dp), color = C.muted, tracking = .2f, weight = FontWeight.Light)
                 }
             }
             Zoomable(Modifier.weight(1f).fillMaxWidth().testTag("board-zoom")) {
@@ -724,7 +769,7 @@ fun NightShift(app: AppState, scene: Scene) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Tracked("Night shift", size = 12.sp, tracking = .32f)
-                    Tracked(if (ready) "Live · slow orbit" else "Still · tap back to leave", size = 8.5.sp, color = C.muted, tracking = .28f, modifier = Modifier.padding(top = 3.dp))
+                    MicroLabel(if (ready) "Live · slow orbit" else "Still · tap back to leave", Modifier.padding(top = 3.dp), color = C.muted, tracking = .24f, weight = FontWeight.Light)
                 }
                 IconCircle(Icons.Outlined.Close, "Exit Night shift", { app.stopNight() })
             }

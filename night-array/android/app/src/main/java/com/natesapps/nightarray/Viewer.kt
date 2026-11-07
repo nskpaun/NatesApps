@@ -75,6 +75,8 @@ class ViewerHost(private val appContext: Context) {
     var lastCamera by mutableStateOf("hero"); private set
     /** Bumped on every event; handy for UI that reacts to "something happened". */
     var events by mutableIntStateOf(0); private set
+    /** Bumped each time a page load starts (first load and every Retry), so UI timers can restart. */
+    var loadGeneration by mutableIntStateOf(0); private set
 
     /** Replaced in tests to capture what would be sent to the page. */
     var evaluator: ((String) -> Unit)? = null
@@ -116,15 +118,14 @@ class ViewerHost(private val appContext: Context) {
                 if (state.selected != g) { state.selected = g; push(JSONObject().put("selected", g ?: JSONObject.NULL)) }
             }
             "dockStep" -> {
+                // The page is driving the sequence itself: it takes over from any stills fallback.
+                main.removeCallbacks(dockWatchdog); cancelLocalDock()
                 when (val s = o.optString("step")) {
                     "done" -> { dockStep = null; dockPlaying = false }
                     "align", "lower", "release", "lift" -> dockStep = s
                 }
             }
-            "error" -> {
-                status = LiveStatus.Error
-                errorMessage = o.optString("message", "").ifBlank { "the live renderer stopped" }
-            }
+            "error" -> fail(o.optString("message", "").ifBlank { "the live renderer stopped" })
         }
     }
 
@@ -149,12 +150,61 @@ class ViewerHost(private val appContext: Context) {
     fun camera(name: String) { lastCamera = name; call("NA.camera(${JSONObject.quote(name)})") }
     fun frame(group: String) { call("NA.frame(${JSONObject.quote(group)})") }
     fun dock(step: String) {
+        cancelLocalDock(); main.removeCallbacks(dockWatchdog)
         when (step) {
             "play" -> { dockPlaying = true; dockStep = null }
             "reset" -> { dockPlaying = false; dockStep = null }
             else -> { dockPlaying = false; dockStep = step }
         }
+        if (step == "play" && !liveCanPlay) {
+            // No live page will ever report the steps (not bundled, no WebGL2, model failed): play them in the stills.
+            dropQueuedDock(); playLocalDock(); return
+        }
         call("NA.dock(${JSONObject.quote(step)})")
+        if (step == "play") main.postDelayed(dockWatchdog, DOCK_WATCHDOG_MS)
+    }
+
+    // ---------- the dock sequence without the live page ----------
+    /** Pending steps of a sequence played in Kotlin (stills + sketch), when the live page can't play it. */
+    private val localDock = ArrayList<Runnable>()
+
+    /** True while a live page exists, or is about to be created, that can play the sequence and report its steps. */
+    private val liveCanPlay: Boolean
+        get() = !destroyed && status != LiveStatus.Error && (evaluator != null || webView != null || bundled(appContext))
+
+    private fun cancelLocalDock() { localDock.forEach(main::removeCallbacks); localDock.clear() }
+
+    private fun dropQueuedDock() { queue.removeAll { it is String && it.startsWith("NA.dock(") } }
+
+    /** Steps the sequence in Kotlin on the app.js timings (a little slower: these are stills). Resumes from the current step. */
+    private fun playLocalDock() {
+        cancelLocalDock()
+        val start = LOCAL_DOCK.indexOfFirst { it.first == dockStep }.coerceAtLeast(0)
+        val t0 = LOCAL_DOCK[start].second
+        LOCAL_DOCK.drop(start).forEach { (s, at) ->
+            val r = Runnable {
+                if (s == "done") { localDock.clear(); dockStep = null; dockPlaying = false } else dockStep = s
+            }
+            localDock += r
+            main.postDelayed(r, at - t0)
+        }
+    }
+
+    /** A page that took NA.dock("play") but never reported a step: finish the sequence in Kotlin rather than stay "Playing…". */
+    private val dockWatchdog = object : Runnable {
+        override fun run() {
+            if (!dockPlaying || localDock.isNotEmpty()) return
+            if (status == LiveStatus.Ready || status == LiveStatus.Error) playLocalDock()
+            else main.postDelayed(this, DOCK_WATCHDOG_MS) // still loading: the page plays it once the model is up
+        }
+    }
+
+    /** The live view can't go on: the still takes over, and a dock sequence in progress carries on in the stills. */
+    private fun fail(message: String) {
+        status = LiveStatus.Error; errorMessage = message
+        main.removeCallbacks(dockWatchdog)
+        dropQueuedDock() // so a later Retry doesn't replay stale dock commands
+        if (dockPlaying && localDock.isEmpty()) playLocalDock()
     }
 
     fun closeSheet() { picked = null; if (state.selected != null) select(null) }
@@ -168,6 +218,42 @@ class ViewerHost(private val appContext: Context) {
 
     fun toggleIsolate(group: String) {
         if (state.isolate == group) setIsolate(null) else { setIsolate(group); frame(group) }
+    }
+
+    // ---------- saved state ----------
+    /** The viewer state to keep across Activity recreation / process death: never mid-Night shift, nothing selected. */
+    fun snapshot(): JSONObject {
+        val o = state.toJson().put("cinematic", false).put("selected", JSONObject.NULL)
+        beforeNight?.let { b -> b.keys().forEach { k -> o.put(k, b.get(k)) } }
+        return o
+    }
+
+    /**
+     * Restores a [snapshot]. Call it before the first [claim], so the page's initial URL carries the state.
+     * Unknown values are ignored; an isolated group the scene doesn't know is dropped.
+     */
+    fun restore(json: String, camera: String?, knownGroup: (String) -> Boolean) {
+        val o = try { JSONObject(json) } catch (_: Exception) { return }
+        fun choice(key: String, options: List<Pair<String, String>>, cur: String) = o.optString(key, cur).takeIf { v -> options.any { it.first == v } } ?: cur
+        fun unit(key: String, cur: Float) = o.optDouble(key, cur.toDouble()).toFloat().takeIf { !it.isNaN() }?.coerceIn(0f, 1f) ?: cur
+        state.mode = choice("mode", MODE_TABS, state.mode)
+        state.style = choice("style", STYLES, state.style)
+        state.finish = choice("finish", FINISHES, state.finish)
+        state.quality = choice("quality", QUALITIES, state.quality)
+        state.amber = unit("amber", state.amber)
+        state.explode = unit("explode", state.explode)
+        val sec = o.optJSONObject("section")
+        state.sectionOn = sec != null
+        if (sec != null) {
+            state.sectionAxis = sec.optString("axis", "x").takeIf { it == "x" || it == "z" } ?: "x"
+            state.sectionT = sec.optDouble("t", .5).toFloat().takeIf { !it.isNaN() }?.coerceIn(0f, 1f) ?: .5f
+        }
+        state.dims = o.optBoolean("dims", false)
+        state.autorotate = o.optBoolean("autorotate", false)
+        state.isolate = if (o.isNull("isolate")) null else o.optString("isolate").takeIf { it.isNotBlank() && knownGroup(it) }
+        state.selected = null; state.cinematic = false; picked = null; beforeNight = null
+        if (camera != null && CAMERAS.any { it.first == camera }) lastCamera = camera
+        push(state.toJson())
     }
 
     // ---------- Night shift ----------
@@ -289,14 +375,10 @@ class ViewerHost(private val appContext: Context) {
     private fun ensureWebView(ctx: Context): WebView? {
         webView?.let { return it }
         if (destroyed) return null
-        if (!bundled(ctx)) {
-            status = LiveStatus.Error; errorMessage = "live renderer not in this build"
-            return null
-        }
+        if (!bundled(ctx)) { fail("live renderer not in this build"); return null }
         val wv = try { WebView(ctx) } catch (e: Throwable) {
             // e.g. WebView provider missing or being updated
-            status = LiveStatus.Error; errorMessage = "WebView unavailable on this device"
-            Log.w(TAG, "WebView unavailable", e); return null
+            Log.w(TAG, "WebView unavailable", e); fail("WebView unavailable on this device"); return null
         }
         // Let the viewer's developers inspect the page from Chrome in debuggable builds only.
         if ((ctx.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0) runCatching { WebView.setWebContentsDebuggingEnabled(true) }
@@ -329,12 +411,12 @@ class ViewerHost(private val appContext: Context) {
             }
 
             override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceErrorCompat) {
-                if (request.isForMainFrame && view === webView) { status = LiveStatus.Error; errorMessage = "the live renderer couldn't load" }
+                if (request.isForMainFrame && view === webView) fail("the live renderer couldn't load")
             }
 
             override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
                 // The renderer crashed or was killed to reclaim memory: drop this WebView, keep the app alive.
-                if (view === webView) discardWebView(view, "the live renderer stopped")
+                if (view === webView) { discardWebView(view); fail("the live renderer stopped") }
                 else runCatching { (view.parent as? ViewGroup)?.removeView(view); view.destroy() }
                 return true
             }
@@ -345,21 +427,23 @@ class ViewerHost(private val appContext: Context) {
         status = LiveStatus.Loading; errorMessage = null
         // The full state travels in the URL, so drop queued state merges; keep commands (camera, dock, frame).
         queue.removeAll { it is JSONObject }
+        loadGeneration++
         wv.loadUrl(viewerUrl())
         if (!resumed) wv.onPause()
         return wv
     }
 
-    private fun discardWebView(view: WebView, message: String) {
+    private fun discardWebView(view: WebView) {
         webView = null; pageLoaded = false
         runCatching { (view.parent as? ViewGroup)?.removeView(view) }
         runCatching { view.destroy() }
-        status = LiveStatus.Error; errorMessage = message
     }
 
-    /** Recreate the renderer after an error. */
+    /** Recreate the renderer after an error (or a page that never got ready). The dock sequence starts over too. */
     fun retry(ctx: Context) {
-        webView?.let { discardWebView(it, "") }
+        webView?.let { discardWebView(it) }
+        cancelLocalDock(); main.removeCallbacks(dockWatchdog); dropQueuedDock()
+        dockPlaying = false; dockStep = null
         status = LiveStatus.Idle; errorMessage = null
         if (slots.isNotEmpty()) { ensureWebView(ctx); attachTop() }
     }
@@ -416,7 +500,12 @@ class ViewerHost(private val appContext: Context) {
         slots.clear()
     }
 
-    companion object { const val TAG = "NightArray" }
+    companion object {
+        const val TAG = "NightArray"
+        /** Stills timings for the dock sequence (ms from the start), after app.js playDock. */
+        private val LOCAL_DOCK = listOf("align" to 0L, "lower" to 1500L, "release" to 3000L, "lift" to 4300L, "done" to 6000L)
+        private const val DOCK_WATCHDOG_MS = 15_000L
+    }
 }
 
 /** A place on screen where the shared WebView appears. The most recently composed slot owns it. */

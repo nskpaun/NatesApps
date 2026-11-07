@@ -33,6 +33,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
@@ -122,12 +123,14 @@ fun specSheet(scene: Scene): List<SpecSection> {
             StorySpec("Slot", "${fmtNum(slotW ?: 20.0)} × ${fmtNum(slotL ?: 224.0)} mm, ${mm(scene.num("dock.slot.lead_in"), "4 mm")} chamfered lead-ins"),
             StorySpec("Connector", "Sprung USB-C on the slot floor"),
             StorySpec("Release", "Press latch on the front face, ${mm(scene.num("dock.latch.travel") ?: scene.num("poses_mm.latch_travel"), "3 mm")} travel"),
-            StorySpec("Laptops", "Up to ${mm(slotW, "20 mm")} thick and ${mm(slotL, "224 mm")} deep, standing closed on edge"),
+            StorySpec("Laptops", "Up to ${mm(slotW?.minus(LAPTOP_CLEARANCE_MM), "18 mm")} thick and ${mm(slotL, "224 mm")} deep, standing closed on edge; " +
+                "USB-C port about ${mm(portFromHingeMm(scene), "46 mm")} from the hinge end"),
         )),
         SpecSection("Charging", "Qi2, in place", listOf(
             StorySpec("Keyboard pocket", mm2(scene.nums("base.kb_pocket.size"), "376 × 136 mm") + ", ${coilsKb?.size ?: 2} Qi2 coils"),
             StorySpec("Mouse pocket", mm2(scene.nums("base.mouse_pocket.size"), "82 × 134 mm") + ", 1 Qi2 coil"),
-            StorySpec("Coils", coilsKb?.let { "Keyboard at x = ${it.joinToString(" and ") { v -> fmtNum(v) }} mm; mouse at x = ${fmtNum(scene.num("internals.qi_coil_mouse_x") ?: 250.0)} mm" } ?: "Two under the keyboard, one under the mouse"),
+            StorySpec("Coils", coilsKb?.takeIf { it.size >= 2 }?.let { "Two under the keyboard, ${fmtNum(it.max() - it.min())} mm apart; one under the mouse" }
+                ?: "Two under the keyboard, one under the mouse"),
             StorySpec("Shielding", "Ferrite plate under every coil"),
             StorySpec("Pads", "${mm(scene.num("base.pad_t"), "2 mm")} soft-touch graphite"),
             StorySpec("Indicators", "Amber marks on the pocket lips"),
@@ -197,7 +200,7 @@ private fun SpecSheet(scene: Scene, pad: androidx.compose.ui.unit.Dp, maxW: andr
         } else items(sections, key = { it.title }) { sec -> SectionBlock(sec, Modifier.readable().padding(horizontal = pad)) }
         item {
             Text(
-                if (scene.fromFile) "Numbers come from the CAD export (model/scene.json). Masses assume solid parts at real densities; treat them as concept estimates."
+                if (scene.fromFile) "Numbers come from the CAD export (model/scene.json). " + scene.massNote.ifBlank { "Masses are concept estimates from the CAD volumes and real densities." }
                 else "The CAD export isn't bundled in this build; numbers are the design envelope from the spec.",
                 color = C.muted, fontSize = 12.sp, lineHeight = 18.sp, modifier = Modifier.readable(maxW).padding(horizontal = pad),
             )
@@ -212,7 +215,8 @@ private fun SpecSheet(scene: Scene, pad: androidx.compose.ui.unit.Dp, maxW: andr
 @Composable
 private fun BomList(scene: Scene, pad: androidx.compose.ui.unit.Dp, maxW: androidx.compose.ui.unit.Dp) {
     val matW = if (maxW > 900.dp) 280.dp else 118.dp
-    val massW = if (maxW > 900.dp) 90.dp else 62.dp
+    // the mass column grows with the font size, so "301 g" and the header never wrap
+    val massW = (if (maxW > 900.dp) 90.dp else 62.dp) * LocalDensity.current.fontScale.coerceIn(1f, 1.6f)
     LazyColumn(Modifier.fillMaxSize().testTag("bom"), contentPadding = PaddingValues(top = 22.dp, bottom = 40.dp)) {
         item {
             Column(Modifier.readable(maxW).padding(horizontal = pad)) {
@@ -223,15 +227,15 @@ private fun BomList(scene: Scene, pad: androidx.compose.ui.unit.Dp, maxW: androi
                         Text("${scene.parts.size} parts in ${scene.groups.size} groups", color = C.ink, fontSize = 16.sp, fontWeight = FontWeight.Light)
                     }
                     Column(horizontalAlignment = Alignment.End) {
-                        Text(fmtMass(scene.stationMassG), color = C.amber, fontSize = 20.sp, fontWeight = FontWeight.Light)
-                        Tracked("Station", size = 8.5.sp, color = C.muted, tracking = .26f)
+                        Text(fmtMass(scene.stationMassG).nbUnits(), color = C.amber, fontSize = 20.sp, fontWeight = FontWeight.Light)
+                        MicroLabel("Station", color = C.muted, tracking = .24f, weight = FontWeight.Light)
                     }
                 }
                 Spacer(Modifier.height(16.dp))
                 Row(Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
-                    Tracked("Part", Modifier.weight(1f), size = 8.5.sp, color = C.muted, tracking = .26f)
-                    Tracked("Material", Modifier.width(matW), size = 8.5.sp, color = C.muted, tracking = .26f)
-                    Tracked("Mass", Modifier.width(massW), size = 8.5.sp, color = C.muted, tracking = .26f, align = TextAlign.End)
+                    MicroLabel("Part", Modifier.weight(1f), color = C.muted, tracking = .22f, weight = FontWeight.Light)
+                    MicroLabel("Material", Modifier.width(matW), color = C.muted, tracking = .22f, weight = FontWeight.Light, maxLines = 1)
+                    MicroLabel("Mass", Modifier.width(massW), color = C.muted, tracking = .22f, align = TextAlign.End, weight = FontWeight.Light, maxLines = 1)
                 }
                 Hairline()
             }
@@ -242,22 +246,22 @@ private fun BomList(scene: Scene, pad: androidx.compose.ui.unit.Dp, maxW: androi
                     Box(Modifier.width(2.dp).height(13.dp).background(C.amber))
                     Spacer(Modifier.width(10.dp))
                     Tracked(g.name, Modifier.weight(1f), size = 10.5.sp, color = C.ink, weight = FontWeight.Normal, tracking = .16f)
-                    Text(fmtMass(g.massG), color = C.ink, fontSize = 12.5.sp)
+                    Text(fmtMass(g.massG).nbUnits(), color = C.ink, fontSize = 12.5.sp, maxLines = 1)
                 }
             }
             val parts = scene.partsOf(g.id)
             items(parts, key = { "p-${it.id}" }) { p ->
                 Column(Modifier.readable(maxW).padding(horizontal = pad)) {
                     Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Row(Modifier.weight(1f).padding(start = 12.dp, end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Text(p.name, color = if (p.internal) C.ink.copy(alpha = .7f) else C.ink.copy(alpha = .9f), fontSize = 13.sp, lineHeight = 17.sp, modifier = Modifier.weight(1f, fill = false))
-                            if (p.internal) { Spacer(Modifier.width(6.dp)); Tracked("int.", size = 7.5.sp, color = C.amber, tracking = .14f, weight = FontWeight.Normal) }
+                        Column(Modifier.weight(1f).padding(start = 12.dp, end = 8.dp)) {
+                            Text(p.name, color = if (p.internal) C.ink.copy(alpha = .7f) else C.ink.copy(alpha = .9f), fontSize = 13.sp, lineHeight = 17.sp)
+                            if (p.internal) InternalTag(Modifier.padding(top = 4.dp))
                         }
                         Row(Modifier.width(matW), verticalAlignment = Alignment.CenterVertically) {
                             Swatch(p.material, 9.dp); Spacer(Modifier.width(6.dp))
                             Text(scene.materialLabel(p.material), color = C.muted, fontSize = 11.5.sp, lineHeight = 15.sp, maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                         }
-                        Text(fmtMass(p.massG), Modifier.width(massW), color = C.ink.copy(alpha = .8f), fontSize = 12.sp, textAlign = TextAlign.End)
+                        Text(fmtMass(p.massG).nbUnits(), Modifier.width(massW), color = C.ink.copy(alpha = .8f), fontSize = 12.sp, textAlign = TextAlign.End, maxLines = 1)
                     }
                     Hairline(color = C.line.copy(alpha = .45f))
                 }
@@ -306,6 +310,16 @@ fun footprint(scene: Scene): Footprint {
     return Footprint(x0, x1, baseD, gap, matCz, matW, matD, matCx)
 }
 
+/** Room left beside a laptop in the slot: the 20 mm slot takes laptops up to 18 mm thick. */
+const val LAPTOP_CLEARANCE_MM = 2.0
+
+/** Where the dock's USB-C plug sits, measured from the hinge end of a docked laptop (mm), from params. */
+fun portFromHingeMm(scene: Scene): Double? {
+    val plug = scene.num("dock.connector.z") ?: scene.num("laptop.port_z") ?: return null
+    val hingeEnd = scene.nums("laptop.z")?.firstOrNull() ?: return null
+    return (plug - hingeEnd).takeIf { it in 5.0..200.0 }
+}
+
 private fun cm(mm: Double): String { val c = mm / 10.0; return if (c == Math.floor(c)) c.toInt().toString() else String.format(Locale.US, "%.1f", c) }
 
 enum class Fit { Fits, StowOnly, No }
@@ -343,7 +357,7 @@ private fun DeskFit(app: AppState, scene: Scene, pad: androidx.compose.ui.unit.D
     }
     val plan: @Composable ColumnScope.() -> Unit = {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Tracked("Plan view", Modifier.weight(1f), size = 9.sp, color = C.muted, tracking = .3f)
+            MicroLabel("Plan view", Modifier.weight(1f), color = C.muted, tracking = .26f, weight = FontWeight.Light)
             Segmented(listOf("work" to "Work", "stow" to "Stow"), planMode, { planMode = it }, Modifier.width(190.dp), tagPrefix = "plan")
         }
         Spacer(Modifier.height(12.dp))
@@ -402,19 +416,25 @@ private fun fmt1(d: Double): String = if (d == Math.floor(d)) d.toInt().toString
 private fun CmField(label: String, value: Int, onValue: (Int) -> Unit, modifier: Modifier, tag: String) {
     var text by remember(value) { mutableStateOf(value.toString()) }
     val shape = RoundedCornerShape(16.dp)
-    Column(modifier) {
-        Tracked(label, size = 9.sp, color = C.muted, tracking = .28f, modifier = Modifier.padding(bottom = 8.dp))
-        Row(Modifier.fillMaxWidth().clip(shape).background(C.panel).border(1.dp, C.line, shape).padding(5.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconCircle(Icons.Outlined.Remove, "Decrease $label", { onValue((value - 5).coerceAtLeast(30)) }, size = 34.dp, background = C.panel2)
-            BasicTextField(
-                text, { t -> val d = t.filter(Char::isDigit).take(3); text = d; d.toIntOrNull()?.takeIf { it in 1..999 }?.let(onValue) },
-                Modifier.weight(1f).testTag(tag), singleLine = true,
-                textStyle = TextStyle(color = C.ink, fontSize = 21.sp, fontWeight = FontWeight.Light, textAlign = TextAlign.Center),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
-                cursorBrush = SolidColor(C.amber),
-            )
-            Text("cm", color = C.muted, fontSize = 12.sp, modifier = Modifier.padding(end = 6.dp))
-            IconCircle(Icons.Outlined.Add, "Increase $label", { onValue((value + 5).coerceAtMost(400)) }, size = 34.dp, background = C.panel2)
+    // The number grows with the font size up to 1.3×, then holds, so three digits always fit between the buttons.
+    val fs = LocalDensity.current.fontScale
+    val valueSize = (21f * minOf(fs, 1.3f) / fs).sp
+    BoxWithConstraints(modifier) {
+        val roomy = maxWidth >= 150.dp // on a narrow field the unit moves up into the label
+        Column(Modifier.fillMaxWidth()) {
+            MicroLabel(if (roomy) label else "$label (cm)", Modifier.padding(bottom = 8.dp), color = C.muted, tracking = .24f, weight = FontWeight.Light)
+            Row(Modifier.fillMaxWidth().clip(shape).background(C.panel).border(1.dp, C.line, shape).padding(5.dp), verticalAlignment = Alignment.CenterVertically) {
+                IconCircle(Icons.Outlined.Remove, "Decrease $label", { onValue((value - 5).coerceAtLeast(30)) }, size = 34.dp, background = C.panel2)
+                BasicTextField(
+                    text, { t -> val d = t.filter(Char::isDigit).take(3); text = d; d.toIntOrNull()?.takeIf { it in 1..999 }?.let(onValue) },
+                    Modifier.weight(1f).testTag(tag), singleLine = true,
+                    textStyle = TextStyle(color = C.ink, fontSize = valueSize, fontWeight = FontWeight.Light, textAlign = TextAlign.Center),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+                    cursorBrush = SolidColor(C.amber),
+                )
+                if (roomy) Text("cm", color = C.muted, fontSize = 12.sp, maxLines = 1, modifier = Modifier.padding(end = 6.dp))
+                IconCircle(Icons.Outlined.Add, "Increase $label", { onValue((value + 5).coerceAtMost(400)) }, size = 34.dp, background = C.panel2)
+            }
         }
     }
 }
@@ -519,7 +539,8 @@ private fun DeskPlan(fp: Footprint, wcm: Int, dcm: Int, mode: String, modifier: 
             if (stL < dl) drawRect(C.warn.copy(alpha = .22f), Offset(stL, b0.y), Size(dl - stL, needB - b0.y))
             if (stR > dr) drawRect(C.warn.copy(alpha = .22f), Offset(dr, b0.y), Size(stR - dr, needB - b0.y))
             if (needB > db) drawRect(C.warn.copy(alpha = .22f), Offset(max(stL, dl), db), Size(minOf(stR, dr) - max(stL, dl), needB - db))
-            drawLine(C.warn, Offset(stL, needB), Offset(stR, needB), 1.2f, pathEffect = dash)
+            // the needed depth is a problem only when it runs past the desk; otherwise it stays a quiet reference line
+            drawLine(if (needB > db) C.warn else C.muted.copy(alpha = .5f), Offset(stL, needB), Offset(stR, needB), 1.2f, pathEffect = dash)
         }
 
         // dimensions: station width above, needed depth on the right

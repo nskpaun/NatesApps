@@ -40,6 +40,10 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
@@ -50,7 +54,7 @@ class MainActivity : ComponentActivity() {
         )
         super.onCreate(savedInstanceState)
         setContent {
-            // The back stack survives recreation and process death; everything else is cheap to rebuild.
+            // The back stack, the viewer state and the Studio/Specs choices survive recreation and process death.
             val app = rememberSaveable(saver = appStateSaver(applicationContext)) { AppState(applicationContext) }
             AppTheme { App(app) }
         }
@@ -108,6 +112,8 @@ class AppState(ctx: Context, start: String = "explore") {
     var specsTab by mutableStateOf("sheet")
     var deskW by mutableIntStateOf(160)
     var deskD by mutableIntStateOf(80)
+    /** Work that should finish even if the screen that started it goes away (e.g. a Save copy). Cancelled with the app UI. */
+    val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     /** Opens the Studio, optionally with a preset. Pushes so Back returns to where you were. */
     fun openStudio(p: Preset? = null) {
@@ -134,9 +140,27 @@ class AppState(ctx: Context, start: String = "explore") {
     fun stopNight() { if (nightShift) { nightShift = false; host.exitNight() } }
 }
 
+/**
+ * Saved as [viewer state JSON, camera, Studio panel, Specs tab, "deskW,deskD", routes…]. A bundle that holds only
+ * routes (from an older build) still restores its back stack.
+ */
 fun appStateSaver(ctx: Context) = listSaver<AppState, String>(
-    save = { it.nav.stack.toList() },
-    restore = { routes -> AppState(ctx).apply { if (routes.isNotEmpty()) { nav.stack.clear(); nav.stack.addAll(routes) } } },
+    save = { listOf(it.host.snapshot().toString(), it.host.lastCamera, it.studioPanel ?: "", it.specsTab, "${it.deskW},${it.deskD}") + it.nav.stack.toList() },
+    restore = { saved ->
+        AppState(ctx).apply {
+            val routes = if (saved.firstOrNull()?.startsWith("{") == true && saved.size >= 5) {
+                val scene = Repo.scene(ctx)
+                host.restore(saved[0], saved[1]) { scene.group(it) != null }
+                studioPanel = saved[2].ifBlank { null }
+                specsTab = saved[3].ifBlank { specsTab }
+                saved[4].split(',').mapNotNull { it.trim().toIntOrNull() }.takeIf { it.size == 2 }?.let { (w, d) ->
+                    deskW = w.coerceIn(1, 999); deskD = d.coerceIn(1, 999)
+                }
+                saved.drop(5)
+            } else saved
+            if (routes.isNotEmpty()) { nav.stack.clear(); nav.stack.addAll(routes) }
+        }
+    },
 )
 
 @Composable
@@ -153,7 +177,7 @@ fun App(app: AppState) {
             }
         }
         lifecycle.addObserver(obs)
-        onDispose { lifecycle.removeObserver(obs); app.host.destroy() }
+        onDispose { lifecycle.removeObserver(obs); app.host.destroy(); app.scope.cancel() }
     }
     BackHandler(enabled = app.nav.canBack && !app.nightShift) { app.nav.back() }
 
@@ -214,7 +238,8 @@ private fun BottomBar(nav: Nav, route: String) {
     val cur = tabOf(route)
     Column(Modifier.fillMaxWidth().background(C.bg)) {
         Box(Modifier.fillMaxWidth().height(1.dp).background(C.line))
-        Row(Modifier.fillMaxWidth().navigationBarsPadding().height(62.dp), verticalAlignment = Alignment.CenterVertically) {
+        // grows with large font scales instead of clipping the labels
+        Row(Modifier.fillMaxWidth().navigationBarsPadding().heightIn(min = 62.dp), verticalAlignment = Alignment.CenterVertically) {
             TABS.forEach { t -> NavItem(t, cur == t.route, Modifier.weight(1f)) { nav.tab(t.route) } }
         }
     }
@@ -230,7 +255,7 @@ private fun SideRail(nav: Nav, route: String) {
         ) {
             Text("N·A", color = C.amber, fontSize = 13.sp, letterSpacing = 3.sp)
             Spacer(Modifier.height(28.dp))
-            TABS.forEach { t -> NavItem(t, cur == t.route, Modifier.padding(vertical = 6.dp).width(76.dp).height(64.dp)) { nav.tab(t.route) } }
+            TABS.forEach { t -> NavItem(t, cur == t.route, Modifier.padding(vertical = 6.dp).width(76.dp).heightIn(min = 64.dp)) { nav.tab(t.route) } }
         }
         Box(Modifier.fillMaxHeight().width(1.dp).background(C.line))
     }
@@ -248,7 +273,8 @@ private fun NavItem(t: Tab, selected: Boolean, modifier: Modifier, onClick: () -
         Spacer(Modifier.height(6.dp))
         Icon(t.icon, null, tint = if (selected) C.ink else C.muted, modifier = Modifier.size(22.dp))
         Spacer(Modifier.height(4.dp))
-        Tracked(t.label, size = 9.sp, color = if (selected) C.ink else C.muted, tracking = 0.22f, weight = androidx.compose.ui.text.font.FontWeight.Normal)
+        // Tracked() tightens the letter spacing by itself at large font scales, so the label stays on one line
+        Tracked(t.label, size = Type.Micro, color = if (selected) C.ink else C.muted, tracking = 0.2f, weight = androidx.compose.ui.text.font.FontWeight.Normal, maxLines = 1)
     }
 }
 

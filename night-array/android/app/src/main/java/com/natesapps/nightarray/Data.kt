@@ -368,7 +368,8 @@ fun fmtMass(g: Double): String = when {
     g <= 0 -> "—"
     g < 1 -> "< 1 g"
     g < 1000 -> "${g.roundToInt()} g"
-    else -> String.format(Locale.US, "%.2f kg", g / 1000.0)
+    g < 10_000 -> String.format(Locale.US, "%.2f kg", g / 1000.0)
+    else -> String.format(Locale.US, "%.1f kg", g / 1000.0) // concept estimates: 0.1 kg is precision enough at this size
 }
 
 /** Thin-space grouped millimetres, e.g. 1 474. */

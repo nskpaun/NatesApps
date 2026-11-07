@@ -1,14 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Launcher foreground: two flat 27-inch panels toed in about the honest seam (titanium mullion), the neck and its amber
+     bar, the long base, and the laptop standing in the oxblood dock on the right wing. Scaled to sit inside the 66 dp
+     safe zone of the 108 dp adaptive-icon canvas. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
-    <path android:fillColor="#1E1915" android:strokeColor="#BDB2A4" android:strokeWidth="1.6"
-        android:pathData="M27,40 Q54,35 81,40 L81,55 Q54,51 27,55 Z"/>
-    <path android:fillColor="#00000000" android:strokeColor="#F2A04A" android:strokeWidth="1.2" android:strokeAlpha="0.85"
-        android:pathData="M31,50 Q42,45 52,48 Q63,51 77,46"/>
-    <path android:fillColor="#3A3735" android:pathData="M49,56 L59,56 L61,63 L47,63 Z"/>
-    <path android:fillColor="#F2A04A" android:pathData="M50,56.2 L58,56.2 L58,57.4 L50,57.4 Z"/>
-    <path android:fillColor="#00000000" android:strokeColor="#BDB2A4" android:strokeWidth="1.6"
-        android:pathData="M29,63 L76,63 Q78,63 78,65 L78,67 Q78,68.5 76.5,68.5 L30.5,68.5 Q29,68.5 29,67 L29,65 Q29,63 29,63 Z"/>
-    <path android:fillColor="#BDB2A4" android:pathData="M78.5,46 L81.5,46 L81.5,64 L78.5,64 Z"/>
-    <path android:fillColor="#7A2E2A" android:pathData="M77,61 L84,61 L84,68.5 L77,68.5 Z"/>
-    <path android:fillColor="#F2A04A" android:pathData="M80.5,60 L83.5,60 L83.5,61 L80.5,61 Z"/>
+    <group android:pivotX="54" android:pivotY="54" android:scaleX="0.94" android:scaleY="0.94" android:translateX="0.5">
+        <!-- left and right panels, a shallow '^' meeting at the seam -->
+        <path android:fillColor="#1E1915" android:strokeColor="#BDB2A4" android:strokeWidth="1.4" android:strokeLineJoin="round"
+            android:pathData="M23,42 L49.2,39.4 L49.2,54.8 L23,56.4 Z"/>
+        <path android:fillColor="#1E1915" android:strokeColor="#BDB2A4" android:strokeWidth="1.4" android:strokeLineJoin="round"
+            android:pathData="M50.8,39.4 L77,42 L77,56.4 L50.8,54.8 Z"/>
+        <!-- one canvas across both panels -->
+        <path android:fillColor="#00000000" android:strokeColor="#F2A04A" android:strokeWidth="1.2" android:strokeAlpha="0.85"
+            android:pathData="M26.5,51.5 Q37,45.8 49,48.6 Q61,51.4 73.5,46.6"/>
+        <!-- the honest seam: titanium mullion -->
+        <path android:fillColor="#BDB2A4" android:pathData="M49.3,38.6 L50.7,38.6 L50.7,55.6 L49.3,55.6 Z"/>
+        <!-- neck + amber bar -->
+        <path android:fillColor="#3A3735" android:pathData="M45,56.2 L55,56.2 L57,63 L43,63 Z"/>
+        <path android:fillColor="#F2A04A" android:pathData="M46,56.4 L54,56.4 L54,57.6 L46,57.6 Z"/>
+        <!-- base -->
+        <path android:fillColor="#00000000" android:strokeColor="#BDB2A4" android:strokeWidth="1.6"
+            android:pathData="M26.5,63 L76,63 Q77.5,63 77.5,64.5 L77.5,67 Q77.5,68.5 76,68.5 L26.5,68.5 Q25,68.5 25,67 L25,64.5 Q25,63 26.5,63 Z"/>
+        <!-- laptop standing in the dock, dock wing, latch light -->
+        <path android:fillColor="#BDB2A4" android:pathData="M79,47 L82,47 L82,63 L79,63 Z"/>
+        <path android:fillColor="#7A2E2A" android:pathData="M77.5,60.5 L85,60.5 L85,68.5 L77.5,68.5 Z"/>
+        <path android:fillColor="#F2A04A" android:pathData="M82.6,59.6 L84.6,59.6 L84.6,60.5 L82.6,60.5 Z"/>
+    </group>
 </vector>

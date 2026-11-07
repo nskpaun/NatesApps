@@ -8,6 +8,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -24,6 +29,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.selected
@@ -52,13 +58,17 @@ fun StudioScreen(app: AppState, scene: Scene) {
                 Box(Modifier.width(1.dp).fillMaxHeight().background(C.line))
                 Column(Modifier.width(352.dp).fillMaxHeight().background(C.panel).statusBarsPadding().navigationBarsPadding()) {
                     AnimatedContent(sheet, transitionSpec = { fadeIn(tween(260)) togetherWith fadeOut(tween(160)) }, label = "side") { g ->
-                        if (g != null) PartSheet(app, scene, g, Modifier.fillMaxSize().verticalScroll(rememberScrollState()))
+                        if (g != null) PartSheet(app, scene, g, Modifier.fillMaxSize(), handle = false)
                         else Column(Modifier.fillMaxSize()) {
                             ModeBar(app, Modifier.padding(horizontal = 14.dp).padding(top = 12.dp, bottom = 4.dp))
                             PanelTabs(app, collapsible = false)
                             Hairline()
-                            Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(18.dp)) {
-                                PanelContent(app, scene, app.studioPanel ?: "view")
+                            val scroll = rememberScrollState()
+                            Box(Modifier.weight(1f)) {
+                                Column(Modifier.fillMaxSize().verticalScroll(scroll).padding(18.dp)) {
+                                    PanelContent(app, scene, app.studioPanel ?: "view")
+                                }
+                                MoreBelow(scroll, C.panel)
                             }
                         }
                     }
@@ -71,8 +81,7 @@ fun StudioScreen(app: AppState, scene: Scene) {
                     sheet, transitionSpec = { (slideInVertically { it / 3 } + fadeIn(tween(240))) togetherWith fadeOut(tween(140)) using SizeTransform(clip = true) },
                     label = "dock",
                 ) { g ->
-                    if (g != null) PartSheet(app, scene, g, Modifier.fillMaxWidth().background(C.panel)
-                        .heightIn(max = sheetMax).verticalScroll(rememberScrollState()))
+                    if (g != null) PartSheet(app, scene, g, Modifier.fillMaxWidth().background(C.panel).heightIn(max = sheetMax), handle = true)
                     else ControlDock(app, scene, panelMax)
                 }
             }
@@ -141,7 +150,7 @@ private fun StatusLine(host: ViewerHost) {
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.testTag("status-line")) {
         Box(Modifier.size(6.dp).clip(CircleShape).background(dot))
         Spacer(Modifier.width(7.dp))
-        Tracked(text, size = 8.5.sp, color = C.muted, tracking = .26f, maxLines = 1)
+        MicroLabel(text, color = C.muted, tracking = .22f, maxLines = 1, weight = FontWeight.Light, fitToWidth = true)
     }
 }
 
@@ -153,7 +162,8 @@ private fun LiveNotice(app: AppState) {
     val ctx = LocalContext.current
     // A page that loads but never reports `ready` (a stalled GPU process, a viewer bug) gets a way out after a while.
     var slow by remember { mutableStateOf(false) }
-    LaunchedEffect(host.status) { slow = false; if (host.status == LiveStatus.Loading) { kotlinx.coroutines.delay(20_000); slow = true } }
+    // keyed on the load too: Retry goes Loading → Loading within one click, and must restart the wait
+    LaunchedEffect(host.status, host.loadGeneration) { slow = false; if (host.status == LiveStatus.Loading) { kotlinx.coroutines.delay(20_000); slow = true } }
     AnimatedVisibility(host.status == LiveStatus.Error || host.status == LiveStatus.Loading, enter = fadeIn(), exit = fadeOut()) {
         if (host.status == LiveStatus.Error) {
             val bundled = remember { AssetIndex.exists(ctx, "viewer/index.html") }
@@ -187,8 +197,12 @@ private fun ControlDock(app: AppState, scene: Scene, contentMax: androidx.compos
         ModeBar(app, Modifier.padding(horizontal = 14.dp).padding(top = 12.dp))
         AnimatedVisibility(app.studioPanel != null, enter = expandVertically(tween(280)) + fadeIn(tween(280)), exit = shrinkVertically(tween(240)) + fadeOut(tween(160))) {
             val tab = app.studioPanel ?: "view"
-            Column(Modifier.fillMaxWidth().heightIn(max = contentMax).verticalScroll(rememberScrollState()).padding(horizontal = 18.dp).padding(top = 16.dp, bottom = 6.dp)) {
-                AnimatedContent(tab, transitionSpec = { fadeIn(tween(220)) togetherWith fadeOut(tween(120)) }, label = "tab") { t -> Column { PanelContent(app, scene, t) } }
+            val scroll = rememberScrollState()
+            Box {
+                Column(Modifier.fillMaxWidth().heightIn(max = contentMax).verticalScroll(scroll).padding(horizontal = 18.dp).padding(top = 16.dp, bottom = 6.dp)) {
+                    AnimatedContent(tab, transitionSpec = { fadeIn(tween(220)) togetherWith fadeOut(tween(120)) }, label = "tab") { t -> Column { PanelContent(app, scene, t) } }
+                }
+                MoreBelow(scroll, C.panel)
             }
         }
         PanelTabs(app, collapsible = true)
@@ -198,18 +212,24 @@ private fun ControlDock(app: AppState, scene: Scene, contentMax: androidx.compos
 @Composable
 private fun PanelTabs(app: AppState, collapsible: Boolean) {
     val cur = app.studioPanel ?: if (collapsible) null else "view"
-    Row(Modifier.fillMaxWidth().height(52.dp).padding(horizontal = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-        PANEL_TABS.forEach { (id, label) ->
-            val on = cur == id
-            Column(
-                Modifier.weight(1f).fillMaxHeight().semantics { selected = on }.testTag("panel-$id").clip(RoundedCornerShape(10.dp))
-                    .clickable(role = Role.Tab) { app.studioPanel = if (on && collapsible) null else id },
-                horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
-            ) {
-                Tracked(label, size = 10.sp, color = if (on) C.amber else C.ink.copy(alpha = .75f), weight = if (on) FontWeight.Normal else FontWeight.Light, tracking = .22f, maxLines = 1)
-                Spacer(Modifier.height(6.dp))
-                val w by androidx.compose.animation.core.animateDpAsState(if (on) 16.dp else 0.dp, tween(240), label = "tabw")
-                Box(Modifier.width(w).height(1.5.dp).background(C.amber))
+    Row(Modifier.fillMaxWidth().heightIn(min = 52.dp).padding(horizontal = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+        // Equal cells while the labels fit; at large font scales each tab takes the width it needs and the row scrolls.
+        BoxWithConstraints(Modifier.weight(1f)) {
+            val cell = maxOf(maxWidth / PANEL_TABS.size, 56.dp)
+            Row(Modifier.horizontalScroll(rememberScrollState()), verticalAlignment = Alignment.CenterVertically) {
+                PANEL_TABS.forEach { (id, label) ->
+                    val on = cur == id
+                    Column(
+                        Modifier.widthIn(min = cell).heightIn(min = 52.dp).semantics { selected = on }.testTag("panel-$id").clip(RoundedCornerShape(10.dp))
+                            .clickable(role = Role.Tab) { app.studioPanel = if (on && collapsible) null else id }.padding(horizontal = 4.dp, vertical = 8.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
+                    ) {
+                        Tracked(label, size = 10.sp, color = if (on) C.amber else C.ink.copy(alpha = .75f), weight = if (on) FontWeight.Normal else FontWeight.Light, tracking = .22f, maxLines = 1)
+                        Spacer(Modifier.height(6.dp))
+                        val w by androidx.compose.animation.core.animateDpAsState(if (on) 16.dp else 0.dp, tween(240), label = "tabw")
+                        Box(Modifier.width(w).height(1.5.dp).background(C.amber))
+                    }
+                }
             }
         }
         if (collapsible) {
@@ -234,7 +254,7 @@ private fun PanelContent(app: AppState, scene: Scene, tab: String) {
 }
 
 @Composable
-private fun Label(text: String, modifier: Modifier = Modifier) = Tracked(text, modifier.padding(bottom = 10.dp), size = 9.sp, color = C.muted, tracking = .3f)
+private fun Label(text: String, modifier: Modifier = Modifier) = MicroLabel(text, modifier.padding(bottom = 10.dp), color = C.muted, tracking = .26f, weight = FontWeight.Light)
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -267,8 +287,8 @@ private fun FinishPanel(app: AppState) {
             ) {
                 BrushedSwatch(id, Modifier.fillMaxWidth().height(34.dp))
                 Spacer(Modifier.height(8.dp))
-                Tracked(label, size = 8.sp, color = if (on) C.amber else C.ink.copy(alpha = .8f), tracking = .18f, maxLines = 2,
-                    align = androidx.compose.ui.text.style.TextAlign.Center)
+                MicroLabel(label, color = if (on) C.amber else C.ink.copy(alpha = .8f), tracking = .12f, maxLines = 2,
+                    align = androidx.compose.ui.text.style.TextAlign.Center, weight = FontWeight.Light)
             }
         }
     }
@@ -323,7 +343,7 @@ private fun DockPanel(app: AppState, scene: Scene) {
             ) {
                 Text("${s.n}", color = if (on) C.amber else C.muted, fontSize = 20.sp, fontWeight = FontWeight.Light)
                 Spacer(Modifier.height(4.dp))
-                Tracked(s.title, size = 9.sp, color = if (on) C.ink else C.ink.copy(alpha = .8f), weight = FontWeight.Normal, tracking = .14f)
+                DockStepTitle(s.title, color = if (on) C.ink else C.ink.copy(alpha = .8f))
             }
         }
     }
@@ -361,39 +381,49 @@ private fun PartsPanel(app: AppState, scene: Scene) {
 // Part sheet: shown when the viewer reports a pick (or a group is chosen in Parts).
 // ------------------------------------------------------------------------------------------------
 
+/**
+ * The details scroll; the actions stay pinned at the bottom, so Isolate / Frame / Files are always in reach on short
+ * screens. [handle]: the phone's bottom sheet gets a grab handle that closes it on a downward drag.
+ */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun PartSheet(app: AppState, scene: Scene, g: Group, modifier: Modifier) {
+private fun PartSheet(app: AppState, scene: Scene, g: Group, modifier: Modifier, handle: Boolean) {
     val host = app.host
     val isolated = host.state.isolate == g.id
-    Column(modifier.testTag("part-sheet").padding(horizontal = 20.dp).padding(top = 14.dp, bottom = 16.dp)) {
-        Box(Modifier.align(Alignment.CenterHorizontally).width(36.dp).height(3.dp).clip(RoundedCornerShape(2.dp)).background(C.line))
-        Spacer(Modifier.height(10.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Kicker("Selected")
-                Spacer(Modifier.height(8.dp))
-                Tracked(g.name, size = 17.sp, tracking = .16f)
-            }
-            IconCircle(Icons.Outlined.Close, "Close part sheet", { host.closeSheet() }, size = 36.dp, background = C.panel2)
-        }
-        Spacer(Modifier.height(10.dp))
-        Text(g.summary, color = C.ink.copy(alpha = .82f), fontSize = 14.sp, lineHeight = 20.sp)
-        Spacer(Modifier.height(12.dp))
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            g.materials.forEach { m ->
+    Column(modifier.testTag("part-sheet").padding(horizontal = 20.dp).padding(top = if (handle) 2.dp else 14.dp, bottom = 16.dp)) {
+        if (handle) SheetHandle { host.closeSheet() }
+        val scroll = rememberScrollState()
+        Box(Modifier.weight(1f, fill = false)) {
+            Column(Modifier.verticalScroll(scroll)) {
+                if (handle) Spacer(Modifier.height(4.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Swatch(m, 11.dp); Spacer(Modifier.width(6.dp))
-                    Text(scene.materialLabel(m), color = C.muted, fontSize = 12.sp)
+                    Column(Modifier.weight(1f)) {
+                        Kicker("Selected")
+                        Spacer(Modifier.height(8.dp))
+                        Tracked(g.name, size = 17.sp, tracking = .16f)
+                    }
+                    IconCircle(Icons.Outlined.Close, "Close part sheet", { host.closeSheet() }, size = 36.dp, background = C.panel2)
                 }
+                Spacer(Modifier.height(10.dp))
+                Text(g.summary, color = C.ink.copy(alpha = .82f), fontSize = 14.sp, lineHeight = 20.sp)
+                Spacer(Modifier.height(12.dp))
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    g.materials.forEach { m ->
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Swatch(m, 11.dp); Spacer(Modifier.width(6.dp))
+                            Text(scene.materialLabel(m), color = C.muted, fontSize = 12.sp)
+                        }
+                    }
+                }
+                Spacer(Modifier.height(6.dp))
+                SpecRow("Size", fmtBox(g.bboxMm))
+                SpecRow("Mass", fmtMass(g.massG) + if (g.massG > 0) " (concept)" else "")
+                val internal = scene.partsOf(g.id).count { it.internal }
+                SpecRow("Parts", if (internal > 0) "${g.parts.size}, $internal internal" else "${g.parts.size}", last = true)
             }
+            MoreBelow(scroll, C.panel)
         }
-        Spacer(Modifier.height(6.dp))
-        SpecRow("Size", fmtBox(g.bboxMm))
-        SpecRow("Mass", fmtMass(g.massG) + if (g.massG > 0) " (concept)" else "")
-        val internal = scene.partsOf(g.id).count { it.internal }
-        SpecRow("Parts", if (internal > 0) "${g.parts.size}, $internal internal" else "${g.parts.size}", last = true)
-        Spacer(Modifier.height(14.dp))
+        Spacer(Modifier.height(12.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             LineButton(if (isolated) "Show all" else "Isolate", { host.toggleIsolate(g.id) }, Modifier.weight(1f).testTag("sheet-isolate"), filled = true)
             LineButton("Frame", { host.frame(g.id) }, Modifier.weight(1f).testTag("sheet-frame"), color = C.ink.copy(alpha = .8f))
@@ -401,3 +431,32 @@ private fun PartSheet(app: AppState, scene: Scene, g: Group, modifier: Modifier)
         }
     }
 }
+
+/** A grab handle for the phone's part sheet: drag it down to close the sheet (the close button does the same). */
+@Composable
+private fun SheetHandle(onDismiss: () -> Unit) {
+    val threshold = with(LocalDensity.current) { 40.dp.toPx() }
+    var drag by remember { mutableFloatStateOf(0f) }
+    Box(
+        Modifier.fillMaxWidth().height(22.dp).draggable(
+            rememberDraggableState { drag += it }, Orientation.Vertical,
+            onDragStarted = { drag = 0f }, onDragStopped = { if (drag > threshold) onDismiss() },
+        ),
+        contentAlignment = Alignment.Center,
+    ) { Box(Modifier.width(36.dp).height(3.dp).clip(RoundedCornerShape(2.dp)).background(C.line)) }
+}
+
+/** A short fade at the bottom of a scrolling panel while there is more below. */
+@Composable
+fun BoxScope.MoreBelow(scroll: ScrollState, background: Color) {
+    if (scroll.canScrollForward) Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(24.dp).background(Brush.verticalGradient(listOf(Color.Transparent, background))))
+}
+
+/**
+ * A docking-step title ("Press-release & lift"): it may break after the hyphen, but never inside a word.
+ * (Android's line breaker doesn't break at a hyphen unless hyphenation is on, so a zero-width space marks the spot.)
+ */
+@Composable
+fun DockStepTitle(title: String, color: Color = C.ink, modifier: Modifier = Modifier) =
+    Tracked(title.replace("-", "-\u200B"), modifier, size = Type.Micro, color = color, weight = FontWeight.Normal, tracking = .1f,
+        lineBreak = androidx.compose.ui.text.style.LineBreak.Heading)

@@ -105,4 +105,60 @@ class Screenshots {
 
     @Config(qualifiers = "w360dp-h640dp-xhdpi")
     @Test fun smallPhoneSheet() = shoot("31-small-phone-part-sheet", "studio", extra = { app.host.handle("""{"type":"pick","group":"internals"}""") })
+
+    @Test fun nightCard() = shoot("32-home-night-card", "explore", extra = { rule.onNodeWithTag("explore").performScrollToKey("night"); tick(800) })
+
+    @Config(qualifiers = "w1280dp-h800dp-mdpi")
+    @Test fun tabletNightCard() = shoot("33-tablet-night-card", "explore", extra = { rule.onNodeWithTag("explore").performScrollToKey("night"); tick(800) })
+
+    @Test fun storyDockCard() = shoot("34-story-dock-strip", "story/dock", extra = { rule.onNodeWithTag("story").performScrollToKey("seq"); tick(800) })
+
+    @Test fun groupInternals() = shoot("35-group-internals-parts", "group/internals", extra = { rule.onNodeWithTag("group").performScrollToKey("parts"); tick(800) })
+
+    @Test fun bomInternals() = shoot("36-bom-internals", "specs", prep = { it.specsTab = "bom" }, extra = { rule.onNodeWithTag("bom").performScrollToKey("g-internals"); tick(800) })
+
+    // ---------- large font scales (Settings › Display › Font size) ----------
+    @Config(fontScale = 2f)
+    @Test fun font2Home() = shoot("40-font2-home", "explore")
+
+    @Config(fontScale = 2f)
+    @Test fun font2StudioDock() = shoot("41-font2-studio-dock", "studio", prep = { it.studioPanel = "dock" })
+
+    @Config(fontScale = 2f)
+    @Test fun font2DeskFit() = shoot("42-font2-desk-fit", "specs", prep = { it.specsTab = "fit" })
+
+    @Config(fontScale = 2f)
+    @Test fun font2Bom() = shoot("43-font2-bom", "specs", prep = { it.specsTab = "bom" })
+
+    @Config(fontScale = 2f)
+    @Test fun font2Dock() = shoot("44-font2-home-docking", "explore", extra = { rule.onNodeWithTag("explore").performScrollToKey("dock"); tick(800) })
+
+    @Config(fontScale = 1.3f)
+    @Test fun font13StudioDock() = shoot("45-font13-studio-dock", "studio", prep = { it.studioPanel = "dock" })
+
+    /** The adaptive launcher icon (circle mask) next to its themed (monochrome) version. */
+    @Test fun launcherIcon() {
+        val ctx = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val size = 432; val gap = 48
+        val bmp = Bitmap.createBitmap(size * 3 + gap * 4, size + gap * 2, Bitmap.Config.ARGB_8888)
+        val c = android.graphics.Canvas(bmp)
+        c.drawColor(0xFF6B6560.toInt())
+        val icon = ctx.getDrawable(R.mipmap.ic_launcher) as android.graphics.drawable.AdaptiveIconDrawable
+        fun drawMasked(d: android.graphics.drawable.AdaptiveIconDrawable, x: Int) {
+            c.save(); c.translate(x.toFloat(), gap.toFloat())
+            val clip = android.graphics.Path().apply { addCircle(size / 2f, size / 2f, size / 2f, android.graphics.Path.Direction.CW) }
+            c.clipPath(clip); d.setBounds(0, 0, size, size); d.draw(c); c.restore()
+        }
+        drawMasked(icon, gap)
+        // the full 108 dp foreground canvas with the 66 dp safe zone, to check nothing important sits outside it
+        c.save(); c.translate((size + gap * 2).toFloat(), gap.toFloat())
+        val fg = icon.foreground.constantState!!.newDrawable().mutate()
+        c.drawRect(0f, 0f, size.toFloat(), size.toFloat(), android.graphics.Paint().apply { color = 0xFF0C0A09.toInt() })
+        fg.setBounds(0, 0, size, size); fg.draw(c)
+        c.drawCircle(size / 2f, size / 2f, size * 33f / 108f, android.graphics.Paint().apply { style = android.graphics.Paint.Style.STROKE; color = 0x88F2A04A.toInt(); strokeWidth = 2f })
+        c.restore()
+        val mono = icon.monochrome!!.constantState!!.newDrawable().mutate().apply { setTint(0xFF2B3A55.toInt()) }
+        drawMasked(android.graphics.drawable.AdaptiveIconDrawable(android.graphics.drawable.ColorDrawable(0xFFD6E2FF.toInt()), mono), size * 2 + gap * 3)
+        File(out, "00-launcher-icon.png").outputStream().use { bmp.compress(Bitmap.CompressFormat.PNG, 100, it) }
+    }
 }

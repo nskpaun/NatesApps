@@ -6,6 +6,9 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Looper
 import androidx.activity.ComponentActivity
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -22,6 +25,7 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import java.io.File
 import java.net.URLDecoder
+import kotlinx.coroutines.cancel
 
 /** Renders every screen of the app and exercises its main interactions, including fake viewer events through the bridge. */
 @RunWith(RobolectricTestRunner::class)
@@ -82,7 +86,7 @@ class SmokeTest {
         scrollTo("explore", "principles"); assertTrue(shows("DESIGN PRINCIPLES")); assertTrue(shows("SHOW THE SEAM"))
         scrollTo("explore", "board"); tag("board-card").assertExists()
         scrollTo("explore", "night"); tag("night-card").assertExists()
-        scrollTo("explore", "footer"); assertTrue(shows("Every number in this app"))
+        scrollTo("explore", "footer"); assertTrue(shows("Dimensions come from the parametric CAD model"))
     }
 
     @Test fun modeCardsOpenTheStudioInThatMode() = show {
@@ -277,6 +281,83 @@ class SmokeTest {
         tag("studio").assertExists()
     }
 
+    /** Steps the main looper's clock (Handler timers) and the Compose clock together, noting each dock step seen. */
+    private fun runDock(ms: Long, seen: MutableList<String?>) {
+        repeat((ms / 100).toInt()) {
+            shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(100)); rule.mainClock.advanceTimeBy(100); rule.waitForIdle()
+            val s = app.host.dockStep
+            if (s != null && seen.lastOrNull() != s) seen += s
+        }
+    }
+
+    @Test fun dockPlayRunsInTheStillsWhenTheLiveViewFailed() = show("studio", prep = { it.studioPanel = "dock" }) {
+        app.host.evaluator = null // the real WebView path
+        post("""{"type":"error","message":"WebGL2 unavailable"}""")
+        assertEquals(LiveStatus.Error, app.host.status)
+        tag("dock-play").performSemanticsAction(SemanticsActions.OnClick); idle()
+        assertTrue(app.host.dockPlaying)
+        val seen = mutableListOf<String?>()
+        app.host.dockStep?.let { seen += it }
+        runDock(300, seen)
+        assertTrue("Playing…", shows("Playing"))
+        assertEquals("the still follows the step", "align", app.host.dockStep)
+        runDock(6500, seen)
+        assertEquals(listOf("align", "lower", "release", "lift"), seen)
+        assertFalse("the sequence ends", app.host.dockPlaying)
+        assertNull(app.host.dockStep)
+        assertTrue(shows("Play sequence"))
+        // nothing was queued for the dead page, so a later Retry has nothing stale to replay
+        app.host.evaluator = { sent += it }; sent.clear(); app.host.onPageLoaded()
+        assertFalse(sent.any { it.startsWith("NA.dock(") })
+    }
+
+    @Test fun dockSequenceCutOffByAnErrorCarriesOnInTheStills() {
+        val host = ViewerHost(ctx)
+        host.dock("play"); idle() // no page yet: queued for the live view, which will report the steps
+        assertTrue(host.dockPlaying); assertNull(host.dockStep)
+        assertEquals(1, host.pending)
+        host.handle("""{"type":"dockStep","step":"align"}"""); host.handle("""{"type":"dockStep","step":"lower"}""")
+        host.handle("""{"type":"error","message":"the live renderer stopped"}""") // e.g. the model failed to load mid-sequence
+        assertEquals(0, host.pending)
+        val seen = mutableListOf<String?>()
+        repeat(60) { shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(100)); host.dockStep?.let { if (seen.lastOrNull() != it) seen += it } }
+        assertEquals("carries on from where it was", listOf("lower", "release", "lift"), seen)
+        assertFalse(host.dockPlaying)
+        // a page that took the command but never reports a step doesn't leave "Playing…" forever either
+        host.handle("""{"type":"ready"}""")
+        host.dock("play"); assertTrue(host.dockPlaying)
+        repeat(230) { shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(100)) }
+        assertFalse("watchdog finished the sequence", host.dockPlaying)
+        host.dock("play"); assertTrue(host.dockPlaying)
+        host.retry(ctx)
+        assertFalse("Retry starts the sequence over", host.dockPlaying)
+        host.destroy()
+    }
+
+    @Test fun retryRestartsTheSlowLoadNotice() = show("studio", prep = { it.host.assumeBundled = true }) {
+        assertTrue(shows("starting the live view"))
+        tick(21_000)
+        assertTrue(shows("taking a while"))
+        val first = app.host.currentWebView
+        rule.onNodeWithText("Retry", ignoreCase = true).performSemanticsAction(SemanticsActions.OnClick); tick(500)
+        assertNotSame("a fresh WebView", first, app.host.currentWebView)
+        assertEquals(LiveStatus.Loading, app.host.status)
+        assertTrue("the notice starts over", shows("starting the live view"))
+        assertFalse(shows("taking a while"))
+        tick(21_000)
+        assertTrue("and gives up again after a while", shows("taking a while"))
+    }
+
+    @Config(qualifiers = "w360dp-h640dp-xhdpi")
+    @Test fun partSheetActionsStayInReachOnSmallPhones() = show("studio") {
+        post("""{"type":"pick","group":"internals"}""")
+        tag("part-sheet").assertExists()
+        listOf("sheet-isolate", "sheet-frame", "sheet-files").forEach { tag(it).assertIsDisplayed() }
+        // the grab handle closes the sheet on a downward drag
+        tag("part-sheet").performTouchInput { swipeDown(startY = top + 10f, endY = top + 400f) }; tick()
+        tag("part-sheet").assertDoesNotExist()
+    }
+
     @Test fun unknownPickDoesNotSwallowBack() = show("studio") {
         post("""{"type":"pick","group":"not_a_group"}""")
         tag("part-sheet").assertDoesNotExist()
@@ -340,6 +421,21 @@ class SmokeTest {
         tick(500)
         assertTrue(app.toast!!.startsWith("Saved"))
         assertTrue(shows("Saved " + Exporter.fileName(f)))
+    }
+
+    @Test fun failedSaveSaysSo() = show("group/base") {
+        val f = scene.files.firstOrNull { it.group == "base" && AssetIndex.exists(ctx, it.path) } ?: return@show
+        scrollTo("group", "files")
+        act("save-${f.id}")
+        val req = shadowOf(rule.activity).nextStartedActivityForResult
+        val target = Uri.parse("content://com.example.documents/document/full-disk")
+        shadowOf(rule.activity.contentResolver).registerOutputStream(target, object : java.io.OutputStream() {
+            override fun write(b: Int) = throw java.io.IOException("No space left on device")
+            override fun write(b: ByteArray, off: Int, len: Int) = throw java.io.IOException("No space left on device")
+        })
+        shadowOf(rule.activity).receiveResult(req.intent, Activity.RESULT_OK, Intent().setData(target))
+        waitFor { app.toast != null }
+        assertEquals("Couldn't save " + Exporter.fileName(f), app.toast)
     }
 
     @Test fun drawingOpensFullScreenWhenBundled() = show("group/base") {
@@ -507,6 +603,63 @@ class SmokeTest {
         host.destroy()
         host.handle("""{"type":"ready"}""") // ignored after destroy
         assertNotEquals(LiveStatus.Ready, host.status)
+    }
+
+    @Test fun appStateSurvivesRecreation() {
+        val saver = appStateSaver(ctx)
+        val a = AppState(ctx)
+        a.host.setMode("stow"); a.host.setStyle("blueprint"); a.host.setFinish("oxblood"); a.host.setExplode(.4f); a.host.setSection(true, "z", .3f)
+        a.host.setIsolate("dock"); a.host.select("dock"); a.host.camera("trays")
+        a.studioPanel = "tools"; a.specsTab = "fit"; a.deskW = 140; a.deskD = 70
+        a.nav.tab("files"); a.nav.go("group/dock")
+        a.host.enterNight() // saved mid-Night shift: the state from before it comes back
+        val saved = (with(saver) { androidx.compose.runtime.saveable.SaverScope { true }.save(a) } as List<*>).map { it as String }
+        val b = saver.restore(saved)!!
+        assertEquals(listOf("files", "group/dock"), b.nav.stack.toList())
+        with(b.host.state) {
+            assertEquals("stow", mode); assertEquals("blueprint", style); assertEquals("oxblood", finish); assertEquals(.4f, explode, .001f)
+            assertTrue(sectionOn); assertEquals("z", sectionAxis); assertEquals(.3f, sectionT, .001f)
+            assertEquals("dock", isolate); assertNull(selected); assertFalse(cinematic)
+        }
+        assertEquals("trays", b.host.lastCamera)
+        assertEquals("tools", b.studioPanel); assertEquals("fit", b.specsTab); assertEquals(140, b.deskW); assertEquals(70, b.deskD)
+        // the first page load carries the restored state
+        val st = JSONObject(URLDecoder.decode(b.host.viewerUrl().substringAfter("state="), "UTF-8"))
+        assertEquals("blueprint", st.getString("style")); assertEquals("dock", st.getString("isolate"))
+        // an isolated group the scene no longer knows is dropped; a routes-only bundle from an older build still restores
+        val odd = saved.toMutableList().also { it[0] = JSONObject(it[0]).put("isolate", "nope").put("style", "neon").toString() }
+        val c = saver.restore(odd)!!
+        assertNull(c.host.state.isolate); assertEquals("studio", c.host.state.style)
+        assertEquals(listOf("specs", "specs/fit"), saver.restore(listOf("specs", "specs/fit"))!!.nav.stack.toList())
+        listOf(a, b, c).forEach { it.host.destroy(); it.scope.cancel() }
+    }
+
+    @Test fun assetImageFollowsItsPath() {
+        var path by mutableStateOf<String?>("concept/board.jpg")
+        var shown: androidx.compose.ui.graphics.ImageBitmap? = null
+        rule.setContent { val img by rememberAssetImage(path, 256); shown = img }
+        rule.waitForIdle()
+        val board = shown
+        assertNotNull(board)
+        rule.runOnUiThread { path = "drawings/base.png" }; rule.waitForIdle()
+        assertNotNull(shown); assertNotSame("the new path's image, not the old one", board, shown)
+        rule.runOnUiThread { path = null }; rule.waitForIdle()
+        assertNull("no path, no image", shown)
+    }
+
+    @Test fun formattingAndCopy() {
+        assertEquals("29.0 kg", fmtMass(28999.2)); assertEquals("1.30 kg", fmtMass(1299.4)); assertEquals("301 g", fmtMass(301.0))
+        val s = Repo.scene(ctx)
+        if (s.fromFile) {
+            assertEquals(46.0, portFromHingeMm(s)!!, 0.5)
+            val dock = storySpecs(story("dock")!!, s)
+            assertTrue(dock.any { it.label == "Laptop" && it.value.startsWith("Slim laptops up to 18 mm thick") })
+            assertTrue(dock.any { it.label == "Footprint" && it.value == "125 × 260 mm (268 with latch)" })
+            assertTrue(storySpecs(story("charge")!!, s).any { it.value == "2 coils, 160 mm apart" })
+            assertTrue(specSheet(s).flatMap { it.rows }.any { it.label == "Laptops" && it.value.contains("18 mm thick") && it.value.contains("46 mm from the hinge end") })
+        }
+        assertFalse(MODES.any { it.body.contains("session and all") })
+        assertFalse(STORIES.flatMap { it.body }.any { it.contains("turn your eyes, not your head") })
     }
 
     @Test fun stillsMatchTheViewerState() {

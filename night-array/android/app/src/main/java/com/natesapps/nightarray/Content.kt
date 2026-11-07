@@ -16,7 +16,7 @@ val MODES = listOf(
         "Slide both into their pockets and they start charging. Two amber marks on the pocket lips say so, and fade out when the batteries are full.",
         "hero-stow.jpg", "trays"),
     ModeInfo("standalone", "Standalone", "Compute stays in the base",
-        "Lift the laptop out and leave with it. The computer in the base keeps both panels running, session and all.",
+        "Lift the laptop out and leave with it. The computer in the base takes over both panels with its own desktop.",
         "hero-standalone.jpg", "hero"),
 )
 
@@ -34,7 +34,7 @@ val STORIES = listOf(
         "Inside the shroud sit two ordinary 27-inch QHD monitors with their plastic housings taken off. Side by side they draw 5120 × 1440: the pixels of a 49-inch super-ultrawide, for the price of two good mainstream screens.",
         listOf(
             "Each panel is a 2560 × 1440 IPS module, the size and resolution the industry builds by the million, which is exactly why it is cheap and why it is good. Together they give almost 1.2 m of active width at 109 pixels per inch: crisp text at arm's length.",
-            "Each panel is toed in 10° about the seam, which brings its outer edge about 106 mm toward you. Both halves face you squarely, so you turn your eyes, not your head.",
+            "Each panel is toed in 10° about the seam, which brings its outer edge about 106 mm toward you. The far corners come about 8 cm closer and meet your eye less obliquely than on a flat pair, though at arm's length you will still turn your head toward the edges.",
             "Between the two active areas runs a 14 mm seam. We don't disguise it. A 4 mm titanium mullion covers the joint and becomes the station's centre line, and most work splits there anyway: code on the left, preview on the right; the call on one side, your notes on the other.",
             "Your OS already knows how to drive two displays. Snap a window to each half, or span one across both. And if a panel gives out in year five, the replacement is a standard 27-inch module on four VESA screws, not a service ticket.",
         ),
@@ -69,7 +69,8 @@ val STORIES = listOf(
         ),
         listOf(
             StorySpec("Position", "Right outer wing"), StorySpec("Slot", "20 × 224 mm, 4 mm lead-in chamfers"), StorySpec("Connector", "Sprung USB-C on the slot floor"),
-            StorySpec("Release", "Press latch, 3 mm travel"), StorySpec("Laptop", "Any slim laptop up to 20 mm thick, on its edge"), StorySpec("Footprint", "125 × 260 mm"),
+            StorySpec("Release", "Press latch, 3 mm travel"), StorySpec("Laptop", "Slim laptops up to 18 mm thick, with a USB-C port on the docking edge near the hinge"),
+            StorySpec("Footprint", "125 × 260 mm (268 with latch)"),
         ),
         listOf(StoryStill("dock-align.jpg", "1 · Align: guide into the open cradle."), StoryStill("dock-lower.jpg", "2 · Lower: seat the laptop onto the connector."), StoryStill("dock-release.jpg", "3 · Press-release & lift.")),
         Preset(mode = "stow", style = "studio", camera = "dock", explode = 0f, dock = "play"), liveLabel = "Play the sequence live",
@@ -84,7 +85,7 @@ val STORIES = listOf(
             "A thin amber mark on each pocket's front lip glows while charging and fades out when the battery is full.",
         ),
         listOf(
-            StorySpec("Standard", "Qi2"), StorySpec("Keyboard", "2 coils, at x = −170 and −10 mm"), StorySpec("Mouse", "1 coil"),
+            StorySpec("Standard", "Qi2"), StorySpec("Keyboard", "2 coils, 160 mm apart"), StorySpec("Mouse", "1 coil"),
             StorySpec("Shielding", "Ferrite plate under every coil"), StorySpec("Pad", "2 mm soft-touch graphite"), StorySpec("Indicators", "30 mm and 16 mm amber marks"),
         ),
         listOf(StoryStill("trays.jpg", "Both pockets, devices stowed."), StoryStill("xray.jpg", "X-ray: coils and ferrite under the pads.")),
@@ -92,7 +93,7 @@ val STORIES = listOf(
     ),
     Story(
         "compute", "05", "Compute", "Compute stays in the base", "A computer, not a monitor waiting for one",
-        "The Array runs on its own. Dock a laptop and it's a guest; lift it out and the base keeps working.",
+        "The Array runs on its own. Dock a laptop and it takes the panels; lift it out and the base carries on.",
         listOf(
             "A full mainboard with a vapor-chamber cooler and a slim blower lives under the left half of the 36 mm base. The power supply sits on the right, beside the mouse pocket. One mains cable feeds everything.",
             "Each 27-inch panel keeps its own scaler board, mounted on the steel spine behind it. To the computer they are simply two monitors on two standard display links: no custom display electronics, nothing proprietary to fail.",
@@ -161,13 +162,15 @@ fun storySpecs(s: Story, scene: Scene): List<StorySpec> = when (s.id) {
     "dock" -> {
         val slotW = scene.span("dock.slot.x"); val slotL = scene.span("dock.slot.z")
         val lead = scene.num("dock.slot.lead_in"); val travel = scene.num("dock.latch.travel")
-        val w = scene.span("dock.x"); val d = scene.span("dock.z")
+        val w = scene.span("dock.x"); val d = scene.span("dock.z"); val withLatch = scene.bbox("dock")?.get(2)
         s.specs.map { r ->
             when (r.label) {
                 "Slot" -> if (slotW != null && slotL != null) r.copy(value = "${fmtNum(slotW)} × ${fmtNum(slotL)} mm, ${fmtNum(lead ?: 4.0)} mm lead-in chamfers") else r
                 "Release" -> if (travel != null) r.copy(value = "Press latch, ${fmtNum(travel)} mm travel") else r
-                "Laptop" -> if (slotW != null) r.copy(value = "Any slim laptop up to ${fmtNum(slotW)} mm thick, on its edge") else r
-                "Footprint" -> if (w != null && d != null) r.copy(value = "${fmtNum(w)} × ${fmtNum(d)} mm") else r
+                "Laptop" -> if (slotW != null) r.copy(value = "Slim laptops up to ${fmtNum(slotW - LAPTOP_CLEARANCE_MM)} mm thick, with a USB-C port on the docking edge near the hinge") else r
+                // the plan footprint, and the depth the Specs and Files show (the latch stands proud of the front face)
+                "Footprint" -> if (w != null && d != null) r.copy(value = "${fmtNum(w)} × ${fmtNum(d)} mm" +
+                    (withLatch?.takeIf { it > d + 1 }?.let { " (${fmtMm(it)} with latch)" } ?: "")) else r
                 else -> r
             }
         }
@@ -191,7 +194,7 @@ fun storySpecs(s: Story, scene: Scene): List<StorySpec> = when (s.id) {
         val kbx = scene.nums("internals.qi_coils_kb_x"); val win = scene.num("base.coil_window_d"); val pad = scene.num("base.pad_t")
         s.specs.map { r ->
             when (r.label) {
-                "Keyboard" -> kbx?.let { r.copy(value = "${it.size} coils, at x = ${it.joinToString(" and ") { v -> fmtNum(v).replace("-", "−") }} mm") } ?: r
+                "Keyboard" -> kbx?.takeIf { it.size >= 2 }?.let { r.copy(value = "${it.size} coils, ${fmtNum(it.max() - it.min())} mm apart") } ?: r
                 "Shielding" -> if (win != null) r.copy(value = "Ferrite under every coil; ${fmtNum(win)} mm windows in the titanium") else r
                 "Pad" -> if (pad != null) r.copy(value = "${fmtNum(pad)} mm soft-touch graphite") else r
                 else -> r

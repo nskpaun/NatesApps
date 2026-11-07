@@ -12,6 +12,8 @@ import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -36,12 +38,14 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.LineBreak
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.lazy.LazyListState
@@ -91,17 +95,69 @@ fun AppTheme(content: @Composable () -> Unit) {
 }
 
 // ---------- type ----------
+/**
+ * The few text sizes below body copy. Nothing that carries information is set smaller than [Micro].
+ * Wide-tracked uppercase is for headings and short labels; captions and hints are sentence case.
+ */
+object Type {
+    /** Tracked uppercase labels, column heads, status lines. */
+    val Micro = 10.sp
+    /** Sentence-case captions and instructions. */
+    val Caption = 12.sp
+}
+
+/** Large font scale (accessibility settings): wide letter spacing is the first thing to give. */
+@Composable
+fun largeFont(): Boolean = LocalDensity.current.fontScale > 1.3f
+
 /** Thin, wide-tracked uppercase text, like the lettering on the concept board. */
 @Composable
 fun Tracked(
     text: String, modifier: Modifier = Modifier, size: TextUnit = 12.sp, color: Color = C.ink,
     weight: FontWeight = FontWeight.Light, tracking: Float = 0.24f, align: TextAlign? = null, maxLines: Int = Int.MAX_VALUE,
+    lineBreak: LineBreak? = null, fitToWidth: Boolean = false,
 ) {
+    // At large font scales the tracking is tightened so labels keep to their lines instead of truncating.
+    val large = largeFont()
+    val tr = if (large) tracking.coerceAtMost(0.06f) else tracking
+    if (fitToWidth && maxLines == 1 && large) {
+        // A one-line label in a fixed-width control (a button, a segment): shrink it to fit rather than cut it off,
+        // but never below the size it has at the default font scale.
+        val fs = LocalDensity.current.fontScale
+        BasicText(
+            text.uppercase(), modifier, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis,
+            style = LocalTextStyle.current.merge(TextStyle(color = color, fontSize = size, fontWeight = weight, letterSpacing = (size.value * tr).sp,
+                textAlign = align ?: TextAlign.Unspecified, lineHeight = (size.value * 1.45f).sp)),
+            autoSize = TextAutoSize.StepBased(minFontSize = (size.value / fs).sp, maxFontSize = size, stepSize = 0.5.sp),
+        )
+        return
+    }
     Text(
         text.uppercase(), modifier, color = color, fontSize = size, fontWeight = weight,
-        letterSpacing = (size.value * tracking).sp, textAlign = align, maxLines = maxLines, lineHeight = (size.value * 1.45f).sp,
+        letterSpacing = (size.value * tr).sp, textAlign = align, maxLines = maxLines, lineHeight = (size.value * 1.45f).sp,
         overflow = if (maxLines == 1) TextOverflow.Ellipsis else TextOverflow.Clip,
+        style = if (lineBreak != null) LocalTextStyle.current.copy(lineBreak = lineBreak) else LocalTextStyle.current,
     )
+}
+
+/** A short tracked uppercase label at the smallest readable size ([Type.Micro]). */
+@Composable
+fun MicroLabel(text: String, modifier: Modifier = Modifier, color: Color = C.muted, tracking: Float = 0.2f, align: TextAlign? = null, maxLines: Int = Int.MAX_VALUE, weight: FontWeight = FontWeight.Normal, fitToWidth: Boolean = false) =
+    Tracked(text, modifier, size = Type.Micro, color = color, weight = weight, tracking = tracking, align = align, maxLines = maxLines, fitToWidth = fitToWidth)
+
+/** Sentence-case caption or instruction ([Type.Caption]), no wide tracking. */
+@Composable
+fun Caption(text: String, modifier: Modifier = Modifier, color: Color = C.ink.copy(alpha = .75f), align: TextAlign? = null) =
+    Text(text.nbUnits(), modifier, color = color, fontSize = Type.Caption, lineHeight = 16.sp, letterSpacing = 0.1.sp, textAlign = align)
+
+/** Marks a part that sits inside the station (hidden in the Studio view, shown in X-ray). */
+@Composable
+fun InternalTag(modifier: Modifier = Modifier) {
+    val shape = RoundedCornerShape(50)
+    Box(
+        modifier.semantics(mergeDescendants = true) { contentDescription = "Internal part" }
+            .clip(shape).border(1.dp, C.amber.copy(alpha = .45f), shape).padding(horizontal = 7.dp, vertical = 1.dp),
+    ) { Tracked("Internal", size = Type.Micro, color = C.amber, weight = FontWeight.Normal, tracking = .1f, maxLines = 1) }
 }
 
 @Composable
@@ -155,7 +211,7 @@ fun LineButton(
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center,
     ) {
         if (leading != null) { leading(); Spacer(Modifier.width(8.dp)) }
-        Tracked(text, size = 11.sp, color = if (enabled) color else color.copy(alpha = .4f), weight = FontWeight.Normal, tracking = 0.17f, maxLines = 1)
+        Tracked(text, size = 11.sp, color = if (enabled) color else color.copy(alpha = .4f), weight = FontWeight.Normal, tracking = 0.17f, maxLines = 1, fitToWidth = true)
     }
 }
 
@@ -187,7 +243,7 @@ fun Segmented(options: List<Pair<String, String>>, selected: String, onSelect: (
                     .clickable(role = Role.Tab) { onSelect(id) }.padding(vertical = 10.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Tracked(label, size = 10.5.sp, color = if (on) C.ink else C.muted, weight = if (on) FontWeight.Normal else FontWeight.Light, tracking = 0.2f, maxLines = 1)
+                Tracked(label, size = 10.5.sp, color = if (on) C.ink else C.muted, weight = if (on) FontWeight.Normal else FontWeight.Light, tracking = 0.2f, maxLines = 1, fitToWidth = true)
                 Spacer(Modifier.height(5.dp))
                 val w by animateDpAsState(if (on) 18.dp else 0.dp, tween(260), label = "segw")
                 Box(Modifier.width(w).height(1.5.dp).background(C.amber))
@@ -224,7 +280,7 @@ fun String.nbUnits(): String = UNIT_GAP.replace(this) { "${it.groupValues[1]}\u0
 fun SpecRow(label: String, value: String, modifier: Modifier = Modifier, last: Boolean = false) {
     Column(modifier) {
         Row(Modifier.fillMaxWidth().padding(vertical = 11.dp), verticalAlignment = Alignment.Top) {
-            Tracked(label, Modifier.weight(0.42f).padding(top = 2.dp, end = 12.dp), size = 9.5.sp, color = C.muted, tracking = 0.2f)
+            Tracked(label, Modifier.weight(0.42f).padding(top = 2.dp, end = 12.dp), size = Type.Micro, color = C.muted, tracking = 0.2f)
             Text(value.nbUnits(), Modifier.weight(0.58f), color = C.ink, fontSize = 14.sp, lineHeight = 20.sp)
         }
         if (!last) Box(Modifier.fillMaxWidth().height(1.dp).background(C.line.copy(alpha = .7f)))
@@ -288,7 +344,9 @@ fun rememberAssetImage(path: String?, maxDim: Int = 1600): State<ImageBitmap?> {
     val ctx = LocalContext.current
     val initial = remember(path, maxDim) { if (path == null) null else if (Img.synchronous) Img.load(ctx, path, maxDim) else Img.cached(path, maxDim) }
     return produceState(initial, path, maxDim) {
-        if (path != null && value == null && !Img.knownMissing(path)) value = withContext(Dispatchers.IO) { Img.load(ctx.applicationContext, path, maxDim) }
+        // produceState keeps its value across key changes: start from this path's own bitmap, never the previous one's
+        value = initial
+        if (path != null && initial == null && !Img.knownMissing(path)) value = withContext(Dispatchers.IO) { Img.load(ctx.applicationContext, path, maxDim) }
     }
 }
 

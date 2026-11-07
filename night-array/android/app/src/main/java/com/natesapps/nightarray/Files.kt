@@ -3,6 +3,7 @@ package com.natesapps.nightarray
 import android.content.ClipData
 import android.content.Context
 import android.content.Intent
+import android.provider.DocumentsContract
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
@@ -40,6 +41,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.io.FileNotFoundException
 
 // =====================================================================================================
 // Export: Share (cache copy + FileProvider) and Save (Storage Access Framework)
@@ -81,6 +83,19 @@ object Exporter {
         val out = ctx.contentResolver.openOutputStream(uri) ?: error("Couldn't open the destination")
         out.use { o -> ctx.assets.open(f.path).use { it.copyTo(o, 64 * 1024) } }
     }
+
+    /**
+     * Save: copies into the document the user just created, and deletes that document again if the copy fails, so no
+     * empty or truncated "night-array-…" file is left behind. Blocking; call it off the main thread. True on success.
+     */
+    fun save(ctx: Context, f: CadFile, uri: android.net.Uri): Boolean {
+        val r = runCatching { copyTo(ctx, f, uri) }
+        r.exceptionOrNull()?.let { e ->
+            android.util.Log.w(ViewerHost.TAG, "Save failed: ${f.path}", e)
+            runCatching { DocumentsContract.deleteDocument(ctx.contentResolver, uri) }
+        }
+        return r.isSuccess
+    }
 }
 
 /** CreateDocument whose MIME type is chosen per launch (each CAD format has its own). */
@@ -100,8 +115,9 @@ fun rememberFileActions(app: AppState, scene: Scene): FileActions {
     val launcher = rememberLauncherForActivityResult(contract) { uri ->
         val f = scene.files.firstOrNull { it.path == pendingPath }
         pendingPath = null
-        if (uri != null && f != null) scope.launch {
-            val ok = runCatching { withContext(Dispatchers.IO) { Exporter.copyTo(ctx, f, uri) } }.isSuccess
+        // The app's scope, not the screen's: leaving the screen mid-copy must not turn a finished save into "Couldn't save".
+        if (uri != null && f != null) app.scope.launch {
+            val ok = withContext(Dispatchers.IO) { Exporter.save(ctx.applicationContext, f, uri) }
             app.toast = if (ok) "Saved ${Exporter.fileName(f)}" else "Couldn't save ${Exporter.fileName(f)}"
         }
     }
@@ -109,8 +125,12 @@ fun rememberFileActions(app: AppState, scene: Scene): FileActions {
         FileActions(
             share = { f ->
                 scope.launch {
-                    val file = runCatching { withContext(Dispatchers.IO) { Exporter.copyForShare(ctx, f) } }.getOrNull()
-                    if (file == null) { app.toast = "${f.format} isn't in this build"; return@launch }
+                    // runCatching inside withContext: leaving the screen cancels the share quietly instead of reporting an error
+                    val copy = withContext(Dispatchers.IO) { runCatching { Exporter.copyForShare(ctx.applicationContext, f) } }
+                    val file = copy.getOrElse { e ->
+                        app.toast = if (e is FileNotFoundException) "${f.format} isn't in this build" else "Couldn't prepare the ${f.format} file"
+                        return@launch
+                    }
                     runCatching { ctx.startActivity(Exporter.shareIntent(ctx, f, file).addFlags(if (ctx is android.app.Activity) 0 else Intent.FLAG_ACTIVITY_NEW_TASK)) }
                         .onFailure { app.toast = "No app can receive a ${f.format} file" }
                 }
@@ -169,14 +189,14 @@ private fun AssemblyCard(app: AppState, scene: Scene, actions: FileActions, modi
     Panel(modifier.testTag("assembly-card"), padding = 0.dp) {
         Box(Modifier.fillMaxWidth().aspectRatio(16f / 9f)) {
             Still(listOf("exploded.jpg", "hero-stow.jpg", "cad.jpg"), Modifier.fillMaxSize(), maxDim = 1200, sketchMode = "stow", animateSketch = false)
-            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, C.panel), startY = 300f)))
+            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to Color.Transparent, .6f to Color.Transparent, 1f to C.panel)))
         }
         Column(Modifier.padding(horizontal = 18.dp).padding(bottom = 10.dp)) {
             Kicker("Full assembly")
             Spacer(Modifier.height(8.dp))
             Tracked(scene.name.substringBefore(" —").ifBlank { "Night Array" }, size = 18.sp, tracking = .2f)
             Spacer(Modifier.height(6.dp))
-            Text("Stow pose · ${fmtBox(o)} · ${scene.groups.size} groups, ${scene.parts.size} parts, in millimetres.", color = C.muted, fontSize = 13.sp, lineHeight = 19.sp)
+            Text("Stow pose · ${fmtBox(o)} · ${scene.groups.size} groups, ${scene.parts.size} parts.".nbUnits(), color = C.muted, fontSize = 13.sp, lineHeight = 19.sp)
             Spacer(Modifier.height(8.dp))
             val files = scene.filesOf(null)
             files.forEachIndexed { i, f -> FileRow(f, actions, last = i == files.lastIndex) }
@@ -257,10 +277,13 @@ fun FileRow(f: CadFile, actions: FileActions, last: Boolean = false) {
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(FORMAT_NOTES[f.format] ?: f.label, color = C.ink.copy(alpha = .9f), fontSize = 13.5.sp, lineHeight = 18.sp)
-                Text(
-                    when { size > 0 -> "${fmtBytes(size)} · ${Exporter.fileName(f)}"; size == -2L -> Exporter.fileName(f); else -> "Not in this build" },
-                    color = C.muted, fontSize = 11.5.sp, maxLines = 1, softWrap = false, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                )
+                // The size never truncates, and a long name loses its middle, not its extension.
+                if (size == -1L) Text("Not in this build", color = C.muted, fontSize = 11.5.sp, maxLines = 1)
+                else Row {
+                    if (size > 0) Text("${fmtBytes(size)} · ".nbUnits(), color = C.muted, fontSize = 11.5.sp, maxLines = 1, softWrap = false)
+                    Text(Exporter.fileName(f), Modifier.weight(1f, fill = false), color = C.muted, fontSize = 11.5.sp, maxLines = 1, softWrap = false,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.MiddleEllipsis)
+                }
             }
             IconCircle(Icons.Outlined.Share, "Share ${f.format}", { if (present) actions.share(f) }, Modifier.graphicsLayer { alpha = if (present) 1f else .35f }.testTag("share-${f.id}"),
                 size = 38.dp, background = C.panel2)
@@ -312,7 +335,7 @@ fun GroupScreen(app: AppState, scene: Scene, id: String) {
                     SpecRow("Volume", if (g.volumeCm3 > 0) "${fmtMm(g.volumeCm3)} cm³" else "—")
                     SpecRow("Parts", "${g.parts.size}")
                     Column(Modifier.padding(top = 12.dp)) {
-                        Tracked("Materials", size = 9.5.sp, color = C.muted, tracking = .2f)
+                        MicroLabel("Materials", color = C.muted, tracking = .2f, weight = FontWeight.Light)
                         Spacer(Modifier.height(10.dp))
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             g.materials.forEach { m ->
@@ -372,8 +395,8 @@ private fun PartLine(scene: Scene, p: Part, last: Boolean) {
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(p.name, color = C.ink, fontSize = 14.sp)
-                    if (p.internal) { Spacer(Modifier.width(8.dp)); Tracked("internal", size = 8.sp, color = C.amber, tracking = .2f, weight = FontWeight.Normal) }
+                    Text(p.name, Modifier.weight(1f, fill = false), color = C.ink, fontSize = 14.sp)
+                    if (p.internal) { Spacer(Modifier.width(8.dp)); InternalTag() }
                 }
                 Text(listOf(scene.materialLabel(p.material), fmtBox(p.bboxMm).takeIf { it != "—" }).filterNotNull().joinToString(" · "), color = C.muted, fontSize = 11.5.sp)
             }
@@ -421,7 +444,7 @@ fun DrawingScreen(app: AppState, scene: Scene, id: String) {
             Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f)) {
                 Tracked("Drawing · ${g.name}", size = 12.sp, tracking = .22f, maxLines = 1)
-                Tracked("Pinch or double-tap to zoom", size = 8.5.sp, color = C.muted, tracking = .26f, modifier = Modifier.padding(top = 3.dp))
+                MicroLabel("Pinch or double-tap to zoom", Modifier.padding(top = 3.dp), color = C.muted, tracking = .2f, weight = FontWeight.Light)
             }
             scene.filesOf(g.id).firstOrNull { it.format == "SVG" }?.let { svg ->
                 IconCircle(Icons.Outlined.Share, "Share SVG", { actions.share(svg) }, size = 38.dp, background = C.panel2)
