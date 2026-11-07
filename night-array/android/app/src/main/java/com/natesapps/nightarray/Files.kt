@@ -263,7 +263,7 @@ private fun FormatsLegend(modifier: Modifier) {
             }
         }
         Spacer(Modifier.height(10.dp))
-        Text("STEP, STL, SVG and DXF are in millimetres; GLB is in metres, Y up.", color = C.muted.copy(alpha = .8f), fontSize = 12.sp)
+        Text("STEP and STL are in millimetres, Z up, so they open upright in CAD tools and slicers. SVG and DXF are in millimetres; GLB is in metres, Y up.", color = C.muted.copy(alpha = .8f), fontSize = 12.sp)
     }
 }
 

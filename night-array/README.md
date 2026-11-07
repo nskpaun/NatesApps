@@ -85,6 +85,7 @@ cd night-array/cad && python3 -m venv .venv && .venv/bin/pip install -r requirem
 cd ../viewer && npm ci
 npm run build          # bundle into android/app/src/main/assets/viewer/
 npm test               # headless WebGL2 smoke test of the whole JS API
+npm run test:bridge    # replays the exact JS the Android code sends (run step 3's gradle tests first)
 npm run stills         # re-render android/app/src/main/assets/renders/*.jpg (about 6 minutes)
 
 # 3. App

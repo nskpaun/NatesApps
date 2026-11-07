@@ -147,7 +147,11 @@ class ViewerHost(private val appContext: Context) {
     fun setCinematic(v: Boolean) { state.cinematic = v; push("cinematic", v); if (v) picked = null }
     fun setIsolate(g: String?) {
         state.isolate = g; push(JSONObject().put("isolate", g ?: JSONObject.NULL))
+        // A page created while isolated never got the saved preset (see ensureWebView): bring it back on "Show all".
+        if (g == null && cameraOwed) { cameraOwed = false; if (lastCamera != "hero" && !state.cinematic) camera(lastCamera) }
     }
+    /** True when the current page was created while a group was isolated, so it still owes the lastCamera preset. */
+    private var cameraOwed = false
     fun select(g: String?) { state.selected = g; push(JSONObject().put("selected", g ?: JSONObject.NULL)) }
 
     fun camera(name: String) { lastCamera = name; call("NA.camera(${JSONObject.quote(name)})") }
@@ -463,6 +467,7 @@ class ViewerHost(private val appContext: Context) {
         // "hero": bring back the preset the Camera chips and the still underneath show. Queued commands run before the
         // first frame, so it's a jump, not a move. Not while isolated (the page frames that group itself) or in Night
         // shift (its own orbit; exitNight() sends the camera). In front, so commands queued since (frame, dock) win.
+        cameraOwed = state.isolate != null && lastCamera != "hero"
         if (!state.cinematic && state.isolate == null && lastCamera != "hero" && queue.none { it is String && it.startsWith("NA.camera(") })
             queue.add(0, "NA.camera(${JSONObject.quote(lastCamera)})")
         loadGeneration++

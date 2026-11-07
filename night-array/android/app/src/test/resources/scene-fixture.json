@@ -2282,7 +2282,7 @@
    "format": "STEP",
    "label": "Full assembly",
    "path": "files/night-array-assembly.step",
-   "bytes": 5917362
+   "bytes": 5918723
   },
   {
    "id": "assembly-glb",
@@ -2298,7 +2298,7 @@
    "format": "STEP",
    "label": "Dual 27″ display",
    "path": "files/parts/display.step",
-   "bytes": 1197748
+   "bytes": 1198357
   },
   {
    "id": "display-stl",
@@ -2330,7 +2330,7 @@
    "format": "STEP",
    "label": "Neck & light bar",
    "path": "files/parts/stand.step",
-   "bytes": 553495
+   "bytes": 553744
   },
   {
    "id": "stand-stl",
@@ -2338,7 +2338,7 @@
    "format": "STL",
    "label": "Neck & light bar",
    "path": "files/parts/stand.stl",
-   "bytes": 149584
+   "bytes": 149184
   },
   {
    "id": "stand-svg",
@@ -2362,7 +2362,7 @@
    "format": "STEP",
    "label": "Base & charging trays",
    "path": "files/parts/base.step",
-   "bytes": 718112
+   "bytes": 717813
   },
   {
    "id": "base-stl",
@@ -2394,7 +2394,7 @@
    "format": "STEP",
    "label": "Laptop dock",
    "path": "files/parts/dock.step",
-   "bytes": 531346
+   "bytes": 531516
   },
   {
    "id": "dock-stl",
@@ -2426,7 +2426,7 @@
    "format": "STEP",
    "label": "Laptop",
    "path": "files/parts/laptop.step",
-   "bytes": 77827
+   "bytes": 77644
   },
   {
    "id": "laptop-stl",
@@ -2458,7 +2458,7 @@
    "format": "STEP",
    "label": "Low-profile keyboard",
    "path": "files/parts/keyboard.step",
-   "bytes": 1274847
+   "bytes": 1276105
   },
   {
    "id": "keyboard-stl",
@@ -2490,7 +2490,7 @@
    "format": "STEP",
    "label": "Mouse",
    "path": "files/parts/mouse.step",
-   "bytes": 551852
+   "bytes": 554677
   },
   {
    "id": "mouse-stl",
@@ -2522,7 +2522,7 @@
    "format": "STEP",
    "label": "Felt desk mat",
    "path": "files/parts/deskmat.step",
-   "bytes": 22254
+   "bytes": 22312
   },
   {
    "id": "deskmat-stl",
@@ -2554,7 +2554,7 @@
    "format": "STEP",
    "label": "Internals",
    "path": "files/parts/internals.step",
-   "bytes": 811395
+   "bytes": 809287
   },
   {
    "id": "internals-stl",

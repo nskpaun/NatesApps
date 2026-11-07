@@ -87,6 +87,24 @@ page, `NA.idle(ms)` resolves once nothing is animating and a frame is drawn, `NA
 breathing so every frame is final, and `NA.ready`, `NA.error`, `NA._viewer` expose the state. The stills tool
 also uses `NA._viewer.stillCamera(spec)` (a preset framing with its own lens) and `forcePixelRatio`.
 
+## Contract test (app ↔ viewer)
+
+`npm run test:bridge` replays what the Android app really sends. First run `gradle testDebugUnitTest` in
+`android/`: its Robolectric `ContractDump` test drives the real `ViewerHost` and Studio code through seven
+realistic sessions. It writes the exact `viewerUrl()` strings and the exact strings passed to
+`evaluateJavascript` to `android/app/build/contract/kotlin-dump.json`.
+
+`test/bridge.mjs` then loads the bundle the way `WebViewAssetLoader` serves it: host
+`appassets.androidplatform.net`, MIME types guessed from the file name with a text/plain fallback, and
+no network. It injects `NightArrayHost` and replays every string. It fails if:
+
+- `window.NA` is missing at `load`;
+- `?state=` or any later state differs from what Kotlin expects;
+- a camera name or an emitted event doesn't parse the way `ViewerHost.handle()` reads it;
+- the page logs an error or makes any off-host request.
+
+Renaming a key on either side makes it fail.
+
 ## Source map
 
 | file | |
