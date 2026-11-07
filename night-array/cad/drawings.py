@@ -254,7 +254,11 @@ def project(shape, view, poly=False):
         d = ISO_DIR
     else:
         d = (0, 0, 1)
-    txt = cqsvg.getSVG(s, {"projectionDir": d, "showAxes": False, "showHidden": True, "width": 800, "height": 600})
+    try:
+        txt = cqsvg.getSVG(s, {"projectionDir": d, "showAxes": False, "showHidden": True, "width": 800, "height": 600})
+    except Exception as ex:  # noqa: BLE001  exact HLR found no edges (seen on split swept solids): polygonal HLR
+        print(f"    exact HLR failed in view {view} ({ex}); using polygonal HLR", flush=True)
+        return project_poly(shape, view)
     return _parse(txt)
 
 
