@@ -74,6 +74,10 @@ class Screenshots {
     @Test fun deskFit() = shoot("15-desk-fit", "specs", prep = { it.specsTab = "fit"; it.deskW = 160; it.deskD = 80 })
     @Test fun deskFitNo() = shoot("16-desk-fit-stow-only", "specs", prep = { it.specsTab = "fit"; it.deskW = 150; it.deskD = 60 })
     @Test fun board() = shoot("17-board", "board")
+    @Test fun buy() = shoot("47-buy", "specs", prep = { it.specsTab = "buy" })
+    @Test fun buySwaps() = shoot("48-buy-swaps", "specs", prep = { it.specsTab = "buy" }, extra = {
+        rule.onNodeWithTag("buy-swaps").performClick(); tick(500); rule.onNodeWithTag("buy").performScrollToKey("i-monitor"); tick(800)
+    })
     @Test fun night() = shoot("18-night-shift", "explore", extra = { app.startNight() })
 
     @Config(qualifiers = "w1280dp-h800dp-mdpi")

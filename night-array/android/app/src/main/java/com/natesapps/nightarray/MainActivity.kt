@@ -130,6 +130,12 @@ class AppState(ctx: Context, start: String = "explore") {
         if (tabOf(nav.top) == "studio") nav.tab("studio") else nav.go("studio")
     }
 
+    /** Opens a Specs segment (sheet, bom, fit, buy). Pushes like [openStudio] so Back returns to where you were. */
+    fun openSpecs(section: String) {
+        specsTab = section
+        if (tabOf(nav.top) == "specs") nav.tab("specs") else nav.go("specs")
+    }
+
     init {
         // Lighter rendering on low-memory phones; the user can still pick High in Tools.
         val am = ctx.getSystemService(Context.ACTIVITY_SERVICE) as? android.app.ActivityManager

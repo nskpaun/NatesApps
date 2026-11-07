@@ -50,7 +50,7 @@ import kotlin.math.max
 import kotlin.math.roundToInt
 import kotlin.math.sin
 
-private val SPEC_TABS = listOf("sheet" to "Sheet", "bom" to "BOM", "fit" to "Desk fit")
+private val SPEC_TABS = listOf("sheet" to "Sheet", "bom" to "BOM", "fit" to "Desk fit", "buy" to "Buy")
 
 @Composable
 fun SpecsScreen(app: AppState, scene: Scene, section: String?) {
@@ -69,7 +69,7 @@ fun SpecsScreen(app: AppState, scene: Scene, section: String?) {
                         Spacer(Modifier.height(8.dp))
                         Tracked("Specs", size = 20.sp, tracking = .2f)
                     }
-                    Segmented(SPEC_TABS, app.specsTab, { app.specsTab = it }, Modifier.width(340.dp), tagPrefix = "specs")
+                    Segmented(SPEC_TABS, app.specsTab, { app.specsTab = it }, Modifier.width(380.dp), tagPrefix = "specs")
                 }
             } else Column(Modifier.readable(maxW).statusBarsPadding().padding(horizontal = pad).padding(top = 22.dp)) {
                 ScreenTitle("Specifications", "Specs")
@@ -80,6 +80,7 @@ fun SpecsScreen(app: AppState, scene: Scene, section: String?) {
                 when (t) {
                     "bom" -> BomList(scene, pad, maxW)
                     "fit" -> DeskFit(app, scene, pad, maxW)
+                    "buy" -> BuyList(app, pad, maxW)
                     else -> SpecSheet(scene, pad, maxW)
                 }
             }
