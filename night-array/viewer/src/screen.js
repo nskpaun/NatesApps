@@ -1,6 +1,7 @@
 // One 5120x1440-style desktop painted across BOTH panels, split exactly like an OS spans two displays:
 // canvas x in [0, W/2) is the left monitor (u 0 -> 0.5), [W/2, W) the right monitor (u 0.5 -> 1).
-import { rng, clamp } from './util.js';
+import { rng } from './util.js';
+import { ditherOverlay } from './textures.js';
 
 const FONT = 'Inter, Roboto, "Helvetica Neue", Arial, sans-serif';
 
@@ -84,11 +85,14 @@ function paintDunes(g, W, H) {
       wash.addColorStop(0.35, `rgba(255,150,80,${0.16 * k})`);
       wash.addColorStop(1, 'rgba(255,150,80,0)');
       g.strokeStyle = wash;
-      g.lineWidth = H * 0.05;
-      g.filter = `blur(${(H * 0.012).toFixed(1)}px)`;
-      curve(g, L.pts, W, H, false);
-      g.stroke();
-      g.filter = 'none';
+      // soft falloff from stacked strokes (canvas blur filters are very slow in software canvas)
+      g.globalAlpha = 0.34;
+      for (const lw of [0.075, 0.055, 0.038, 0.024, 0.012]) {
+        g.lineWidth = H * lw;
+        curve(g, L.pts, W, H, false);
+        g.stroke();
+      }
+      g.globalAlpha = 1;
       g.restore();
       // the rim light on the crest
       g.save();
@@ -138,16 +142,28 @@ function paintMenuBar(g, x0, W, H, right) {
   }
 }
 
-function paintWindow(g, x, y, w, h, H, kind, r) {
+function paintWindow(g, x, y, w, h, H, kind, r, frost) {
   const rad = H * 0.012;
   g.save();
-  g.shadowColor = 'rgba(0,0,0,0.55)';
-  g.shadowBlur = H * 0.04;
-  g.shadowOffsetY = H * 0.01;
+  g.shadowColor = 'rgba(0,0,0,0.5)';
+  g.shadowBlur = H * 0.035;
+  g.shadowOffsetY = H * 0.008;
   rr(g, x, y, w, h, rad);
-  g.fillStyle = 'rgba(17,14,13,0.86)';
+  g.fillStyle = 'rgba(14,11,10,0.9)';
   g.fill();
   g.restore();
+  if (frost) {
+    // frosted glass: the wallpaper behind, heavily blurred, glows through the window
+    g.save();
+    rr(g, x, y, w, h, rad);
+    g.clip();
+    g.globalAlpha = 0.85;
+    g.drawImage(frost, 0, 0, g.canvas.width, g.canvas.height);
+    g.globalAlpha = 1;
+    g.fillStyle = 'rgba(16,12,11,0.5)';
+    g.fillRect(x, y, w, h);
+    g.restore();
+  }
   rr(g, x, y, w, h, rad);
   g.strokeStyle = 'rgba(242,234,225,0.09)';
   g.lineWidth = Math.max(1, H * 0.0012);
@@ -250,13 +266,21 @@ function paintDock(g, cx, y, H) {
   }
 }
 
-function dither(g, W, H, seed) {
-  const img = g.getImageData(0, 0, W, H), d = img.data, r = rng(seed);
-  for (let i = 0; i < d.length; i += 4) {
-    const n = (r() - 0.5) * 3.2;
-    d[i] = clamp(d[i] + n, 0, 255); d[i + 1] = clamp(d[i + 1] + n, 0, 255); d[i + 2] = clamp(d[i + 2] + n, 0, 255);
-  }
-  g.putImageData(img, 0, 0);
+function frostOf(canvas) {
+  // two-step downscale = a wide, cheap blur
+  const a = document.createElement('canvas');
+  a.width = Math.max(8, canvas.width >> 3); a.height = Math.max(8, canvas.height >> 3);
+  const ag = a.getContext('2d');
+  ag.imageSmoothingQuality = 'high';
+  ag.drawImage(canvas, 0, 0, a.width, a.height);
+  const b = document.createElement('canvas');
+  b.width = Math.max(4, a.width >> 2); b.height = Math.max(4, a.height >> 2);
+  const bg = b.getContext('2d');
+  bg.imageSmoothingQuality = 'high';
+  bg.drawImage(a, 0, 0, b.width, b.height);
+  ag.clearRect(0, 0, a.width, a.height);
+  ag.drawImage(b, 0, 0, a.width, a.height);
+  return a;
 }
 
 /**
@@ -273,7 +297,7 @@ export function paintScreen(canvas, mode) {
   paintDunes(g, W, H);
   const r = rng(31);
   if (mode === 'stow') {
-    g.fillStyle = 'rgba(4,3,3,0.8)';
+    g.fillStyle = 'rgba(4,3,3,0.66)';
     g.fillRect(0, 0, W, H);
     g.fillStyle = 'rgba(242,234,225,0.5)';
     g.textAlign = 'center';
@@ -296,12 +320,55 @@ export function paintScreen(canvas, mode) {
     paintMenuBar(g, 0, half, H, false);
     paintMenuBar(g, half, half, H, true);
     if (mode === 'work') {
-      const m = half * 0.035, top = H * 0.07, bottom = H * 0.86;
-      paintWindow(g, m, top, half - m * 2, bottom - top, H, 'code', r);
-      paintWindow(g, half + m, top, half - m * 2, bottom - top, H, 'design', r);
+      // one window snapped to each half (like an OS spans two displays), frosted so the dunes glow through
+      const frost = frostOf(canvas);
+      const m = half * 0.045, top = H * 0.075, bottom = H * 0.8;
+      paintWindow(g, m, top, half - m * 2, bottom - top, H, 'code', r, frost);
+      paintWindow(g, half + m, top, half - m * 2, bottom - top, H, 'design', r, frost);
     }
     paintDock(g, half * 0.5, H * 0.935, H);
   }
   g.restore();
-  dither(g, W, H, 17);
+  ditherOverlay(g, W, H, 0.4);
+}
+
+/**
+ * The live desktop texture on `display_screen`. The canvas aspect comes from scene.json screen.canvas
+ * (e.g. 5120x1440); its resolution is scaled down for phones. glTF UVs have v = 0 at the top, so flipY = false.
+ */
+export class ScreenSurface {
+  constructor(THREE, screenDef, scale = 1) {
+    const canvas = (screenDef && screenDef.canvas) || [5120, 1440];
+    this.THREE = THREE;
+    this.aspect = canvas[0] / canvas[1];
+    this.canvas = document.createElement('canvas');
+    this.mode = null;
+    this.setScale(scale);
+  }
+
+  setScale(scale) {
+    const W = Math.round(Math.min(4096, 2560 * scale) / 2) * 2;
+    const H = Math.round(W / this.aspect);
+    if (this.canvas.width === W && this.canvas.height === H && this.texture) return false;
+    this.canvas.width = W;
+    this.canvas.height = H;
+    if (this.texture) this.texture.dispose();
+    const T = this.THREE;
+    this.texture = new T.CanvasTexture(this.canvas);
+    this.texture.colorSpace = T.SRGBColorSpace;
+    this.texture.flipY = false;
+    this.texture.anisotropy = 8;
+    this.texture.generateMipmaps = true;
+    this.texture.minFilter = T.LinearMipmapLinearFilter;
+    if (this.mode) this.paint(this.mode, true);
+    return true;
+  }
+
+  paint(mode, force = false) {
+    if (mode === this.mode && !force) return false;
+    this.mode = mode;
+    paintScreen(this.canvas, mode);
+    this.texture.needsUpdate = true;
+    return true;
+  }
 }

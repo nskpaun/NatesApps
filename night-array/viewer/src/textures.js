@@ -11,157 +11,196 @@ function canvasTexture(canvas, { srgb = true, repeat = false, flipY = true, anis
   return t;
 }
 
-/** Brushed-metal streaks along u: a subtle colour modulation map and a stronger roughness map. */
+/**
+ * Brushed-metal streaks along u: per-row noise that drifts slowly along the row, at low contrast so it
+ * averages out when minified (no moire bands) and reads as fine brushing up close. Mean values are
+ * 236 (colour) and 214 (roughness), see materials.js.
+ */
 export function brushedTextures() {
-  const W = 1024, H = 256;
-  const mk = () => makeCanvas(W, H);
-  const cMap = mk(), cRough = mk();
+  const W = 512, H = 256;
+  const cMap = makeCanvas(W, H), cRough = makeCanvas(W, H);
   const a = cMap.getContext('2d'), b = cRough.getContext('2d');
-  a.fillStyle = 'rgb(236,236,236)'; a.fillRect(0, 0, W, H);
-  b.fillStyle = 'rgb(214,214,214)'; b.fillRect(0, 0, W, H);
+  const ia = a.createImageData(W, H), ib = b.createImageData(W, H);
   const r = rng(7);
-  for (let i = 0; i < 5200; i++) {
-    const y = Math.floor(r() * H) + 0.5;
-    const x = r() * W;
-    const len = 30 + r() * r() * 900;
-    const light = r() < 0.5;
-    const alpha = 0.03 + r() * 0.1;
-    for (const [ctx, k] of [[a, 1], [b, 2.2]]) {
-      ctx.strokeStyle = light ? `rgba(255,255,255,${alpha * k})` : `rgba(0,0,0,${alpha * k})`;
-      ctx.lineWidth = r() < 0.85 ? 1 : 2;
-      ctx.beginPath();
-      ctx.moveTo(x, y); ctx.lineTo(x + len, y);
-      if (x + len > W) { ctx.moveTo(x - W, y); ctx.lineTo(x + len - W, y); }
-      ctx.stroke();
+  const KN = 8; // knots per row for the slow drift along u
+  for (let y = 0; y < H; y++) {
+    const row = (r() - 0.5) * 2;
+    const knots = [];
+    for (let k = 0; k <= KN; k++) knots.push((r() - 0.5) * 2);
+    knots[KN] = knots[0]; // tile seamlessly along u
+    const scratch = r() < 0.08 ? (r() - 0.5) * 2 : 0;
+    for (let x = 0; x < W; x++) {
+      const f = (x / W) * KN, k = Math.floor(f), t = f - k;
+      const s = t * t * (3 - 2 * t);
+      const drift = knots[k] * (1 - s) + knots[k + 1] * s;
+      const n = row * 0.6 + drift * 0.4 + scratch;
+      const i = (y * W + x) * 4;
+      const cv = 236 + n * 6, rv = 214 + n * 16;
+      ia.data[i] = ia.data[i + 1] = ia.data[i + 2] = cv; ia.data[i + 3] = 255;
+      ib.data[i] = ib.data[i + 1] = ib.data[i + 2] = rv; ib.data[i + 3] = 255;
     }
   }
+  a.putImageData(ia, 0, 0);
+  b.putImageData(ib, 0, 0);
   const map = canvasTexture(cMap, { srgb: false, repeat: true, aniso: 8 });
   const rough = canvasTexture(cRough, { srgb: false, repeat: true, aniso: 8 });
   return { map, rough };
 }
 
-/** Dark smoked-oak desk top: long, quiet grain with a little large-scale mottling. 3.6 m x 1.25 m. */
+/**
+ * A small tile of grey noise (mid-grey +- amp). Drawn with 'overlay' it dithers dark gradients against banding
+ * without a full-size getImageData pass (which is slow on phones and in software canvas).
+ */
+export function noiseTile(size = 128, amp = 24, seed = 3) {
+  const c = makeCanvas(size, size), g = c.getContext('2d');
+  const img = g.createImageData(size, size), d = img.data, r = rng(seed);
+  for (let i = 0; i < d.length; i += 4) {
+    const n = 128 + (r() - 0.5) * 2 * amp;
+    d[i] = d[i + 1] = d[i + 2] = n; d[i + 3] = 255;
+  }
+  g.putImageData(img, 0, 0);
+  return c;
+}
+
+export function ditherOverlay(g, W, H, alpha = 1, tile = null) {
+  g.save();
+  g.globalCompositeOperation = 'overlay';
+  g.globalAlpha = alpha;
+  g.fillStyle = g.createPattern(tile || noiseTile(), 'repeat');
+  g.fillRect(0, 0, W, H);
+  g.restore();
+}
+
+/** Dark smoked-oak desk top: quiet long grain, three wide boards, a little mottling. Covers 4.2 m x 2.0 m. */
 export function deskTextures(scale = 1) {
   const W = Math.round(2048 * scale), H = Math.round(1024 * scale);
   const c = makeCanvas(W, H), cr = makeCanvas(W, H);
   const g = c.getContext('2d'), gr = cr.getContext('2d');
-  g.fillStyle = '#1b1410'; g.fillRect(0, 0, W, H);
-  gr.fillStyle = 'rgb(120,120,120)'; gr.fillRect(0, 0, W, H);
+  g.fillStyle = '#18110d'; g.fillRect(0, 0, W, H);
+  gr.fillStyle = 'rgb(150,150,150)'; gr.fillRect(0, 0, W, H);
   const r = rng(11);
-  // large mottling
-  for (let i = 0; i < 60; i++) {
-    const x = r() * W, y = r() * H, rad = (80 + r() * 380) * scale;
+  // boards run along x (the desk's long side); each gets its own tone
+  const boards = 5;
+  for (let i = 0; i < boards; i++) {
+    const y0 = (i / boards) * H, h = H / boards;
+    const k = r();
+    g.fillStyle = `rgba(${k < 0.5 ? '48,32,22' : '6,4,3'},${0.18 + r() * 0.2})`;
+    g.fillRect(0, y0, W, h);
+    g.fillStyle = 'rgba(0,0,0,0.55)';
+    g.fillRect(0, y0, W, Math.max(1, 1.2 * scale));
+    gr.fillStyle = 'rgba(255,255,255,0.4)';
+    gr.fillRect(0, y0, W, Math.max(1, 1.2 * scale));
+  }
+  // large soft mottling
+  for (let i = 0; i < 46; i++) {
+    const x = r() * W, y = r() * H, rad = (90 + r() * 360) * scale;
     const grd = g.createRadialGradient(x, y, 0, x, y, rad);
-    const warm = r() < 0.5;
-    grd.addColorStop(0, warm ? 'rgba(60,40,26,0.18)' : 'rgba(8,6,5,0.25)');
+    grd.addColorStop(0, r() < 0.5 ? 'rgba(62,42,28,0.16)' : 'rgba(5,3,2,0.22)');
     grd.addColorStop(1, 'rgba(0,0,0,0)');
     g.fillStyle = grd; g.fillRect(x - rad, y - rad, rad * 2, rad * 2);
   }
-  // grain lines along x with gentle waves
-  for (let i = 0; i < 900; i++) {
-    const y0 = r() * H, amp = (2 + r() * 10) * scale, freq = 0.0015 + r() * 0.004, ph = r() * 6.28;
-    const light = r() < 0.42;
-    const alpha = 0.035 + r() * 0.09;
-    const x0 = r() * W * 0.6 - W * 0.2, x1 = x0 + W * (0.4 + r() * 0.9);
-    g.strokeStyle = light ? `rgba(92,66,46,${alpha})` : `rgba(5,3,2,${alpha * 1.3})`;
-    gr.strokeStyle = light ? `rgba(90,90,90,${alpha * 1.6})` : `rgba(200,200,200,${alpha * 1.6})`;
-    const lw = (0.6 + r() * 2.2) * scale;
+  // grain: long gently waving lines
+  const seg = 48 * scale;
+  for (let i = 0; i < 380; i++) {
+    const y0 = r() * H, amp = (1.5 + r() * 7) * scale, freq = (0.0012 + r() * 0.003) / scale, ph = r() * 6.28;
+    const light = r() < 0.4;
+    const alpha = 0.03 + r() * 0.07;
+    const x0 = r() * W * 0.7 - W * 0.2, x1 = x0 + W * (0.35 + r() * 0.9);
+    g.strokeStyle = light ? `rgba(98,70,48,${alpha})` : `rgba(4,2,1,${alpha * 1.4})`;
+    gr.strokeStyle = light ? `rgba(70,70,70,${alpha * 1.8})` : `rgba(215,215,215,${alpha * 1.8})`;
+    const lw = (0.7 + r() * 2.4) * scale;
     g.lineWidth = lw; gr.lineWidth = lw;
     for (const ctx of [g, gr]) {
       ctx.beginPath();
-      for (let x = x0; x <= x1; x += 24 * scale) {
+      for (let x = x0; x <= x1; x += seg) {
         const y = y0 + Math.sin(x * freq + ph) * amp + Math.sin(x * freq * 3.1 + ph * 2) * amp * 0.25;
         if (x === x0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
       }
       ctx.stroke();
     }
   }
-  // fine pores
-  const img = g.getImageData(0, 0, W, H), d = img.data;
-  for (let i = 0; i < d.length; i += 4) {
-    const n = (r() - 0.5) * 7;
-    d[i] = clamp(d[i] + n, 0, 255); d[i + 1] = clamp(d[i + 1] + n * 0.85, 0, 255); d[i + 2] = clamp(d[i + 2] + n * 0.7, 0, 255);
-  }
-  g.putImageData(img, 0, 0);
+  ditherOverlay(g, W, H, 0.5, noiseTile(128, 40, 12));
+  ditherOverlay(gr, W, H, 0.6, noiseTile(128, 50, 13));
   return { map: canvasTexture(c, { aniso: 8 }), rough: canvasTexture(cr, { srgb: false, aniso: 8 }) };
 }
 
 /**
  * The night room around the desk, painted onto a cylinder (u = angle, u 0.5 = behind the station):
  * tall windows onto an out-of-focus city, warm sconces between them, a dark wall behind the camera.
+ * Everything here is out of focus, so it is painted at half resolution and upscaled (a free blur);
+ * no canvas filters and no per-pixel passes, which are very slow in software canvas.
  */
-export function backdropTexture(W = 3072, H = 768) {
-  const c = makeCanvas(W, H);
+export function backdropTexture(W = 2048, H = 512, R = 6) {
+  const w = W >> 1, h = H >> 1;
+  const c = makeCanvas(w, h);
   const g = c.getContext('2d');
   const r = rng(23);
   // cylinder spans y in [-1.2, 3.8] m; row 0 = top
-  const yToRow = (y) => ((3.8 - y) / 5.0) * H;
-  const uToX = (u) => u * W;
+  const yToRow = (y) => ((3.8 - y) / 5.0) * h;
+  const uToX = (u) => u * w;
+  const metre = w / (2 * Math.PI * R); // px per metre along the wall
 
-  // base wall gradient
-  const wall = g.createLinearGradient(0, 0, 0, H);
-  wall.addColorStop(0, '#050404');
-  wall.addColorStop(yToRow(2.2) / H, '#0d0a08');
-  wall.addColorStop(yToRow(0.9) / H, '#191210');
-  wall.addColorStop(yToRow(0.0) / H, '#130e0b');
-  wall.addColorStop(1, '#070504');
-  g.fillStyle = wall; g.fillRect(0, 0, W, H);
+  const wall = g.createLinearGradient(0, 0, 0, h);
+  wall.addColorStop(0, '#040303');
+  wall.addColorStop(yToRow(2.4) / h, '#0a0706');
+  wall.addColorStop(yToRow(1.1) / h, '#16100c');
+  wall.addColorStop(yToRow(0.2) / h, '#120c0a');
+  wall.addColorStop(1, '#050403');
+  g.fillStyle = wall; g.fillRect(0, 0, w, h);
 
-  // window band on the back half
-  const winTop = yToRow(3.05), winBot = yToRow(0.18);
-  const bays = [];
-  const bayW = 1.25 / (2 * Math.PI * 6); // 1.25 m bays as a fraction of the circumference
-  for (let u = 0.31; u < 0.69; u += bayW) bays.push(u);
-  const sky = g.createLinearGradient(0, winTop, 0, winBot);
-  sky.addColorStop(0, '#0b0d12');
-  sky.addColorStop(0.45, '#141419');
-  sky.addColorStop(0.72, '#231b19');
-  sky.addColorStop(1, '#1b1411');
+  // window band behind the station: 1.4 m bays
+  const bayW = 1.4 / (2 * Math.PI * R);
+  const u0 = 0.5 - bayW * 4.5, u1 = 0.5 + bayW * 4.5;
+  const winTop = yToRow(3.05), winBot = yToRow(0.12);
   g.save();
-  g.beginPath();
-  g.rect(uToX(bays[0]), winTop, uToX(bays[bays.length - 1] + bayW) - uToX(bays[0]), winBot - winTop);
-  g.clip();
-  g.fillStyle = sky; g.fillRect(0, winTop, W, winBot - winTop);
-  // skyline: three depth layers of buildings with lit windows, then blur
-  g.filter = 'blur(1.5px)';
+  g.beginPath(); g.rect(uToX(u0), winTop, uToX(u1) - uToX(u0), winBot - winTop); g.clip();
+  const sky = g.createLinearGradient(0, winTop, 0, winBot);
+  sky.addColorStop(0, '#07080c');
+  sky.addColorStop(0.5, '#0f1016');
+  sky.addColorStop(0.78, '#1d1719');
+  sky.addColorStop(1, '#251a15');
+  g.fillStyle = sky; g.fillRect(uToX(u0), winTop, uToX(u1) - uToX(u0), winBot - winTop);
+  // warm city haze on the horizon
+  const haze = g.createLinearGradient(0, yToRow(1.3), 0, winBot);
+  haze.addColorStop(0, 'rgba(120,70,40,0)');
+  haze.addColorStop(1, 'rgba(150,85,45,0.28)');
+  g.fillStyle = haze; g.fillRect(uToX(u0), yToRow(1.3), uToX(u1) - uToX(u0), winBot - yToRow(1.3));
+  // skyline: three depth layers of towers with lit windows
   for (let layer = 0; layer < 3; layer++) {
-    const baseY = yToRow(0.35 + layer * 0.12);
-    let x = uToX(bays[0]) - 20;
-    const xEnd = uToX(bays[bays.length - 1] + bayW) + 20;
-    while (x < xEnd) {
-      const bw = (10 + r() * 34) * (W / 3072) * (1 + layer * 0.3);
-      const bh = (yToRow(0) - yToRow(0.35 + r() * (1.0 - layer * 0.2))) * (0.6 + r() * 0.8);
-      const top = baseY - bh;
-      const shade = [14, 11, 9][layer];
+    const baseY = winBot + 2;
+    let x = uToX(u0) - 10;
+    while (x < uToX(u1) + 10) {
+      const bw = (0.25 + r() * 0.9) * metre * (1 + layer * 0.35);
+      const top = yToRow(0.5 + r() * (2.1 - layer * 0.45));
+      const shade = [12, 9, 7][layer];
       g.fillStyle = `rgb(${shade + 2},${shade + 1},${shade + 3})`;
-      g.fillRect(x, top, bw, baseY - top + 40);
-      // lit windows
-      const cols = Math.max(1, Math.floor(bw / 5)), rows = Math.max(1, Math.floor((baseY - top) / 6));
-      for (let i = 0; i < cols; i++) for (let j = 0; j < rows; j++) {
-        if (r() < 0.16 - layer * 0.03) {
-          const warm = r() < 0.8;
-          const a = 0.25 + r() * 0.5;
-          g.fillStyle = warm ? `rgba(255,${150 + r() * 60},${70 + r() * 50},${a})` : `rgba(170,190,215,${a * 0.6})`;
-          g.fillRect(x + 1.5 + i * 5, top + 2 + j * 6, 2, 2.4);
+      g.fillRect(x, top, bw, baseY - top);
+      const cell = Math.max(1.6, metre * 0.07);
+      for (let yy = top + cell; yy < baseY - cell; yy += cell * 1.6) {
+        for (let xx = x + cell * 0.5; xx < x + bw - cell; xx += cell * 1.4) {
+          if (r() < 0.13 - layer * 0.025) {
+            const warm = r() < 0.82;
+            const a = 0.35 + r() * 0.55;
+            g.fillStyle = warm ? `rgba(255,${(150 + r() * 70) | 0},${(70 + r() * 50) | 0},${a})` : `rgba(165,185,215,${a * 0.7})`;
+            g.fillRect(xx, yy, cell * 0.8, cell * 0.9);
+          }
         }
       }
-      x += bw + r() * 6;
+      x += bw + r() * metre * 0.15;
     }
   }
-  g.filter = 'none';
-  // bokeh: soft discs, warm with a few cool ones, densest around the skyline
+  // a few big soft bokeh discs (near street lights / car lights out of focus)
   g.globalCompositeOperation = 'lighter';
-  for (let i = 0; i < 260; i++) {
-    const u = bays[0] + r() * (bays[bays.length - 1] + bayW - bays[0]);
-    const y = 0.35 + Math.pow(r(), 1.6) * 1.9;
-    const x = uToX(u), row = yToRow(y);
-    const rad = (3 + Math.pow(r(), 2.2) * 22) * (W / 3072);
-    const warm = r() < 0.86;
-    const a = 0.08 + r() * 0.3;
-    const col = warm ? [255, 150 + r() * 70, 60 + r() * 60] : [150, 175, 210];
+  for (let i = 0; i < 70; i++) {
+    const x = uToX(u0 + r() * (u1 - u0));
+    const row = yToRow(0.25 + Math.pow(r(), 1.8) * 1.6);
+    const rad = (0.04 + Math.pow(r(), 2.4) * 0.16) * metre * 3;
+    const warm = r() < 0.85;
+    const a = 0.05 + r() * 0.16;
+    const col = warm ? [255, (140 + r() * 70) | 0, (55 + r() * 50) | 0] : [150, 175, 215];
     const grd = g.createRadialGradient(x, row, 0, x, row, rad);
-    grd.addColorStop(0, `rgba(${col[0]},${col[1] | 0},${col[2] | 0},${a})`);
-    grd.addColorStop(0.7, `rgba(${col[0]},${col[1] | 0},${col[2] | 0},${a * 0.85})`);
+    grd.addColorStop(0, `rgba(${col},${a})`);
+    grd.addColorStop(0.75, `rgba(${col},${a * 0.8})`);
     grd.addColorStop(1, 'rgba(0,0,0,0)');
     g.fillStyle = grd;
     g.beginPath(); g.arc(x, row, rad, 0, Math.PI * 2); g.fill();
@@ -169,44 +208,43 @@ export function backdropTexture(W = 3072, H = 768) {
   g.globalCompositeOperation = 'source-over';
   g.restore();
 
-  // mullions and transom (faint window grid), with a warm rim on one edge
-  const mullW = Math.max(3, (0.07 / (2 * Math.PI * 6)) * W);
-  for (const u of [...bays, bays[bays.length - 1] + bayW]) {
+  // mullions + transom
+  const mullW = Math.max(2, 0.08 * metre);
+  for (let u = u0; u <= u1 + 1e-6; u += bayW) {
     const x = uToX(u);
-    g.fillStyle = '#0a0807'; g.fillRect(x - mullW / 2, winTop - 6, mullW, winBot - winTop + 12);
-    g.fillStyle = 'rgba(255,170,90,0.07)'; g.fillRect(x + mullW / 2 - 1.5, winTop, 1.5, winBot - winTop);
+    g.fillStyle = '#080605'; g.fillRect(x - mullW / 2, winTop - 3, mullW, winBot - winTop + 6);
+    g.fillStyle = 'rgba(255,170,90,0.08)'; g.fillRect(x + mullW / 2 - 1, winTop, 1, winBot - winTop);
   }
-  const tY = yToRow(2.35);
-  g.fillStyle = '#0a0807'; g.fillRect(uToX(bays[0]), tY - mullW * 0.35, uToX(bays[bays.length - 1] + bayW) - uToX(bays[0]), mullW * 0.7);
-  g.fillStyle = '#080605'; g.fillRect(uToX(bays[0]) - 4, winBot, uToX(bays[bays.length - 1] + bayW) - uToX(bays[0]) + 8, mullW * 1.2);
+  g.fillStyle = '#080605';
+  g.fillRect(uToX(u0), yToRow(2.4) - mullW * 0.35, uToX(u1) - uToX(u0), mullW * 0.7);
+  g.fillRect(uToX(u0) - 3, winBot, uToX(u1) - uToX(u0) + 6, mullW * 1.4);
 
-  // warm sconces: vertical light columns with a wall wash (two flank the windows, more around the room)
+  // warm sconces: light columns with a wall wash
   const sconce = (u, y0, y1, k = 1) => {
-    const x = uToX(u), top = yToRow(y1), bot = yToRow(y0);
-    const wash = g.createRadialGradient(x, (top + bot) / 2, 0, x, (top + bot) / 2, (bot - top) * 1.1);
-    wash.addColorStop(0, `rgba(255,140,60,${0.22 * k})`);
-    wash.addColorStop(0.5, `rgba(200,100,40,${0.08 * k})`);
-    wash.addColorStop(1, 'rgba(0,0,0,0)');
+    const x = uToX(u), top = yToRow(y1), bot = yToRow(y0), hh = bot - top;
     g.globalCompositeOperation = 'lighter';
-    g.fillStyle = wash; g.fillRect(x - (bot - top) * 1.1, top - (bot - top) * 0.6, (bot - top) * 2.2, (bot - top) * 2.2);
-    const colW = Math.max(4, W * 0.004);
+    const wash = g.createRadialGradient(x, top + hh / 2, 0, x, top + hh / 2, hh * 1.1);
+    wash.addColorStop(0, `rgba(255,140,60,${0.2 * k})`);
+    wash.addColorStop(0.5, `rgba(200,100,40,${0.07 * k})`);
+    wash.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = wash; g.fillRect(x - hh * 1.1, top - hh * 0.6, hh * 2.2, hh * 2.2);
+    const colW = Math.max(2.5, 0.06 * metre);
     const col = g.createLinearGradient(x - colW * 2, 0, x + colW * 2, 0);
     col.addColorStop(0, 'rgba(255,150,70,0)');
-    col.addColorStop(0.5, `rgba(255,190,120,${0.85 * k})`);
+    col.addColorStop(0.5, `rgba(255,192,125,${0.9 * k})`);
     col.addColorStop(1, 'rgba(255,150,70,0)');
-    g.fillStyle = col; g.fillRect(x - colW * 2, top, colW * 4, bot - top);
+    g.fillStyle = col; g.fillRect(x - colW * 2, top, colW * 4, hh);
     g.globalCompositeOperation = 'source-over';
   };
-  sconce(bays[0] - 0.012, 0.45, 2.6, 1.0);
-  sconce(bays[bays.length - 1] + bayW + 0.012, 0.45, 2.6, 1.0);
-  sconce(0.2, 0.7, 2.2, 0.7);
-  sconce(0.8, 0.7, 2.2, 0.7);
-  sconce(0.06, 0.9, 1.9, 0.45);
-  sconce(0.94, 0.9, 1.9, 0.45);
-  // a few far practical lights (lamps) on the side walls
+  sconce(u0 - 0.012, 0.5, 2.7, 1.0);
+  sconce(u1 + 0.012, 0.5, 2.7, 1.0);
+  sconce(0.22, 0.7, 2.2, 0.6);
+  sconce(0.78, 0.7, 2.2, 0.6);
+  sconce(0.07, 0.9, 1.9, 0.4);
+  sconce(0.93, 0.9, 1.9, 0.4);
   g.globalCompositeOperation = 'lighter';
   for (const [u, y, s] of [[0.17, 0.9, 1], [0.86, 1.1, 0.8], [0.02, 1.0, 0.6]]) {
-    const x = uToX(u), row = yToRow(y), rad = 60 * (W / 3072) * s;
+    const x = uToX(u), row = yToRow(y), rad = 0.5 * metre * s;
     const grd = g.createRadialGradient(x, row, 0, x, row, rad);
     grd.addColorStop(0, 'rgba(255,190,120,0.35)');
     grd.addColorStop(0.3, 'rgba(255,140,60,0.12)');
@@ -214,29 +252,29 @@ export function backdropTexture(W = 3072, H = 768) {
     g.fillStyle = grd; g.fillRect(x - rad, row - rad, rad * 2, rad * 2);
   }
   g.globalCompositeOperation = 'source-over';
-  // ceiling falloff and floor
-  const ceil = g.createLinearGradient(0, 0, 0, yToRow(2.6));
+  const ceil = g.createLinearGradient(0, 0, 0, yToRow(2.7));
   ceil.addColorStop(0, 'rgba(3,2,2,0.95)');
   ceil.addColorStop(1, 'rgba(3,2,2,0)');
-  g.fillStyle = ceil; g.fillRect(0, 0, W, yToRow(2.6));
-  const floor = g.createLinearGradient(0, yToRow(0.1), 0, H);
+  g.fillStyle = ceil; g.fillRect(0, 0, w, yToRow(2.7));
+  const floor = g.createLinearGradient(0, yToRow(0.12), 0, h);
   floor.addColorStop(0, 'rgba(6,4,3,0)');
-  floor.addColorStop(0.4, 'rgba(6,4,3,0.85)');
+  floor.addColorStop(0.35, 'rgba(6,4,3,0.85)');
   floor.addColorStop(1, 'rgba(4,3,2,1)');
-  g.fillStyle = floor; g.fillRect(0, yToRow(0.1), W, H - yToRow(0.1));
-  // overall softness: everything back here is out of focus
-  const soft = makeCanvas(W, H);
-  const sg = soft.getContext('2d');
-  sg.filter = `blur(${Math.max(1, W / 1500).toFixed(1)}px)`;
-  sg.drawImage(c, 0, 0);
-  // dithering against banding
-  const img = sg.getImageData(0, 0, W, H), d = img.data;
-  for (let i = 0; i < d.length; i += 4) {
-    const n = (r() - 0.5) * 3;
-    d[i] = clamp(d[i] + n, 0, 255); d[i + 1] = clamp(d[i + 1] + n, 0, 255); d[i + 2] = clamp(d[i + 2] + n, 0, 255);
-  }
-  sg.putImageData(img, 0, 0);
-  const t = canvasTexture(soft, { aniso: 4 });
+  g.fillStyle = floor; g.fillRect(0, yToRow(0.12), w, h - yToRow(0.12));
+
+  // upscale (bilinear) = the out-of-focus blur, then dither
+  const out = makeCanvas(W, H), og = out.getContext('2d');
+  og.imageSmoothingEnabled = true;
+  og.imageSmoothingQuality = 'high';
+  const q = makeCanvas(w >> 1, h >> 1), qg = q.getContext('2d');
+  qg.imageSmoothingQuality = 'high';
+  qg.drawImage(c, 0, 0, q.width, q.height);
+  og.drawImage(c, 0, 0, W, H);
+  og.globalAlpha = 0.55;
+  og.drawImage(q, 0, 0, W, H); // extra softness from a quarter-res copy
+  og.globalAlpha = 1;
+  ditherOverlay(og, W, H, 0.35);
+  const t = canvasTexture(out, { aniso: 4 });
   t.wrapS = THREE.RepeatWrapping;
   return t;
 }

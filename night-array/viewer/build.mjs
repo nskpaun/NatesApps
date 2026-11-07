@@ -40,11 +40,13 @@ const result = await build({
 fs.copyFileSync(path.join(here, 'index.html'), path.join(outDir, 'index.html'));
 
 const threeLicense = fs.readFileSync(path.join(here, 'node_modules/three/LICENSE'), 'utf8').trim();
+// list the three.js example modules that actually ended up in the bundle
+const inputs = Object.keys(Object.values(result.metafile.outputs)[0].inputs);
+const addons = [...new Set(inputs.filter((f) => f.includes('three/examples/jsm/')).map((f) => path.basename(f, '.js')))].sort();
 fs.writeFileSync(path.join(outDir, 'LICENSES.txt'),
   `Night Array viewer (viewer.js) bundles the following third-party software.\n\n` +
-  `three.js ${threePkg.version} - https://threejs.org/ - including the example modules\n` +
-  `GLTFLoader, OrbitControls, RoomEnvironment, EffectComposer, RenderPass, UnrealBloomPass,\n` +
-  `OutputPass, LineSegments2/LineMaterial and RoundedBoxGeometry from three/examples/jsm.\n\n` +
+  `three.js ${threePkg.version} - https://threejs.org/ - the core library plus these modules from three/examples/jsm:\n` +
+  `${addons.join(', ')}.\n\n` +
   `${threeLicense}\n`);
 
 const bytes = fs.statSync(path.join(outDir, 'viewer.js')).size;
