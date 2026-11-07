@@ -16,9 +16,9 @@ An Android app for exploring, and getting inspired by, a concept desk battle sta
 | **The honest seam** | The two active areas are 14 mm apart. The seam is part of the deal, so instead of hiding it there's a 4 mm titanium strip down the middle. |
 | **Base & charging pockets** | A 1290 × 300 × 36 mm titanium tray with a raised rim and a recessed graphite deck. The keyboard and mouse pockets have soft-touch pads over flat Qi2 coils (two under the keyboard, one under the mouse). Amber marks on the pocket lips breathe while they charge. |
 | **Work & Stow** | **Work:** the keyboard and mouse sit on a felt mat, with 15 cm of open desk in front of the base. **Stow & charge:** they lift back over the rim and drop into their pockets, and the desk in front is empty. |
-| **Dock** | A right-wing cradle with a swept profile, oxblood side panels, a 20 mm lead-in slot and a sprung USB-C plug. **1 Align, 2 Lower, 3 Press-release & lift.** |
+| **Dock** | A right-wing cradle with a swept profile, oxblood side panels, a 20 mm lead-in slot and a sprung, self-centring USB-C plug. No latch, switch or lock: the laptop's own weight seats it, and you lift it straight out. **1 Align, 2 Lower, 3 Lift out.** |
 | **Standalone** | Compute stays in the base (mainboard, vapor chamber, slim blower, internal PSU), so the station runs with the laptop out. |
-| **Light & finish** | Amber light is used as a signal: neck light bar, base under-glow, charge marks and the dock latch. Finishes: Neutral Titanium, Charcoal Graphite, Brushed Oxblood. |
+| **Light & finish** | Amber light is used as a signal: neck light bar, base under-glow, charge marks and the dock's seated light. Finishes: Neutral Titanium, Charcoal Graphite, Brushed Oxblood. |
 
 The first concept board drew a single curved ultrawide. Everything else on it carried over, and the display became the dual-27" design above. The board is in the app, under **Explore → Where it started**.
 
