@@ -5,8 +5,8 @@
     cad/.venv/bin/python cad/build.py --only glb # just station.glb / edges / scene.json (fast iteration)
 
 Outputs (SPEC.md section 3) under cad/export/:
-  model/station.glb, model/station-edges.glb, model/scene.json
-  files/night-array-assembly.step, files/parts/<group>.step|.stl,
+  model/station.glb, model/station-edges.glb, model/scene.json     app axes: +Y up, metres
+  files/night-array-assembly.step, files/parts/<group>.step|.stl   CAD axes: +Z up, mm (see to_cad_axes)
   files/drawings/<group>.svg|<group>-top.dxf, drawings/<group>.png
 """
 
@@ -33,6 +33,7 @@ sys.path.insert(0, HERE)
 import cadquery as cq  # noqa: E402
 from OCP.BRep import BRep_Tool  # noqa: E402
 from OCP.BRepAdaptor import BRepAdaptor_Curve  # noqa: E402
+from OCP.BRepBuilderAPI import BRepBuilderAPI_Transform  # noqa: E402
 from OCP.BRepLib import BRepLib_ToolTriangulatedShape  # noqa: E402
 from OCP.BRepMesh import BRepMesh_IncrementalMesh  # noqa: E402
 from OCP.BRepTools import BRepTools  # noqa: E402
@@ -42,6 +43,7 @@ from OCP.TopExp import TopExp, TopExp_Explorer  # noqa: E402
 from OCP.TopLoc import TopLoc_Location  # noqa: E402
 from OCP.TopoDS import TopoDS  # noqa: E402
 from OCP.TopTools import TopTools_IndexedMapOfShape  # noqa: E402
+from OCP.gp import gp_Trsf  # noqa: E402
 
 import model  # noqa: E402
 import stepfile  # noqa: E402
@@ -561,6 +563,25 @@ def normalise_step(path):
     stepfile.canonicalise_file(path)
 
 
+# The model is built in app axes (+Y up, +Z toward the user; SPEC.md section 1), and the GLBs / scene.json stay
+# there.  The CAD exchange files (STEP, STL) are written Z-up, the convention of FreeCAD, Onshape, current Fusion
+# and every slicer:
+#     CAD (x, y, z) = app (x, -z, y)
+# i.e. a +90 deg rotation about +X (right-handed, det +1): up (+Y app) -> +Z, the user side (+Z app) -> -Y, so
+# the CAD "Front" view (looking along +Y) faces the user side, and +X stays +X.  The desk is still z = 0.
+# Rows of the matrix, applied to column vectors (x_app, y_app, z_app).  The matrix is set entry by entry rather
+# than with SetRotation(90 deg), so every coordinate maps exactly (no cos(90 deg) = 6e-17 noise in the files).
+APP_TO_CAD = ((1, 0, 0), (0, 0, -1), (0, 1, 0))
+
+
+def to_cad_axes(shape):
+    """A copy of `shape` (app axes) with its geometry moved into the Z-up CAD axes (baked, no location)."""
+    t = gp_Trsf()
+    (a11, a12, a13), (a21, a22, a23), (a31, a32, a33) = APP_TO_CAD
+    t.SetValues(a11, a12, a13, 0, a21, a22, a23, 0, a31, a32, a33, 0)
+    return cq.Shape.cast(BRepBuilderAPI_Transform(shape.wrapped, t, True).Shape())
+
+
 def export_step_stl(parts, files_dir):
     pdir = os.path.join(files_dir, "parts")
     os.makedirs(pdir, exist_ok=True)
@@ -572,6 +593,7 @@ def export_step_stl(parts, files_dir):
         for pid, s in parts.items():
             if PART_INFO[pid]["group"] != gid:
                 continue
+            s = to_cad_axes(s)
             col = cq_color(PART_INFO[pid]["material"])
             ga.add(s, name=pid, color=col)
             sub.add(s, name=pid, color=col)

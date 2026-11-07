@@ -12,14 +12,14 @@ night-array/
     model.py              parametric solids, one function per part
     build.py              runs everything → cad/export/
     export/               COMMITTED output (deliverable CAD files + app model)
-      model/station.glb         triangles, one node per part (app renderer + external viewers)
-      model/station-edges.glb   B-rep feature edges as LINES, one node per part
-      model/scene.json          parts, groups, poses, explode vectors, dims, files index, params
-      files/night-array-assembly.step
-      files/parts/<groupId>.step        one STEP per group (multi-solid, coloured)
-      files/parts/<groupId>.stl         one binary STL per group (mm)
-      files/drawings/<groupId>.svg      drawing sheet (3 views + iso + title block)
-      files/drawings/<groupId>-top.dxf  2D top-view outline
+      model/station.glb         triangles, one node per part (app renderer + external viewers)   Y-up, m
+      model/station-edges.glb   B-rep feature edges as LINES, one node per part                   Y-up, m
+      model/scene.json          parts, groups, poses, explode vectors, dims, files index, params  Y-up, m
+      files/night-array-assembly.step                                                             Z-up, mm
+      files/parts/<groupId>.step        one STEP per group (multi-solid, coloured)                Z-up, mm
+      files/parts/<groupId>.stl         one binary STL per group                                  Z-up, mm
+      files/drawings/<groupId>.svg      drawing sheet (3 views + iso + title block)               mm
+      files/drawings/<groupId>-top.dxf  2D top-view outline                                       CAD XY, mm
       drawings/<groupId>.png            rasterised drawing sheet for in-app viewing
   viewer/                 live renderer (three.js 0.170.0, bundled with esbuild) — owner: VIEWER
     package.json, src/*.js, index.html, build.mjs, test/*.mjs, tools/render_stills.mjs
@@ -36,8 +36,15 @@ Never write outside your own directories (plus the two asset dirs the viewer own
 
 * **App / glTF space:** metres, **+Y up**, **+X right**, **+Z toward the user (front)**. Right-handed.
 * Origin: desk surface is `y = 0`; `x = 0` is the centre of the main base slab; `z = 0` is the front-to-back centre of the base.
-* CAD (`params.py`) works in **mm** in the same axes (Y up). CadQuery default is Z-up: either model in Y-up
-  directly or rotate once on export. STEP/STL/DXF/SVG files are in **mm**; GLB is in **m**.
+* CAD (`params.py`, `model.py`) works in **mm** in the same axes (Y up). Everything the app and the viewer read stays
+  in them: `model/station.glb`, `model/station-edges.glb` and `model/scene.json` are **Y-up, metres** (`params` in mm).
+* **CAD exchange files are Z-up, mm** (so they open upright in FreeCAD, Onshape, current Fusion and every slicer):
+  the STEP files (assembly and per group) and the STLs are rotated once on export, **+90° about +X**:
+  `CAD (x, y, z) = app (x, −z, y)`. Up (+Y app) → +Z, the user side (+Z app) → −Y (so the CAD *Front* view, looking
+  along +Y, faces the user side), +X unchanged, desk at z = 0. A `scene.json` point (x, y, z) m is
+  (1000 x, −1000 z, 1000 y) mm in the STEP.
+* The 2D files use the same CAD axes: the top-view DXF is (x_CAD, y_CAD) = (x_app, −z_app), mm; the SVG sheets
+  (mm on A3, third-angle) show the CAD *Top*, *Front* and *Right* views plus an isometric.
 * The exported assembly is in the **stow pose** (laptop docked, keyboard & mouse in their charging pockets).
 
 ## 2. Geometry (mm, app axes). CAD owns the details; these are the envelope numbers everyone relies on.
@@ -84,7 +91,7 @@ Never write outside your own directories (plus the two asset dirs the viewer own
 | `internals` | `dock_board` | pcb | Dock PCB under the cradle. |
 | `internals` | `keyboard_coil`, `mouse_coil` | copper | Receiver coils inside the keyboard / mouse. **These belong to groups `keyboard` / `mouse`** (so they move with them) but are flagged `internal: true`. |
 
-Overall display width ≈ 1214 mm (chord), outer edges ≈ 106 mm forward of the seam. Story: "the pixels of a 49-inch
+Overall display width ≈ 1214 mm (chord; 1 218 mm over the titanium frame, the `display_w` dim), outer edges ≈ 106 mm forward of the seam. Story: "the pixels of a 49-inch
 super-ultrawide (5120×1440) for the price of two good mainstream 27s; a dead panel is a cheap swap; your OS already knows
 what to do with two displays — snap a window to each half". The seam is part of the deal, so it is celebrated, not hidden.
 
@@ -95,6 +102,13 @@ Internal parts (`internal: true`) are hidden in the `studio` style and shown in 
 `keycap`, `rubber`, `amber_led` (emissive), `copper`, `pcb`, `ferrite`, `laptop_alu`, `felt`, `steel`.
 
 ## 3. Files written by CAD
+
+### Exchange files (`files/`)
+* `night-array-assembly.step`: STEP AP214, **mm, Z-up** (section 1), stow pose. One assembly node per group (`NA-<groupId>`),
+  every part named by its part id, every solid coloured by its material's `color`.
+* `parts/<groupId>.step` (same, one group), `parts/<groupId>.stl` (binary, mm, Z-up), `drawings/<groupId>.svg` (A3 sheet,
+  third-angle), `drawings/<groupId>-top.dxf` (top-view outline, layer `OUTLINE`, CAD XY, mm).
+* Builds are byte-reproducible (fixed STEP/DXF stamps, canonical STEP colour block).
 
 ### `model/station.glb`
 * glTF 2.0 binary. One **top-level node per part**, `node.name == partId`. Node `translation` = the part's pivot
@@ -120,7 +134,7 @@ Internal parts (`internal: true`) are hidden in the `studio` style and shown in 
   "bounds": { "min": [x,y,z], "max": [x,y,z] },                // stow pose, metres
   "materials": { "titanium": { "label": "Neutral Titanium" }, ... },  // every key from the list above
   // optional per material: "color" (sRGB hex), "metallic", "roughness", "density_g_cm3", "spec" (one-line finish text),
-  // "emissive": true
+  // "emissive": true  (CAD writes all of them for every material; "emissive" only on amber_led)
   "groups": [
     { "id": "base", "name": "Base & charging trays", "summary": "one line", "description": "2–4 sentences",
       "parts": ["base_shell", "tray_pad_kb", ...],
@@ -134,7 +148,8 @@ Internal parts (`internal: true`) are hidden in the `studio` style and shown in 
     { "id": "base_shell", "group": "base", "name": "Base shell", "material": "titanium", "internal": false,
       "explode": [dx,dy,dz],             // metres, offset at explode = 1
       "bbox_mm": [w,h,d], "volume_cm3": 0, "mass_g": 0 }
-    // optional: "density_g_cm3" (the density used), "mass_note" (why it is an effective density), "solids" (when > 1)
+    // optional: "density_g_cm3" (the density used; CAD writes it on every part), "mass_note" (why it is an effective
+    // density), "solids" (when > 1)
   ],
   "poses": {                              // per-GROUP delta transforms relative to the stow (CAD) pose
     "stow":       { "deskmat": { "hidden": true } },
@@ -154,7 +169,8 @@ Internal parts (`internal: true`) are hidden in the `studio` style and shown in 
     { "step": "lift",    "title": "Lift out",            "caption": "Laptop free; compute stays in the base", "laptop": { "t": [0, 0.16, 0] } }
   ],
   // dock_latch is a sub-group pivot: parts dock_latch + dock_latch_led move together under the name "dock_latch".
-  "dims": [ { "id": "overall_w", "label": "1 474 mm", "a": [x,y,z], "b": [x,y,z], "dir": [0,1,0] } ],
+  "dims": [ { "id": "overall_w", "label": "1\u00a0415 mm", "a": [-0.64, 0, 0.15], "b": [0.775, 0, 0.15], "dir": [0, 0, 1] } ],
+  // labels group thousands with a no-break space (U+00A0, written as-is in the file).
   // dims: measured points (metres, stow pose) + "dir" = which way to offset the dimension line. Include at least:
   // overall width, base depth, overall height, display width, one panel's active width, the seam, work offset 150 mm (pose "work"; add "pose": "work").
   // Length labels are the distance between "a" and "b"; only "seam" and "panel_active_w" carry nominal along-facet text.
@@ -162,11 +178,12 @@ Internal parts (`internal: true`) are hidden in the `studio` style and shown in 
   "screen": { "part": "display_screen", "layout": "dual", "panels": 2, "panel_inch": 27, "panel_active_mm": [596.7, 335.7],
               "resolution_each": [2560, 1440], "seam_mm": 14, "toe_in_deg": 10, "seam_axis": [0, 0, -0.062],
               "canvas": [5120, 1440], "active_y_mm": [172, 507.7], "uv": "..." },   // last three optional
-  "files": [
+  "files": [                              // 38 entries; "bytes" = the file's real size
     { "id": "assembly-step", "group": null, "format": "STEP", "label": "Full assembly", "path": "files/night-array-assembly.step", "bytes": 0 },
     { "id": "assembly-glb",  "group": null, "format": "GLB",  "label": "Full assembly", "path": "model/station.glb", "bytes": 0 },
     { "id": "base-step",     "group": "base", "format": "STEP", "label": "Base & charging trays", "path": "files/parts/base.step", "bytes": 0 },
     { "id": "base-stl", ... "format": "STL" }, { "id": "base-svg", ... "format": "SVG" }, { "id": "base-dxf", ... "format": "DXF" }
+    // per group, in group order: <id>-step, <id>-stl, <id>-svg ("<name> drawing"), <id>-dxf ("<name> top view")
   ],
   "drawings": { "base": "drawings/base.png", ... },
   "tagline": "Your hardware. Your OS.",   // optional
@@ -184,37 +201,52 @@ Bundle is a single classic (IIFE) script `viewer.js` (no ES-module script tags, 
 
 ### Initial state
 `index.html?state=<URL-encoded JSON ViewerState>` — applied before the first frame (no flash of the default state).
+The page keeps its background transparent and its canvas hidden until that first frame (`ready`), so the app's still
+underneath shows through until then.
 
-### ViewerState (Kotlin → JS), applied with `NA.setState(obj)`; partial objects merge into the current state
+### ViewerState (Kotlin → JS), applied with `NA.setState(partial)`
+`partial` is an object or a JSON string; it merges into the current state, invalid values and unknown keys are ignored,
+and the call returns the full state (`NA.getState()` returns it too). Defaults are the same in the Kotlin `ViewerState`,
+the viewer (`viewer/src/state.js`) and the stills' base state (`viewer/tools/render_stills.mjs`), so still → live
+doesn't shift.
 ```jsonc
 {
-  "mode": "work" | "stow" | "standalone",           // animates groups to scene.json poses
-  "style": "studio" | "cad" | "xray" | "blueprint", // studio = PBR night scene; cad = matte grey + black B-rep edges on light bg;
+  "mode": "work" | "stow" | "standalone",           // default "work". Animates groups to scene.json poses, through each pose's
+                                                     // "via" waypoints (reversed going back to stow); the laptop lifts out in standalone
+  "style": "studio" | "cad" | "xray" | "blueprint", // default "studio". studio = PBR night scene; cad = matte grey + black B-rep edges on light bg;
                                                      // xray = translucent shells, internals visible; blueprint = edges only, dark navy + grid
-  "finish": "titanium" | "graphite" | "oxblood",    // recolours material `titanium` (Neutral Titanium / Charcoal Graphite / Brushed Oxblood)
-  "amber": 0.0..1.0,                                 // amber lighting intensity (0 = off; LEDs + bloom + bounce light)
-  "explode": 0.0..1.0,
-  "section": null | { "axis": "x" | "z", "t": 0.0..1.0 },  // clipping plane position across the bounds
-  "dims": false,                                     // dimension overlay
-  "autorotate": false,
-  "isolate": null | "groupId",                       // show only this group (others hidden), frame it
-  "selected": null | "groupId",                      // highlight
-  "quality": "high" | "balanced" | "battery",        // pixel ratio, shadows, bloom
-  "cinematic": false                                 // slow orbiting camera, no picking ("Night shift")
+  "finish": "titanium" | "graphite" | "oxblood",    // default "titanium". Recolours material `titanium` (Neutral Titanium / Charcoal Graphite / Brushed Oxblood)
+  "amber": 0.0..1.0,                                 // default 0.8. Amber lighting intensity (0 = off; LEDs + bloom + bounce light)
+  "explode": 0.0..1.0,                               // default 0. Along the scene.json explode vectors
+  "section": null | { "axis": "x" | "z", "t": 0.0..1.0 },  // default null. Clipping plane position across the bounds (hatched caps)
+  "dims": false,                                     // default false. Dimension overlay (scene.json dims)
+  "autorotate": false,                               // default false
+  "isolate": null | "groupId",                       // default null. Show only this group (others fade out), frame it; a group the
+                                                     // pose hides (laptop in standalone, desk mat in stow) is shown at its rest place
+  "selected": null | "groupId",                      // default null. Highlight
+  "quality": "high" | "balanced" | "battery",        // default "high". Pixel ratio + pixel budget, shadows, MSAA, bloom, desk reflection
+  "cinematic": false                                 // default false. Slow orbiting camera, no picking ("Night shift")
 }
 ```
 ### Commands (Kotlin → JS)
 * `NA.camera("hero"|"front"|"top"|"side"|"back"|"dock"|"trays"|"display")` — animated camera move.
-* `NA.dock("align"|"lower"|"release"|"lift"|"play"|"reset")` — `play` runs align → lower → release → lift → reset, emitting `dockStep` events.
+* `NA.dock("align"|"lower"|"release"|"lift"|"play"|"reset")` — a single step moves the laptop / `dock_latch` to that
+  `dock_sequence` step (`reset` = back to the stow state: laptop seated, latch at rest) without events. `play` frames the `dock` camera (unless cinematic) and runs
+  align (0 s) → lower (1.5 s) → release (3.05 s) → lift (3.9 s) → reset (5.5 s), posting a `dockStep` event as each step
+  starts; **`done` is posted when the reset motion starts** (the laptop going back into the cradle is not "lift" any more),
+  and that motion ends at about 6.7 s. A step or `play` sent meanwhile takes over.
 * `NA.frame("groupId")` — animated camera framing of a group.
-* All functions are safe to call before the model has loaded (queue them).
+* All functions are safe to call before the model has loaded: calls are queued and applied before the first frame
+  (they jump instead of animating). A queued `play` waits for the first frame: its steps and events are timed from then.
 
 ### Events (JS → Kotlin)
 `window.NightArrayHost.post(JSON.stringify(evt))` — if `NightArrayHost` is absent (desktop browser), `console.log` instead.
-* `{ "type": "ready" }` — after the first frame with the model is drawn.
-* `{ "type": "pick", "group": "keyboard" | null }` — tap (not drag) on a part; null = tapped empty space.
-* `{ "type": "dockStep", "step": "align" | "lower" | "release" | "lift" | "done" }`
-* `{ "type": "error", "message": "..." }` — e.g. WebGL2 unavailable, model failed to load.
+* `{ "type": "ready" }` — once, after the first frame with the model is drawn.
+* `{ "type": "pick", "group": "keyboard" | null }` — a tap (moves < 8 px, lifts within 350 ms; never a drag or long press)
+  on a part; null = tapped empty space. Finger taps get target expansion for groups smaller than 44 dp on screen.
+* `{ "type": "dockStep", "step": "align" | "lower" | "release" | "lift" | "done" }` — only from `play` (see above).
+* `{ "type": "error", "message": "..." }` — no WebGL2, no half-float render targets, model failed to load, WebGL context
+  lost for good.
 
 ### Stills (rendered by the viewer itself, headless Chromium, written to `android/app/src/main/assets/renders/`)
 JPEG, 1600×900 unless noted. The app must tolerate any of these being missing.

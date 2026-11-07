@@ -12,7 +12,7 @@ part ids, file paths and the `scene.json` shape.
 |---|---|
 | `params.py` | Every dimension in mm (single source of truth). Copied verbatim into `scene.json` → `params`. |
 | `model.py` | One function per part, built directly in app axes (+Y up, +Z toward the user) in the stow pose. `PARTS` lists id, group, name, material and the internal flag. |
-| `build.py` | Builds all parts and writes everything in `export/`: GLBs, `scene.json`, STEP, STL, then calls `drawings.py`. |
+| `build.py` | Builds all parts and writes everything in `export/`: GLBs and `scene.json` in app axes, STEP and STL rotated once into Z-up CAD axes (`to_cad_axes`), then calls `drawings.py`. |
 | `drawings.py` | Drawing sheets: exact hidden-line projections (CadQuery SVG exporter / OCC HLR), A3 layout, dimensions, parts list, title block, top-view DXF, PNG rasters. |
 | `stepfile.py` | Makes OCC-written STEP files reproducible (fixed timestamp, canonical order of the colour/style block). |
 | `verify.py` | Checks the deliverables (see "Verification" below). |
@@ -25,11 +25,11 @@ part ids, file paths and the `scene.json` shape.
 | `model/station.glb` | glTF 2.0, metres. One node per part (`node.name` = part id, translation = pivot, no rotation/scale), `extras {group, material, internal}`, PBR materials named by material key. Tessellated per B-rep face, so normals are smooth within a face and crisp across edges. `display_screen` carries `TEXCOORD_0`: one 5120 × 1440 canvas split across the two panels (left u 0→0.5 outer edge → seam, right u 0.5→1; v 0 = top). |
 | `model/station-edges.glb` | Same nodes; each mesh is one `LINES` primitive of the part's B-rep edges (seam and degenerate edges dropped). |
 | `model/scene.json` | Params, bounds, materials (with a one-line `spec` of the finish), groups (with names and descriptions, pivots, mass, volume), parts (with explode vectors, bbox, mass, and a `mass_note` where an effective density is used), poses (`stow`, `work`, `standalone`; the keyboard and mouse carry `via` waypoints so they lift clear of the rim before sliding out), `dock_sequence`, dimension callouts (length labels measured between their end points), the `screen` block, the files index with real byte sizes, and the drawing index. |
-| `files/night-array-assembly.step` | Full assembly, AP214, mm, stow pose. Nested by group (`NA-display`, `NA-stand`, …); every part named by its id; every solid coloured by its material. |
-| `files/parts/<group>.step` | One coloured, multi-solid STEP per group. |
-| `files/parts/<group>.stl` | One binary STL per group (mm). |
-| `files/drawings/<group>.svg` | A3 drawing sheet: top / front / right side (third-angle) + isometric, overall dimensions, parts list, title block. Ivory and amber linework on a transparent background (made for the app's dark `#15110F` panel). |
-| `files/drawings/<group>-top.dxf` | Top-view outline, layer `OUTLINE`, mm. |
+| `files/night-array-assembly.step` | Full assembly, AP214, mm, **Z-up**, stow pose. Nested by group (`NA-display`, `NA-stand`, …); every part named by its id; every solid coloured by its material. |
+| `files/parts/<group>.step` | One coloured, multi-solid STEP per group (mm, Z-up, named parts). |
+| `files/parts/<group>.stl` | One binary STL per group (mm, Z-up). |
+| `files/drawings/<group>.svg` | A3 drawing sheet: top / front / right side (third-angle; the CAD Top, Front and Right views of the Z-up files) + isometric, overall dimensions, parts list, title block. Ivory and amber linework on a transparent background (made for the app's dark `#15110F` panel). |
+| `files/drawings/<group>-top.dxf` | Top-view outline, layer `OUTLINE`, mm, in the STEP's XY plane (x right, y away from the user), so it overlays the STEP seen from the top. |
 | `drawings/<group>.png` | The sheet rasterised with headless Chromium, 2000 × 1414 px, transparent. |
 
 Groups, in order: `display`, `stand`, `base`, `dock`, `laptop`, `keyboard`, `mouse`,
@@ -59,29 +59,57 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt   # once
 
 ## Opening the files
 
-The STEP files are **Y-up** (the same axes as the app and glTF). FreeCAD and Onshape are Z-up, and so
-is Fusion with its Z-up preference, so the station first appears lying on its back. Rotate it +90°
-about X (this maps +Y to +Z and puts the user side toward −Y, the "Front" view) or just orbit to it.
+The STEP and STL files are **Z-up, in mm**, the convention of FreeCAD, Onshape, current Fusion and every
+slicer, so they open standing upright on the desk plane (z = 0) with no rotation. +X runs left to right as
+you sit at the station, +Z is up and the user side faces −Y: the standard *Front* view (looking along +Y)
+looks at the side you sit at, *Top* looks down on it and *Right* looks in from the dock side. The GLB stays
+Y-up (glTF's convention; see "Coordinates and units").
 
 * **FreeCAD** (0.21+ / 1.0): *File → Open* `night-array-assembly.step`. Under *Preferences →
   Import-Export → STEP* choose an import mode that keeps the assembly tree (Assembly or LinkGroup).
   Parts arrive named by id (`base_shell`, `dock_cradle`, …) under one node per group, coloured by
-  material, in mm.
+  material, in mm. View → Standard views → Front (key `1`) faces the user side.
 * **Autodesk Fusion**: upload the STEP through the Data Panel, or use *Insert → Insert Mesh/CAD* in
-  an open design. You get one component per group with one body per solid, plus colours. With
-  *Preferences → General → Default modeling orientation* set to Y up, it stands upright as exported.
+  an open design. You get one component per group with one body per solid, plus colours. Fusion's
+  default modeling orientation is Z up, so it stands upright as exported. An install still set to Y up
+  (*Preferences → General → Default modeling orientation*) shows it lying on its back; switch the
+  preference to Z up and start a new design.
 * **Onshape**: *Import* (the upload arrow in the Documents page or a document's tab bar) and pick the
   STEP. Leave "Import as a single part studio" off to get an Assembly with the group/part tree, or turn
-  it on for one Part Studio holding all 58 solids. Colours come through as part appearances.
-* **Per-group files**: `files/parts/<group>.step` opens the same way. The STLs are mesh-only (mm,
-  binary) for slicers and viewers.
+  it on for one Part Studio holding all 58 solids. Colours come through as part appearances. The view
+  cube's *Front* faces the user side.
+* **Per-group files**: `files/parts/<group>.step` opens the same way. The STLs are mesh-only (binary,
+  mm, Z-up) for slicers and viewers. A slicer (PrusaSlicer, Bambu Studio, OrcaSlicer, Cura) shows each
+  group upright and drops it onto its bed. The coordinates in each file are the group's own place on
+  the desk (the display group spans z 153–520, for example), so per-group files imported into one CAD
+  document line up with each other and with the assembly.
 * **Blender / any glTF viewer**: open `model/station.glb` (Y-up metres, stands upright). Its nodes
-  are the parts, and `extras` carry group, material and the internal flag.
+  are the parts, and `extras` carry group, material and the internal flag. Blender's glTF importer
+  converts Y-up to its own Z-up with the same mapping the STEP/STL use, so in Blender the GLB and the
+  STLs (default axes, Up = Z, imported at scale 0.001 to get metres) line up.
 
 ## Coordinates and units
 
 App/glTF space is metres, +X right, +Y up, +Z toward the user. The desk is y = 0, x = 0 is the centre
-of the base slab, z = 0 is the base's depth centre. STEP, STL, DXF and SVG are in mm in the same axes.
+of the base slab, z = 0 is the base's depth centre. `params.py` and `model.py` work in these axes (in mm),
+and `model/station.glb`, `model/station-edges.glb` and `model/scene.json` (pivots, poses, explode
+vectors, dims, bounds) stay in them: everything the app and the viewer read is Y-up.
+
+The CAD exchange files are rotated once on export (`build.to_cad_axes`, +90° about +X, set as an exact
+matrix so no rounding noise gets in):
+
+    CAD (x, y, z) = app (x, −z, y)        a scene.json point (x, y, z) m  →  (1000 x, −1000 z, 1000 y) mm
+
+| File | X | Y | Z | Units |
+|---|---|---|---|---|
+| `station.glb`, `station-edges.glb`, `scene.json` | right | up | toward the user | m (`params` in mm) |
+| STEP (assembly and per group), STL | right | away from the user | up | mm |
+| `<group>-top.dxf` (top view) | right | away from the user | – | mm |
+
+The DXF is the top view in the STEP's own XY plane, (x, y) = (x_app, −z_app). The SVG sheets are
+third-angle: TOP is the CAD Top view (x right, y up the sheet, so the user side faces down toward
+FRONT); FRONT looks at the user side (x right, z up); RIGHT SIDE looks in from +X (y to the right, z up,
+the user side on its left, next to FRONT); ISOMETRIC looks from the front, right and above.
 Everything is exported in the stow pose (laptop docked, keyboard and mouse in their pockets).
 
 ## How the model is built (short tour)
@@ -126,8 +154,15 @@ each such part's `mass_note` in `scene.json` says so.
    shell and the dock cradle have closed floors, so lifting them off the internals that stay on the
    desk passes the floor through those parts.
 3. Every STEP is re-imported, checking solid counts and volumes against the model (to 0.1 %). An XCAF
-   read checks that every part is named and every solid carries its material colour. Each STL is
-   checked as a valid binary file.
+   read checks that every part is named and every solid carries its material colour. Axes: the expected
+   boxes are the fresh (app-axes) B-rep's mapped to CAD (x, −z, y) inside `verify.py`, independently
+   of `build.to_cad_axes`, and every group STEP and every named part in the STEPs (with its assembly
+   placements) must match them to 0.01 mm; the assembly must stand on z = 0 with the screen at
+   z 172–507.7, the keyboard at y −122…−2 (user side toward −Y) and x unchanged. Each STL must be a valid
+   binary file whose box matches the mapped model box to within its tessellation deflection, whose
+   enclosed volume matches the B-rep to 1 % (a mirrored or inside-out mesh comes out negative), and
+   whose stored facet normals follow the triangle winding. A Y-up, rotated-the-wrong-way or mirrored
+   export fails these checks; solid counts and volumes alone could not tell.
 4. `scene.json` is checked against the SPEC shape, including that every file in the files index
    exists with exactly the listed byte size, and against a fresh model build: `params` equals
    `params.py`, every part's bbox, volume, mass and explode vector match, the pose waypoints and dock

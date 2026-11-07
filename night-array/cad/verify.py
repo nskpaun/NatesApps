@@ -9,7 +9,10 @@ Checks
      the stow pose, the work / standalone poses and every dock_sequence step, plus
      the paths between them: the stow <-> work waypoints, the laptop lift and the
      explode slider part-way (0.1 .. 0.9)
-  3. re-imports every STEP file and compares solid counts and volumes
+  3. re-imports every STEP file (solid counts, volumes, names, colours) and STL file, and checks that they are
+     in the Z-up CAD axes, CAD (x, y, z) = app (x, -z, y): the box of every group file and of every named part
+     against the fresh B-rep mapped to those axes, the STL's enclosed volume and normals (not mirrored, not
+     inside out), and the station standing on z = 0 with its user side toward -Y
   4. scene.json shape (keys, group order, parts, files index with real sizes), and
      its numbers against a fresh model build (params, part bbox / volume / mass,
      pose paths, dimension labels against their end points)
@@ -234,11 +237,45 @@ def check_explode(parts, kb, ms):
 
 
 # ----------------------------------------------------------------------------
-# 3. STEP round trip
+# 3. STEP / STL round trip (exchange files are Z-up)
 # ----------------------------------------------------------------------------
+# The model (and the GLBs) live in app axes: +Y up, +Z toward the user.  The STEP and STL files are written in
+# Z-up CAD axes, CAD (x, y, z) = app (x, -z, y): up -> +Z, the user side -> -Y, +X unchanged.  The expected
+# CAD boxes are mapped from the fresh app-axes B-rep here, independently of build.to_cad_axes, so an export left
+# in app axes, rotated the wrong way or mirrored fails these checks (solid counts and volumes alone cannot tell).
+STEP_BBOX_TOL = 0.01   # mm; the same exact geometry, re-imported
+STL_IN_TOL = 0.01      # mm; STL vertices lie on the B-rep, so they never stick out of its box by more than this
+STL_VOL_TOL = 0.01     # relative; chordal deflection (0.15 .. 0.3 mm) shaves the fillets (worst today: mouse, -0.3 %)
+
+
+def cad_box(app_box):
+    """(x0, y0, z0, x1, y1, z1) in app axes -> the same box in CAD axes: x = x, y = -z, z = y."""
+    x0, y0, z0, x1, y1, z1 = app_box
+    return (x0, -z1, y0, x1, -z0, y1)
+
+
+def union_box(boxes):
+    boxes = list(boxes)
+    return tuple(min(b[i] for b in boxes) for i in range(3)) + tuple(max(b[i] for b in boxes) for i in range(3, 6))
+
+
+def box_dev(a, b):
+    return max(abs(p - q) for p, q in zip(a, b))
+
+
+def f1(v):
+    s = "%.1f" % v
+    return "0.0" if s == "-0.0" else s
+
+
+def fmt_box(b):
+    return "x [%s, %s] y [%s, %s] z [%s, %s]" % tuple(f1(b[i]) for i in (0, 3, 1, 4, 2, 5))
+
 
 def xcaf_parts(path):
-    """Read a STEP with names + colours (XCAF): {leaf name: [sRGB colour of each solid]}."""
+    """Read a STEP with names + colours (XCAF): {leaf name: ([sRGB colour of each solid], located shape)}.
+
+    The shape carries the placements of every assembly level above it, so its box is where the part really is."""
     from OCP.Quantity import Quantity_Color, Quantity_TOC_sRGB
     from OCP.STEPCAFControl import STEPCAFControl_Reader
     from OCP.TCollection import TCollection_ExtendedString
@@ -247,6 +284,7 @@ def xcaf_parts(path):
     from OCP.TDocStd import TDocStd_Document
     from OCP.TopAbs import TopAbs_SOLID
     from OCP.TopExp import TopExp_Explorer
+    from OCP.TopLoc import TopLoc_Location
     from OCP.XCAFDoc import XCAFDoc_ColorType, XCAFDoc_DocumentTool
 
     doc = TDocStd_Document(TCollection_ExtendedString("XmlOcaf"))
@@ -272,17 +310,17 @@ def xcaf_parts(path):
 
     out = {}
 
-    def walk(lab, nm):
+    def walk(lab, nm, loc):
         if st.IsAssembly_s(lab):
             ch = TDF_LabelSequence()
             st.GetComponents_s(lab, ch)
             for i in range(1, ch.Length() + 1):
-                walk(ch.Value(i), name(ch.Value(i)))
+                walk(ch.Value(i), name(ch.Value(i)), loc)
             return
         if st.IsReference_s(lab):
             ref = TDF_Label()
             st.GetReferredShape_s(lab, ref)
-            walk(ref, nm)
+            walk(ref, nm, loc.Multiplied(st.GetLocation_s(lab)))
             return
         shape = st.GetShape_s(lab)
         cols = []
@@ -290,34 +328,85 @@ def xcaf_parts(path):
         while e.More():
             cols.append(colour(e.Current()) or colour(shape))
             e.Next()
-        out[nm] = cols
+        out[nm] = (cols, cq.Shape.cast(shape.Moved(loc)))
 
     free = TDF_LabelSequence()
     st.GetFreeShapes(free)
     for i in range(1, free.Length() + 1):
-        walk(free.Value(i), name(free.Value(i)))
+        walk(free.Value(i), name(free.Value(i)), TopLoc_Location())
     return out
 
 
-def check_step_colours(path, parts, pids):
-    sys.path.insert(0, HERE)
+def check_step_parts(path, parts, pids):
+    """Names and colours survive, and every named part sits where the model has it, in CAD axes."""
     import build
     got = xcaf_parts(path)
-    bad = []
+    bad, off = [], []
     for pid in pids:
         hexc = build.MATERIALS[build.PART_INFO[pid]["material"]][1]
         exp = [int(hexc[i:i + 2], 16) / 255.0 for i in (1, 3, 5)]
-        cols = got.get(pid)
+        cols, shape = got.get(pid, (None, None))
         ok = (cols is not None and len(cols) == len(parts[pid].Solids())
               and all(c is not None and max(abs(a - b) for a, b in zip(c, exp)) < 3e-3 for c in cols))
         if not ok:
             bad.append(pid)
-    check(not bad, f"{os.path.relpath(path, EXPORT)}: every part named, every solid in its material colour"
-          + (f" (bad: {bad})" if bad else ""))
+        if shape is not None:
+            dev = box_dev(tight_bbox(shape), cad_box(tight_bbox(parts[pid])))
+            if dev > STEP_BBOX_TOL:
+                off.append(f"{pid} {dev:.2f} mm")
+    rel = os.path.relpath(path, EXPORT)
+    check(not bad, f"{rel}: every part named, every solid in its material colour" + (f" (bad: {bad})" if bad else ""))
+    check(not off, f"{rel}: every named part's box = the model's, mapped to Z-up (within {STEP_BBOX_TOL} mm)"
+          + (f" (off: {off})" if off else ""))
+    return got
+
+
+def read_stl(path):
+    """Binary STL -> (stored normals (n, 3), triangle vertices (n, 3, 3)); raises on a malformed file."""
+    with open(path, "rb") as f:
+        data = f.read()
+    ntri = struct.unpack_from("<I", data, 80)[0]
+    if len(data) != 84 + 50 * ntri or ntri == 0:
+        raise ValueError(f"{len(data)} bytes for {ntri} triangles")
+    rec = np.frombuffer(data, dtype=np.dtype([("n", "<f4", 3), ("v", "<f4", (3, 3)), ("a", "<u2")]), count=ntri,
+                        offset=84)
+    return rec["n"].astype(float), rec["v"].astype(float)
+
+
+def check_stl(path, gid, pids, parts):
+    """Binary, Z-up, mm, not mirrored or inside out: the box matches the model's (mapped to CAD axes) to within
+    the tessellation, the enclosed (signed) volume matches the B-rep, and the stored normals follow the winding."""
+    import build
+    rel = os.path.relpath(path, EXPORT)
+    try:
+        n, v = read_stl(path)
+    except (ValueError, struct.error) as ex:
+        check(False, f"{rel}: not a valid binary STL ({ex})")
+        return
+    lin = build.STL_TESS.get(gid, build.STL_TESS_DEFAULT)[0]
+    exp = cad_box(union_box(tight_bbox(parts[p]) for p in pids))
+    pts = v.reshape(-1, 3)
+    got = tuple(pts.min(0)) + tuple(pts.max(0))
+    inside = all(got[i] >= exp[i] - STL_IN_TOL for i in range(3)) and all(got[i] <= exp[i] + STL_IN_TOL for i in range(3, 6))
+    dev = box_dev(got, exp)
+    check(inside and dev <= lin + 0.05,
+          f"{rel}: {len(v)} triangles, box {fmt_box(got)} = the model's in Z-up axes (dev {dev:.2f} mm, "
+          f"deflection {lin} mm)" + ("" if inside else f"; expected {fmt_box(exp)}"))
+    a, b, c = v[:, 0], v[:, 1], v[:, 2]
+    vol = float(np.einsum("ij,ij->i", a, np.cross(b, c)).sum() / 6.0)
+    exp_v = sum(parts[p].Volume() for p in pids)
+    check(abs(vol - exp_v) / exp_v < STL_VOL_TOL,
+          f"{rel}: enclosed volume {vol / 1000:.2f} cm3 vs B-rep {exp_v / 1000:.2f} cm3 "
+          f"({(vol - exp_v) / exp_v * 100:+.2f} %; a mirrored or inside-out mesh is negative)")
+    cr = np.cross(b - a, c - a)
+    ln = np.linalg.norm(cr, axis=1)
+    keep = ln > 1e-9
+    agree = np.einsum("ij,ij->i", cr[keep] / ln[keep, None], n[keep]) > 0.5
+    check(agree.mean() > 0.999, f"{rel}: stored facet normals follow the winding ({agree.mean() * 100:.2f} %)")
 
 
 def check_step(parts):
-    print("\n[3] STEP re-import")
+    print("\n[3] STEP / STL re-import (Z-up CAD axes)")
     from OCP.IFSelect import IFSelect_RetDone
     from OCP.STEPControl import STEPControl_Reader
 
@@ -334,6 +423,7 @@ def check_step(parts):
         pids = [pid for pid, gg, *_ in model.PARTS if gg == g]
         exp_n = sum(len(parts[p].Solids()) for p in pids)
         exp_v = sum(parts[p].Volume() for p in pids)
+        exp_box = cad_box(union_box(tight_bbox(parts[p]) for p in pids))
         path = os.path.join(EXPORT, "files", "parts", g + ".step")
         s = load(path)
         n = len(s.Solids())
@@ -342,24 +432,37 @@ def check_step(parts):
         total_n += exp_n
         check(n == exp_n and abs(v - exp_v) / exp_v < 1e-3,
               f"parts/{g}.step: {n} solids (expect {exp_n}), {v / 1000:.2f} cm3 (expect {exp_v / 1000:.2f})")
-        check_step_colours(path, parts, pids)
-        stl = os.path.join(EXPORT, "files", "parts", g + ".stl")
-        with open(stl, "rb") as f:
-            f.seek(80)
-            ntri = struct.unpack("<I", f.read(4))[0]
-        check(os.path.getsize(stl) == 84 + 50 * ntri and ntri > 0, f"parts/{g}.stl binary, {ntri} triangles")
-    s = load(os.path.join(EXPORT, "files", "night-array-assembly.step"))
+        got_box = tight_bbox(s)
+        check(box_dev(got_box, exp_box) <= STEP_BBOX_TOL,
+              f"parts/{g}.step: Z-up box {fmt_box(got_box)}" + ("" if box_dev(got_box, exp_box) <= STEP_BBOX_TOL
+                                                                 else f" (expected {fmt_box(exp_box)})"))
+        check_step_parts(path, parts, pids)
+        check_stl(os.path.join(EXPORT, "files", "parts", g + ".stl"), g, pids, parts)
+    apath = os.path.join(EXPORT, "files", "night-array-assembly.step")
+    s = load(apath)
     n = len(s.Solids())
     v = sum(x.Volume() for x in s.Solids())
     check(n == total_n and abs(v - total_vol) / total_vol < 1e-3,
           f"assembly STEP: {n} solids (expect {total_n}), {v / 1000:.1f} cm3 (expect {total_vol / 1000:.1f})")
-    with open(os.path.join(EXPORT, "files", "night-array-assembly.step"), encoding="utf-8", errors="replace") as f:
+    with open(apath, encoding="utf-8", errors="replace") as f:
         txt = f.read()
     names = [pid for pid, *_ in model.PARTS]
     missing = [p for p in names if f"'{p}'" not in txt]
     check(not missing, f"assembly STEP carries every part name (missing: {missing})")
     check("COLOUR_RGB" in txt, "assembly STEP carries colours")
-    check_step_colours(os.path.join(EXPORT, "files", "night-array-assembly.step"), parts, names)
+    got = check_step_parts(apath, parts, names)
+    # Upright, stated in SPEC terms rather than through cad_box: the station stands on the desk at z = 0, the
+    # screen's active area spans z 172 .. 507.7 (SPEC section 2: app y), and the user side is -Y: the keyboard
+    # (app z 2 .. 122) sits at y -122 .. -2, the neck (app z -140 .. -70) at y 70 .. 140.
+    x0, y0, z0, x1, y1, z1 = tight_bbox(s)
+    scr = tight_bbox(got["display_screen"][1]) if "display_screen" in got else (0,) * 6
+    kb = tight_bbox(got["keyboard_body"][1]) if "keyboard_body" in got else (0,) * 6
+    nk = tight_bbox(got["neck"][1]) if "neck" in got else (0,) * 6
+    ok = (abs(z0) < TOL and abs(scr[2] - 172) < TOL and abs(scr[5] - 507.7) < TOL
+          and abs(kb[1] + 122) < TOL and abs(kb[4] + 2) < TOL and abs(nk[1] - 70) < TOL and abs(nk[4] - 140) < TOL)
+    check(ok, f"assembly STEP is Z-up with the user side at -Y: z [{f1(z0)}, {f1(z1)}], screen z [{f1(scr[2])}, "
+          f"{f1(scr[5])}], keyboard y [{f1(kb[1])}, {f1(kb[4])}], neck y [{f1(nk[1])}, {f1(nk[4])}]")
+    check(abs(x0 + 640) < TOL and abs(x1 - 775) < TOL, f"assembly STEP: +X unchanged, x [{f1(x0)}, {f1(x1)}]")
 
 
 # ----------------------------------------------------------------------------
