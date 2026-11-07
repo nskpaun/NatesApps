@@ -1,0 +1,5 @@
+cad/.venv/
+cad/preview/
+cad/__pycache__/
+viewer/node_modules/
+viewer/test/out/
