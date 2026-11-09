@@ -25,7 +25,7 @@ python3 night-array/optics/run.py --quick     # same, low sample counts (~1.5 mi
 - reaches about **8× contrast** against the unlit surface in a 500-lux office, and about 25× in a lamp-lit room;
 - drops to about **1.7× (faint) in 5,000-lux daylight next to a window**.
 
-What the optics *can't* do is the concept image's tall, soft wave. The ribbon reads as a **thin line of light, about 30 mm tall and 1.2 m wide**. The x-direction blur is about 115 mm, so "delicate highlights" become soft spots about 10 cm wide.
+What the optics *can't* do is the concept image's tall, soft wave. The ribbon reads as a **thin line of light, about 30 mm tall and 1.2 m wide**. The x-direction blur is about 120 mm, so "delicate highlights" become soft spots about 10 cm wide.
 
 ## Recommended geometry (design C)
 
@@ -72,13 +72,13 @@ The ribbon's apparent height is set by **the slot between the reflector's lower 
 
 | Finish | Mean luminance | Contrast at 500 lux | Blur (width of one lit 9 mm column) |
 |---|---|---|---|
-| Matte white floor | 26 cd/m² | 3.3× | 290 mm |
-| Satin white paint | 27 cd/m² | 2.1× | 210 mm |
-| Satin titanium, fine (α 0.12) | 66 cd/m² | 35× | 60 mm |
-| **Satin titanium (α 0.25)** | **39 cd/m²** | **8.2×** | **115 mm** |
-| Satin titanium, coarse (α 0.40) | 25 cd/m² | 4.0× | 165 mm |
-| Polished titanium (α 0.04) | 103 cd/m² | 340× | 25 mm |
-| Satin aluminium (α 0.25) | 63 cd/m² | 8.1× | 110 mm |
+| Matte white floor | 26 cd/m² | 3.3× | 260 mm |
+| Satin white paint | 27 cd/m² | 2.1× | 220 mm |
+| Satin titanium, fine (α 0.12) | 66 cd/m² | 35× | 75 mm |
+| **Satin titanium (α 0.25)** | **39 cd/m²** | **8.2×** | **120 mm** |
+| Satin titanium, coarse (α 0.40) | 25 cd/m² | 4.0× | 170 mm |
+| Polished titanium (α 0.04) | 103 cd/m² | 340× | 55 mm |
+| Satin aluminium (α 0.25) | 63 cd/m² | 8.1× | about 120 mm |
 
 A **metallic satin** beats any white surface on every measure. A white diffuser scatters light everywhere, so it is lit by the whole room and its ribbon is only a little brighter than its own ambient glow. A metallic satin surface, seen from the chair, reflects what is above it: the dark display underside and the reflector. It is dark when the band is off and bright when it is on. Main-screen content barely reaches the ribbon (spill is below 0.01 cd/m² per 100 cd/m² of content), because the reflector shades the cove from the screen too.
 
@@ -119,14 +119,14 @@ The ribbon works at night and in normal offices with plenty of headroom. At nigh
 
 ![Pattern transfer](out/6-pattern-transfer.png)
 
-- **Left–right (x) is controllable, but blurred.** A single lit column spreads to about 115 mm on the ribbon, mostly from the satin's roughness acting over the 100–150 mm throw. As a result:
+- **Left–right (x) is controllable, but blurred.** A single lit 9 mm column spreads to about 120 mm on the ribbon, mostly from the satin's roughness acting over the 100–150 mm throw. As a result:
   - broad bass "swells" (wider than about 150 mm) come through at most of their drawn brightness;
   - a 40 mm treble "highlight" reaches only about 30 % of full-white brightness, and a 20 mm one about 16 %;
   - highlights stay where they are drawn, but they get softer and dimmer.
   - Stereo panning (moving a broad blob left and right) works well.
 - **Up–down cannot be steered.** All four row groups of the band land at the same height on the ribbon. The parabola collimates the band, so moving the pattern up or down the band changes the beam *angle*, not the spot's position. That only changes brightness slightly. Use the band's rows for brightness, not motion.
-- **Pattern and optics have to be designed together.** `ribbon/analysis.py:design_pattern` solves for band drive levels that produce a target ribbon. It uses a constrained least-squares fit through the traced transfer matrix, which maps each band bin to each pixel the eye sees. The example evens out the ribbon: the ends are dimmer than the middle because of the end caps, so the solver drives the centre down to match them.
-- **The seam.** The 14 mm pixel gap at x = 0 is much narrower than the ~115 mm blur, so it shows only as a shallow dip. The flat-field solve compensates for it.
+- **Pattern and optics have to be designed together.** `ribbon/analysis.py:design_pattern` solves for band drive levels that produce a target ribbon. It uses a constrained least-squares fit through the traced transfer matrix, which maps each band bin to each pixel the eye sees. The example asks for a uniform ribbon. Run at full white, the ribbon is about 30 % dimmer over its last 100–150 mm at each end, where the end caps cut off light from beyond the edge. The solver flattens the middle by lowering it to about 75 % of full drive. The ends can't be raised further (they are already at 100 %), so a fully even ribbon needs the cove to run about 100 mm past the end of the band, or mirror-finished end caps.
+- **The seam.** The 14 mm pixel gap at x = 0 is much narrower than the ~120 mm blur, and it produces no visible dip in the traced ribbon.
 - **Docking sweep / rest.** A sweep is a broad blob moving across x: well within reach. Off is black pixels: the cove then shows only reflected ambient light.
 
 ## Viewing position

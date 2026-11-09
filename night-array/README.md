@@ -52,6 +52,10 @@ All numbers are concept-level. The masses come from the CAD volumes and real mat
 - **[Kit overview](kit/README.md):** how the structure, power, video, wireless charging and light fit together, a before-you-buy checklist, and the status.
 - The printable shells, steel cut files, laptop-insert generator, wiring diagram and assembly guide are on hold for now.
 
+## Light ribbon optics
+
+[`optics/`](optics/) is a ray-traced check of the "light ribbon" idea: a band of screen pixels lighting a satin channel under the display through a hidden reflector, with no LEDs. It compares reflector geometries, surface finishes, band sizes and daylight levels, and solves for the band patterns software would draw. The result: it works with an off-axis parabolic reflector and a satin-metal ramp. A 12 mm band gives a ribbon of about 40 cd/m², at about 8× contrast in a 500-lux office. It fades in direct daylight, and it shows as a thin line with ~12 cm blur rather than the concept's tall wave. See [`optics/README.md`](optics/README.md).
+
 ## CAD files
 
 Everything is generated from one parametric CadQuery model and kept in [`cad/export/`](cad/export/):
@@ -83,6 +87,7 @@ night-array/
   cad/               parametric CAD (Python + CadQuery) → cad/export/ (committed deliverables, also packaged into the app)
   viewer/            live renderer (three.js 0.170, esbuild) → android/app/src/main/assets/viewer/ + renders/
   android/           Kotlin + Jetpack Compose app
+  optics/            light-ribbon ray tracer and results (numpy + matplotlib)
   kit/               build-it-yourself kit: shopping list (parts.json → BOM.md), design rules, sourcing research
   docs/              README images
 ```
