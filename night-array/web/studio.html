@@ -1,0 +1,252 @@
+<title>Night Array Studio</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500&family=Newsreader:ital,opsz,wght@1,6..72,400&display=swap">
+<style>
+/* Layout: full-bleed live 3D stage with a quiet control rail on the right (stacks below on phones). Single dark look, as in the app. */
+:root {
+  --bg: #0C0A09; --panel: #15110F; --panel2: #1E1915; --line: #2E2621;
+  --ink: #F2EAE1; --muted: #A39A90; --amber: #F2A04A; --amber-soft: #3A2614;
+  --display: "Jost", "Futura", "Avenir Next", system-ui, sans-serif;
+  --serif: "Newsreader", Georgia, serif;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--ink); font-family: var(--display); font-weight: 300; overflow: hidden; }
+.app { height: 100%; display: grid; grid-template-columns: 1fr 320px; }
+.stage { position: relative; min-width: 0; background: radial-gradient(120% 90% at 50% 40%, #1b1511 0%, var(--bg) 70%); }
+.stage iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; }
+.brand { position: absolute; top: 18px; left: max(18px, env(safe-area-inset-left, 0px)); pointer-events: none; }
+.brand h1 { margin: 0; font-weight: 300; font-size: 22px; letter-spacing: .32em; text-transform: uppercase; }
+.brand h1 em { font-style: normal; color: var(--amber); letter-spacing: .24em; }
+.brand p { margin: 6px 0 0; font-family: var(--serif); font-style: italic; color: var(--muted); font-size: 15px; }
+.status { position: absolute; bottom: 14px; left: max(18px, env(safe-area-inset-left, 0px)); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); display: flex; gap: 8px; align-items: center; pointer-events: none; }
+.status i { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); display: inline-block; }
+.status.live i { background: var(--amber); box-shadow: 0 0 10px var(--amber); }
+.rail { background: var(--panel); border-left: 1px solid var(--line); overflow-y: auto; padding-block: 18px 24px; padding-left: 18px; padding-right: max(18px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column; gap: 20px; }
+.group { display: flex; flex-direction: column; gap: 9px; }
+.label { font-size: 10.5px; letter-spacing: .24em; text-transform: uppercase; color: var(--muted); display: flex; justify-content: space-between; }
+.label b { font-weight: 400; color: var(--amber); letter-spacing: .08em; font-variant-numeric: tabular-nums; }
+.seg { display: flex; flex-wrap: wrap; gap: 6px; }
+.seg button, .btn {
+  font: inherit; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink);
+  background: var(--panel2); border: 1px solid var(--line); border-radius: 999px; padding: 8px 12px; cursor: pointer;
+}
+.seg button[aria-pressed="true"] { border-color: var(--amber); color: var(--amber); background: var(--amber-soft); }
+.btn.primary { border-color: var(--amber); color: var(--amber); }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+.swatches { display: flex; gap: 10px; }
+.swatch { width: 34px; height: 34px; border-radius: 50%; border: 2px solid var(--line); cursor: pointer; padding: 0; }
+.swatch[aria-pressed="true"] { border-color: var(--amber); box-shadow: 0 0 0 3px var(--amber-soft); }
+input[type="range"] { width: 100%; accent-color: var(--amber); }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.step { border: 1px solid var(--line); border-radius: 10px; padding: 8px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); background: var(--panel2); cursor: pointer; font-family: inherit; text-align: left; }
+.step span { display: block; font-size: 18px; color: var(--ink); margin-bottom: 2px; }
+.step.on { border-color: var(--amber); color: var(--amber); background: var(--amber-soft); }
+.note { font-size: 12px; color: var(--muted); line-height: 1.5; margin: 0; }
+.picked { border: 1px solid var(--line); border-radius: 12px; padding: 12px; background: var(--panel2); }
+.picked h3 { margin: 0 0 4px; font-weight: 400; letter-spacing: .14em; text-transform: uppercase; font-size: 13px; color: var(--amber); }
+
+.tabs { position: absolute; top: 18px; right: 18px; display: flex; gap: 6px; z-index: 5; }
+.tabs button { font: inherit; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink); background: rgba(21,17,15,.85); border: 1px solid var(--line); border-radius: 999px; padding: 8px 14px; cursor: pointer; }
+.tabs button[aria-pressed="true"] { border-color: var(--amber); color: var(--amber); }
+.parts { position: absolute; inset: 0; z-index: 4; background: var(--bg); overflow-y: auto; padding-block: 76px 32px; padding-left: max(24px, env(safe-area-inset-left, 0px)); padding-right: max(24px, env(safe-area-inset-right, 0px)); }
+.parts-inner { max-width: 880px; margin: 0 auto; display: flex; flex-direction: column; gap: 22px; }
+.totals { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+.tot { border: 1px solid var(--line); border-radius: 12px; padding: 14px; background: var(--panel); }
+.tot b { display: block; font-weight: 300; font-size: 26px; color: var(--amber); font-variant-numeric: tabular-nums; }
+.tot span { font-size: 10.5px; letter-spacing: .2em; text-transform: uppercase; color: var(--muted); }
+.cat h2 { margin: 0 0 6px; font-weight: 400; font-size: 12px; letter-spacing: .24em; text-transform: uppercase; color: var(--amber); display: flex; justify-content: space-between; }
+.item { display: grid; grid-template-columns: 1fr auto; gap: 4px 16px; padding: 12px 0; border-top: 1px solid var(--line); }
+.item a { color: var(--ink); text-decoration: none; font-weight: 400; }
+.item a:hover { color: var(--amber); }
+.item .mpn { font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: var(--muted); }
+.item .price { text-align: right; font-variant-numeric: tabular-nums; }
+.item .price small { display: block; color: var(--muted); font-size: 11.5px; }
+.item .role { grid-column: 1 / -1; font-size: 13px; color: var(--muted); line-height: 1.5; }
+.item .alt { grid-column: 1 / -1; font-size: 12.5px; color: var(--ink); border-left: 2px solid var(--amber-soft); padding-left: 10px; }
+.item .alt em { font-style: normal; color: var(--amber); }
+.tag { font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 2px 7px; margin-left: 6px; }
+@media (max-width: 760px) {
+  body { overflow: auto; }
+  .app { grid-template-columns: 1fr; grid-template-rows: 62vh auto; height: auto; }
+  .rail { border-left: 0; border-top: 1px solid var(--line); }
+}
+
+#stage { position: absolute; inset: 0; overflow: hidden; touch-action: none; }
+#stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; outline: none; touch-action: none; opacity: 0; transition: opacity .65s ease; }
+#stage.ready canvas { opacity: 1; }
+#stage.instant canvas { transition: none; }
+#labels { position: absolute; inset: 0; pointer-events: none; overflow: hidden; opacity: 0; transition: opacity .35s ease; }
+#labels.on { opacity: 1; }
+.dim { position: absolute; left: 0; top: 0; white-space: nowrap; will-change: transform; font: 500 10.5px/1 Inter, Roboto, "Helvetica Neue", Arial, sans-serif; letter-spacing: .07em; padding: 4px 7px; border-radius: 10px; background: rgba(12,10,9,.82); color: #F2EAE1; border: 1px solid rgba(242,160,74,.45); font-variant-numeric: tabular-nums; }
+.dim.hide { display: none; }
+#labels[data-style="cad"] .dim { background: rgba(250,250,249,.94); color: #1C1F23; border-color: rgba(28,31,35,.35); }
+#labels[data-style="blueprint"] .dim { background: rgba(8,22,40,.9); color: #F2C58A; border-color: rgba(242,160,74,.55); }
+#msg { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); max-width: min(78%, 360px); padding: 16px 18px; border-radius: 14px; text-align: center; line-height: 1.45; font-size: 13px; background: rgba(21,17,15,.9); border: 1px solid var(--line); color: var(--ink); transition: opacity .6s ease; }
+#msg.fade { opacity: 0; }
+#msg b { display: block; font-weight: 400; letter-spacing: .22em; text-transform: uppercase; font-size: 11px; color: var(--amber); margin-bottom: 6px; }
+#msg span { color: var(--muted); }
+.stage iframe { display: none; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="app">
+  <div class="stage">
+    <div id="stage"><div id="labels"></div></div><div id="msg" role="status" hidden></div>
+    <div class="brand"><h1>Night Array <em>/ Work &amp; Stow</em></h1><p>Your hardware. Your OS.</p></div>
+    <div class="tabs"><button id="tabStudio" aria-pressed="true">3D Studio</button><button id="tabParts" aria-pressed="false">Parts list</button></div>
+    <section class="parts" id="parts" hidden><div class="parts-inner">
+      <div><div class="label">Build it yourself</div><p class="note" id="partsNote" style="margin-top:6px"></p></div>
+      <div class="totals" id="totals"></div>
+      <div class="seg"><button id="swaps" aria-pressed="false">Show budget swaps</button></div>
+      <div id="cats"></div>
+    </div></section>
+    <div class="status" id="status"><i></i><span id="statusText">Loading the model…</span></div>
+  </div>
+  <aside class="rail">
+    <div class="group"><div class="label">Mode</div>
+      <div class="seg" data-key="mode"><button data-v="work">Work</button><button data-v="stow">Stow &amp; charge</button><button data-v="standalone">Standalone</button></div></div>
+    <div class="group"><div class="label">Docking</div>
+      <div class="steps" id="steps"><button class="step" data-step="align"><span>1</span>Align</button><button class="step" data-step="lower"><span>2</span>Lower</button><button class="step" data-step="lift"><span>3</span>Lift out</button></div>
+      <div class="row"><button class="btn primary" id="play">Play sequence</button><button class="btn" id="reset">Reset</button></div></div>
+    <div class="group"><div class="label">View</div>
+      <div class="seg" data-key="style"><button data-v="studio">Studio</button><button data-v="cad">CAD</button><button data-v="xray">X-ray</button><button data-v="blueprint">Blueprint</button></div></div>
+    <div class="group"><div class="label">Finish</div>
+      <div class="swatches" data-key="finish">
+        <button class="swatch" data-v="titanium" title="Neutral Titanium" aria-label="Neutral Titanium" style="background:#BDB2A4"></button>
+        <button class="swatch" data-v="graphite" title="Charcoal Graphite" aria-label="Charcoal Graphite" style="background:#3A3735"></button>
+        <button class="swatch" data-v="oxblood" title="Brushed Oxblood" aria-label="Brushed Oxblood" style="background:#7A2E2A"></button>
+      </div></div>
+    <div class="group"><label class="label" for="amber">Amber light <b id="amberV">80%</b></label><input id="amber" type="range" min="0" max="100" value="80"></div>
+    <div class="group"><label class="label" for="explode">Explode <b id="explodeV">0%</b></label><input id="explode" type="range" min="0" max="100" value="0"></div>
+    <div class="group"><div class="label">Section cut</div>
+      <div class="seg" id="sectionAxis"><button data-v="off" aria-pressed="true">Off</button><button data-v="x">Across</button><button data-v="z">Front to back</button></div>
+      <input id="sectionT" type="range" min="0" max="100" value="50" aria-label="Section position"></div>
+    <div class="group"><div class="label">Camera</div>
+      <div class="seg" id="cams"><button data-v="hero">Hero</button><button data-v="front">Front</button><button data-v="top">Top</button><button data-v="side">Side</button><button data-v="back">Back</button><button data-v="dock">Dock</button><button data-v="trays">Trays</button><button data-v="display">Display</button></div>
+      <div class="seg"><button id="dims" aria-pressed="false">Dimensions</button><button id="rotate" aria-pressed="false">Auto-rotate</button><button id="night" aria-pressed="false">Night shift</button></div></div>
+    <div class="picked" id="picked" hidden><h3 id="pName"></h3><p class="note" id="pText"></p>
+      <div class="row" style="margin-top:8px"><button class="btn" id="isolate">Isolate</button><button class="btn" id="frame">Frame</button></div></div>
+    <p class="note">Drag to orbit, scroll or pinch to zoom, right-drag to pan. Click any part to see what it is.</p>
+  </aside>
+</div>
+
+<script>
+// The host can't serve .glb files, so the models ship as base64 text and are decoded here for the viewer's loader.
+(function () {
+  const orig = window.fetch.bind(window);
+  window.fetch = function (input, init) {
+    const url = typeof input === 'string' ? input : (input && input.url) || '';
+    if (/model\/station(-edges)?\.glb(\?|$)/.test(url)) {
+      return orig(url.replace(/\.glb(\?.*)?$/, '.glb.txt'), init).then(r => {
+        if (!r.ok) return r;
+        return r.text().then(t => {
+          const bin = atob(t.trim()), bytes = new Uint8Array(bin.length);
+          for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+          return new Response(bytes.buffer, { status: 200, headers: { 'Content-Type': 'model/gltf-binary' } });
+        });
+      });
+    }
+    return orig(input, init);
+  };
+})();
+</script>
+<script src="viewer.js"></script>
+<script>
+const state = { mode: 'work', style: 'studio', finish: 'titanium', amber: 0.8, explode: 0, section: null, dims: false, autorotate: false, quality: 'high', isolate: null, selected: null, cinematic: false };
+let groups = {};
+fetch('model/scene.json').then(r => r.json()).then(s => { (s.groups || []).forEach(g => groups[g.id] = g); }).catch(() => {});
+const NA = () => window.NA || null;
+const set = (p) => { Object.assign(state, p); const na = NA(); if (na) na.setState(p); sync(); };
+const statusEl = document.getElementById('status'), statusText = document.getElementById('statusText');
+
+function sync() {
+  document.querySelectorAll('[data-key]').forEach(seg => seg.querySelectorAll('[data-v]').forEach(b => b.setAttribute('aria-pressed', String(state[seg.dataset.key] === b.dataset.v))));
+  document.getElementById('dims').setAttribute('aria-pressed', String(state.dims));
+  document.getElementById('rotate').setAttribute('aria-pressed', String(state.autorotate));
+  document.getElementById('night').setAttribute('aria-pressed', String(state.cinematic));
+}
+document.querySelectorAll('[data-key] [data-v]').forEach(b => b.addEventListener('click', () => set({ [b.parentElement.dataset.key]: b.dataset.v })));
+for (const id of ['amber', 'explode']) {
+  const el = document.getElementById(id), out = document.getElementById(id + 'V');
+  el.addEventListener('input', () => { out.textContent = el.value + '%'; set({ [id]: el.value / 100 }); });
+}
+const axisBtns = document.querySelectorAll('#sectionAxis button'), sectionT = document.getElementById('sectionT');
+let axis = 'off';
+const applySection = () => { axisBtns.forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === axis))); set({ section: axis === 'off' ? null : { axis, t: sectionT.value / 100 } }); };
+axisBtns.forEach(b => b.addEventListener('click', () => { axis = b.dataset.v; applySection(); }));
+sectionT.addEventListener('input', () => { if (axis !== 'off') applySection(); });
+document.querySelectorAll('#cams button').forEach(b => b.addEventListener('click', () => { const na = NA(); if (na) na.camera(b.dataset.v); }));
+document.getElementById('dims').addEventListener('click', () => set({ dims: !state.dims }));
+document.getElementById('rotate').addEventListener('click', () => set({ autorotate: !state.autorotate }));
+document.getElementById('night').addEventListener('click', () => set({ cinematic: !state.cinematic }));
+document.querySelectorAll('.step').forEach(b => b.addEventListener('click', () => { const na = NA(); if (na) na.dock(b.dataset.step); }));
+document.getElementById('play').addEventListener('click', () => { const na = NA(); if (na) na.dock('play'); });
+document.getElementById('reset').addEventListener('click', () => { const na = NA(); if (na) na.dock('reset'); });
+let picked = null;
+document.getElementById('isolate').addEventListener('click', () => { if (picked) set({ isolate: state.isolate === picked ? null : picked }); });
+document.getElementById('frame').addEventListener('click', () => { const na = NA(); if (picked && na) na.frame(picked); });
+
+function onEvent(e) {
+  if (e.type === 'ready') { statusEl.classList.add('live'); statusText.textContent = 'Live 3D'; }
+  else if (e.type === 'error') { statusText.textContent = e.message || 'The live view could not start'; }
+  else if (e.type === 'dockStep') {
+    document.querySelectorAll('.step').forEach(s => s.classList.toggle('on', s.dataset.step === e.step));
+  } else if (e.type === 'pick') {
+    picked = e.group; set({ selected: e.group });
+    const box = document.getElementById('picked');
+    if (!e.group) { box.hidden = true; return; }
+    const g = groups[e.group] || { name: e.group };
+    document.getElementById('pName').textContent = g.name || e.group;
+    document.getElementById('pText').textContent = g.summary || '';
+    box.hidden = false;
+  }
+}
+(function(){
+  const tryHook = (n) => { const na = NA(); if (na && na.on) { na.on(onEvent); if (na.ready) onEvent({ type: 'ready' }); } else if (n > 0) setTimeout(() => tryHook(n - 1), 200); };
+  tryHook(50);
+})();
+
+// Parts list
+const money = v => '$' + v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+let kit = null, showSwaps = false;
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+function renderParts() {
+  if (!kit) return;
+  const items = kit.items, core = items.filter(i => !i.optional && !i.excluded);
+  const line = (i, sw) => ((sw && i.swap ? i.swap.unit_usd : i.unit_usd) * i.qty);
+  const sum = (arr, sw) => arr.reduce((a, i) => a + line(i, sw), 0);
+  document.getElementById('partsNote').textContent = 'Real parts to build Night Array at home. Prices are US street prices checked ' + kit.prices_checked + ' and move often. Tap a part to open where to buy it.';
+  document.getElementById('totals').innerHTML =
+    `<div class="tot"><span>Core build</span><b>${money(sum(core, false))}</b></div>` +
+    `<div class="tot"><span>With budget swaps</span><b>${money(sum(core, true))}</b></div>` +
+    `<div class="tot"><span>Filament, not in budget</span><b>${money(sum(items.filter(i => i.excluded), false))}</b></div>`;
+  const cats = [...new Set(items.map(i => i.category))];
+  document.getElementById('cats').innerHTML = cats.map(c => {
+    const its = items.filter(i => i.category === c);
+    return `<div class="cat"><h2><span>${esc(c)}</span><span>${money(sum(its.filter(i => !i.optional && !i.excluded), showSwaps) || sum(its, false))}</span></h2>` +
+      its.map(i => {
+        const name = i.buy_url ? `<a href="${esc(i.buy_url)}" target="_blank" rel="noopener">${esc(i.product)}</a>` : esc(i.product);
+        const tag = i.optional ? '<span class="tag">optional</span>' : '';
+        let alt = '';
+        if (showSwaps && i.swap) alt += `<div class="alt"><em>Budget swap:</em> ${esc(i.swap.product)} · ${money(i.swap.unit_usd)}${i.swap.note ? ' · ' + esc(i.swap.note) : ''}</div>`;
+        if (i.upgrade) alt += `<div class="alt"><em>Upgrade:</em> ${esc(i.upgrade.product)} · ${money(i.upgrade.unit_usd)}${i.upgrade.note ? ' · ' + esc(i.upgrade.note) : ''}</div>`;
+        return `<div class="item"><div>${name}${tag}<div class="mpn">${esc(i.mpn)}</div></div>` +
+          `<div class="price">${money(line(i, false))}<small>${i.qty} × ${money(i.unit_usd)}</small></div>` +
+          `<div class="role">${esc(i.role)}${i.price_note ? '. ' + esc(i.price_note) : ''}</div>${alt}</div>`;
+      }).join('') + '</div>';
+  }).join('');
+}
+fetch('parts.json').then(r => r.json()).then(d => { kit = d; renderParts(); }).catch(() => { document.getElementById('partsNote').textContent = 'The parts list could not be loaded.'; });
+document.getElementById('swaps').addEventListener('click', e => { showSwaps = !showSwaps; e.target.setAttribute('aria-pressed', String(showSwaps)); renderParts(); });
+const showTab = parts => {
+  document.getElementById('parts').hidden = !parts;
+  document.getElementById('tabParts').setAttribute('aria-pressed', String(parts));
+  document.getElementById('tabStudio').setAttribute('aria-pressed', String(!parts));
+};
+document.getElementById('tabParts').addEventListener('click', () => showTab(true));
+document.getElementById('tabStudio').addEventListener('click', () => showTab(false));
+{ const na = NA(); if (na) na.setState(state); }
+sync();
+</script>

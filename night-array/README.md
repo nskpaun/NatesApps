@@ -66,6 +66,10 @@ Everything is generated from one parametric CadQuery model and kept in [`cad/exp
 
 See [`cad/README.md`](cad/README.md) for how to open them in FreeCAD, Fusion and Onshape.
 
+## On a computer
+
+[`web/studio.html`](web/studio.html) is the app's live 3D Studio and the parts list as one browser page, with the same renderer and model as the Android app. `python3 web/build.py` assembles the files it loads into `web/dist/`.
+
 ## Install
 
 Download [`NightArray.apk`](NightArray.apk) on an Android phone or tablet (Android 8.0+), open it, and allow installs from that source when prompted. It's signed with a debug key, so Play Protect may warn that the developer is unknown. The live Studio needs WebGL2, which current Android System WebView has on almost all devices; without it, the app shows the rendered stills instead.
