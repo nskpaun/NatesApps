@@ -11,9 +11,9 @@
         205.0,
         44.0
       ],
-      "grams_each_est": 307.2,
-      "hours_each_est": 8.74,
-      "solid_volume_cm3": 877.2
+      "grams_each_est": 299.7,
+      "hours_each_est": 8.53,
+      "solid_volume_cm3": 842.3
     },
     {
       "file": "print/tile_right.stl",
@@ -26,9 +26,9 @@
         205.0,
         44.0
       ],
-      "grams_each_est": 318.3,
-      "hours_each_est": 9.05,
-      "solid_volume_cm3": 942.8
+      "grams_each_est": 313.2,
+      "hours_each_est": 8.91,
+      "solid_volume_cm3": 920.4
     },
     {
       "file": "print/kb_floor_block.stl",
@@ -41,9 +41,9 @@
         165.4,
         23.8
       ],
-      "grams_each_est": 84.3,
-      "hours_each_est": 2.47,
-      "solid_volume_cm3": 130.8
+      "grams_each_est": 79.7,
+      "hours_each_est": 2.34,
+      "solid_volume_cm3": 109.1
     },
     {
       "file": "print/mouse_floor_block.stl",
@@ -56,9 +56,9 @@
         165.4,
         23.8
       ],
-      "grams_each_est": 109.3,
-      "hours_each_est": 3.17,
-      "solid_volume_cm3": 226.6
+      "grams_each_est": 98.1,
+      "hours_each_est": 2.86,
+      "solid_volume_cm3": 180.5
     },
     {
       "file": "print/pad_carrier.stl",

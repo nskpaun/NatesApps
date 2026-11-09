@@ -94,11 +94,11 @@ Print the coupon first, and do **Test A** before you commit 30 hours to the rest
 
 | Item | Qty | Use |
 |---|---|---|
-| M3 × 8 button head (ISO 7380) | 12 | 8 hatch screws (4 per hatch), 4 carrier lock screws |
+| M3 × 8 button head (ISO 7380) or socket head | 12 | 8 hatch screws (4 per hatch), 4 carrier lock screws |
 | M3 washer (7 mm OD) | 4 | under the lock-screw heads |
 | M3 × 20 socket or button head | 4 | tile joint |
 | M3 hex nut | 16 | 8 hatch nut traps, 4 carrier ears, 4 tile joint |
-| 3 mm EVA craft foam or 3 mm foam tape | 8 squares, 20 × 20 mm | under the pads, 4 per carrier |
+| 3 mm EVA craft foam (plus a little double-sided tape or glue) or 3 mm foam tape | 8 squares, 20 × 20 mm | under the pads, 4 per carrier |
 | Self-adhesive rubber bumpers, about 10 mm Ø × 3 mm | 8 | feet |
 | Micro-USB cable | 2 | one comes with each Anker 313 (4 ft). A right-angle plug is optional; the plug bays fit a straight one. |
 | USB charger with **two ports that each give 5 V / 2 A** | 1 | Anker: computer USB ports are *not* enough |
@@ -204,7 +204,7 @@ If a device will not charge through the coupon at all, don't print the tray yet.
   - the exact spot of the status LED on the pad.
 
   The carrier's open wall gaps and the sight slot are there because of that last point.
-- **Printed fits.** Fits are deliberately roomy for a prototype: 0.4 mm per side at the floor-block seats, joint keys and hatches, 0.5 mm round each pad in its carrier, 3.6 mm M3 clearance holes and slightly loose nut traps (a dab of glue holds a nut if it falls out). The keyboard has 2.5 mm per side in its pocket, the mouse 3 mm. Each pocket wall rises straight for 6 mm (so the devices land over the chargers), then a soft cove rounds out to 12 mm wider per side at the rim (`POCKET_STRAIGHT`, `POCKET_FLARE`), and the Magic Tag notch is 14 mm deep and 37 mm long. If your printer runs tight or loose, change `FIT`, `HATCH_FIT`, `KB_CLR` and `MOUSE_CLR` at the top of `pocket_section.py` and run it again.
+- **Printed fits.** Fits are deliberately roomy for a prototype: 0.4 mm per side at the floor-block seats, joint keys and hatches, 0.5 mm round each pad in its carrier, 3.6 mm M3 clearance holes and slightly loose nut traps (a dab of glue holds a nut if it falls out). The keyboard has 2.5 mm per side in its pocket, the mouse 3 mm. Each pocket wall rises straight for 6 mm (so the devices land over the chargers), then a concave, bowl-shaped cove curves up to the rim, 12 mm wider per side at the top (`POCKET_STRAIGHT`, `POCKET_FLARE`), and the Magic Tag notch is 14 mm deep and 37 mm long. If your printer runs tight or loose, change `FIT`, `HATCH_FIT`, `KB_CLR` and `MOUSE_CLR` at the top of `pocket_section.py` and run it again.
 - **Unsupported floor.** The 1 mm floor is unsupported where the cavity is wider than the pad (galleries and plug bay). One of the keyboard's front-left feet can land on such a span. It will flex a few tenths of a millimetre, which is harmless here.
 - **Grams and hours.** These are volume-based estimates, as described above.
 

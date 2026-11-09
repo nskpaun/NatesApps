@@ -158,7 +158,7 @@ KB_NOTCH_FRONT = 7.0     # front wall left standing in front of each notch
 KB_NOTCH_DIP = 4.0       # notch dips this far below the floor so a fingertip gets under the keyboard (thick floor only)
 POCKET_STRAIGHT = 6.0    # pocket walls rise straight this far above the floor, so devices still land over the chargers
 POCKET_FLARE = 12.0      # above that, a soft cove widens the opening by this much per side at the rim
-COVE_STEPS = 10          # loft sections through the cove (smooth surface, not stair steps)
+COVE_STEPS = 24          # ruled loft sections through the cove (fine facets, smooth to the eye)
 MOUSE_POCKET_R = 18.0    # mouse pocket plan corner radius
 MOUSE_NOTCH_W = 30.0     # finger notches either side of the mouse
 MOUSE_NOTCH_IN = 6.0
@@ -323,25 +323,27 @@ def feet_positions():
 # =====================================================================================================================
 
 def cove_pocket(x0, x1, y0, y1, r):
-    """Pocket cut: straight walls for POCKET_STRAIGHT above the floor, then a quarter-ellipse round-over that is
-    vertical where it leaves the straight wall and flattens out to POCKET_FLARE wider per side at the rim."""
+    """Pocket cut: straight walls for POCKET_STRAIGHT above the floor, then a concave quarter-ellipse cove (a bowl)
+    that starts almost flat where it leaves the straight wall and rises to meet the rim vertically,
+    POCKET_FLARE wider per side at the rim.  Built as ONE ruled loft from the floor to the rim (no internal faces),
+    so the cut stays watertight."""
     zs = Z_FLOOR + POCKET_STRAIGHT
-    lower = rbox(x0, x1, y0, y1, Z_FLOOR, zs + 0.3, r)   # overlaps the cove's narrow bottom so the union is clean
     H = TRAY_H - zs
-    wires = []
-    for k in range(COVE_STEPS + 1):
-        t = math.pi / 2 * k / COVE_STEPS
-        off = POCKET_FLARE * (1 - math.cos(t))
-        z = zs + H * math.sin(t)
+
+    def section(off, z):
         a0, a1, b0, b1 = x0 - off, x1 + off, y0 - off, y1 + off
         w = cq.Wire.makePolygon([cq.Vector(a0, b0, z), cq.Vector(a1, b0, z), cq.Vector(a1, b1, z), cq.Vector(a0, b1, z)], close=True)
-        wires.append(w.fillet2D(r + off, w.Vertices()))
-    cove = cq.Workplane().add(cq.Solid.makeLoft(wires, False))
-    o = POCKET_FLARE
-    above = rbox(x0 - o, x1 + o, y0 - o, y1 + o, TRAY_H - 0.3, TRAY_H + 1, r + o)
-    out = lower.union(cove, clean=True).union(above, clean=True)
-    assert len(out.solids().vals()) == 1, 'cove pocket union failed'
+        return w.fillet2D(r + off, w.Vertices())
+
+    wires = [section(0.0, Z_FLOOR)]
+    for k in range(COVE_STEPS + 1):
+        t = math.pi / 2 * k / COVE_STEPS
+        wires.append(section(POCKET_FLARE * math.sin(t), zs + H * (1 - math.cos(t))))
+    wires.append(section(POCKET_FLARE, TRAY_H + 1.0))
+    out = cq.Workplane().add(cq.Solid.makeLoft(wires, True))
+    assert out.val().isValid() and out.val().Volume() > 0, 'cove pocket loft failed'
     return out
+
 
 def monolith():
     m = box(0, TRAY_W, 0, TRAY_D, 0, TRAY_H)
