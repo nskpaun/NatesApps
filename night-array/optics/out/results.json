@@ -1,0 +1,584 @@
+{
+ "designs": {
+  "A. Flat mirror, 45 deg": {
+   "name": "A. Flat mirror, 45 deg",
+   "band_h": 12.0,
+   "band_lum": 350.0,
+   "lcd_exponent": 0.7,
+   "louver_deg": null,
+   "louver_t": 0.7,
+   "seam_gap": 14.0,
+   "mirror_deg": 45,
+   "mirror_bottom_y": 158,
+   "reflector": "flat",
+   "refl_f": null,
+   "refl_psi": 20.0,
+   "refl_theta_min": -60.0,
+   "chin_finish": "black_glass",
+   "ramp_deg": 30,
+   "ramp_finish": "satin_titanium",
+   "floor_y": 18.0,
+   "cove_front_z": -20.0,
+   "cove_back_z": -140.0,
+   "lip_h": 4.0,
+   "width": 1200.0,
+   "eye": [
+    0.0,
+    460.0,
+    650.0
+   ]
+  },
+  "B. Flat mirror, 62 deg + chin mirror": {
+   "name": "B. Flat mirror, 62 deg + chin mirror",
+   "band_h": 12.0,
+   "band_lum": 350.0,
+   "lcd_exponent": 0.7,
+   "louver_deg": null,
+   "louver_t": 0.7,
+   "seam_gap": 14.0,
+   "mirror_deg": 62,
+   "mirror_bottom_y": 135,
+   "reflector": "flat",
+   "refl_f": null,
+   "refl_psi": 20.0,
+   "refl_theta_min": -60.0,
+   "chin_finish": "mirror",
+   "ramp_deg": 35,
+   "ramp_finish": "satin_titanium",
+   "floor_y": 18.0,
+   "cove_front_z": -20.0,
+   "cove_back_z": -140.0,
+   "lip_h": 4.0,
+   "width": 1200.0,
+   "eye": [
+    0.0,
+    460.0,
+    650.0
+   ]
+  },
+  "C. Parabolic reflector + chin mirror": {
+   "name": "C. Parabolic reflector + chin mirror",
+   "band_h": 12.0,
+   "band_lum": 350.0,
+   "lcd_exponent": 0.7,
+   "louver_deg": null,
+   "louver_t": 0.7,
+   "seam_gap": 14.0,
+   "mirror_deg": 45.0,
+   "mirror_bottom_y": 158.0,
+   "reflector": "parabolic",
+   "refl_f": 20,
+   "refl_psi": 15,
+   "refl_theta_min": -55,
+   "chin_finish": "mirror",
+   "ramp_deg": 32,
+   "ramp_finish": "satin_titanium",
+   "floor_y": 18.0,
+   "cove_front_z": -20.0,
+   "cove_back_z": -140.0,
+   "lip_h": 4.0,
+   "width": 1200.0,
+   "eye": [
+    0.0,
+    460.0,
+    650.0
+   ]
+  },
+  "Matte white flat floor": {
+   "name": "Matte white flat floor",
+   "band_h": 12.0,
+   "band_lum": 350.0,
+   "lcd_exponent": 0.7,
+   "louver_deg": null,
+   "louver_t": 0.7,
+   "seam_gap": 14.0,
+   "mirror_deg": 45.0,
+   "mirror_bottom_y": 158.0,
+   "reflector": "parabolic",
+   "refl_f": 20,
+   "refl_psi": 15,
+   "refl_theta_min": -55,
+   "chin_finish": "mirror",
+   "ramp_deg": 0.0,
+   "ramp_finish": "matte_white",
+   "floor_y": 18.0,
+   "cove_front_z": -20.0,
+   "cove_back_z": -140.0,
+   "lip_h": 4.0,
+   "width": 1200.0,
+   "eye": [
+    0.0,
+    460.0,
+    650.0
+   ]
+  }
+ },
+ "reflectors": [
+  {
+   "name": "A. Flat mirror, 45 deg",
+   "flux": {
+    "escapes up into the room": 0.08720173521933651,
+    "escapes sideways/down": 0.015947805123513358,
+    "absorbed: deck": 0.24208045708980702,
+    "absorbed: desk": 0.004993931557462344,
+    "absorbed: end cap": 0.029559750511395855,
+    "absorbed: front lip (inside)": 0.04769853039272395,
+    "absorbed: lip top": 0.04207956079769511,
+    "absorbed: reflector (cap / mirror)": 0.0677967602700512,
+    "absorbed: ribbon surface": 0.11813768794588082,
+    "absorbed: back wall": 0.003501988318283984,
+    "absorbed: base front": 5.264824734402464e-05,
+    "absorbed: chin": 0.0883699819330057,
+    "absorbed: display underside": 0.00707026635881933,
+    "absorbed: light band": 0.24282497872568468,
+    "absorbed: lip front": 0.00025452749178539046,
+    "absorbed: screen content": 0.0023712068283685316,
+    "still bouncing": 5.818318884223565e-05
+   },
+   "metrics": {
+    "peak": 39.92522976398468,
+    "mean": 24.21136109651246,
+    "area_px": 322,
+    "height_px": 10,
+    "k_amb": 0.16117855120255517,
+    "k_content": 4.417884148728206e-05,
+    "contrast": {
+     "50": 10.428514834575134,
+     "150": 4.145002587888782,
+     "500": 1.94372824020674,
+     "1000": 1.4718884983640141,
+     "5000": 1.0943816005572489
+    }
+   }
+  },
+  {
+   "name": "B. Flat mirror, 62 deg + chin mirror",
+   "flux": {
+    "escapes up into the room": 0.06397792796962314,
+    "escapes sideways/down": 0.006257429000062304,
+    "absorbed: deck": 0.09398504890499809,
+    "absorbed: desk": 0.0007687881072744309,
+    "absorbed: end cap": 0.024154828818098953,
+    "absorbed: front lip (inside)": 0.051346733289206185,
+    "absorbed: lip top": 0.05004963489723063,
+    "absorbed: reflector (cap / mirror)": 0.08018930916274564,
+    "absorbed: ribbon surface": 0.10876550850705813,
+    "absorbed: back wall": 0.0025170438877925843,
+    "absorbed: chin": 0.013498482817671499,
+    "absorbed: display underside": 0.006112250373954721,
+    "absorbed: light band": 0.49599917079226985,
+    "absorbed: lip front": 0.0002747282080357794,
+    "absorbed: screen content": 0.000977381210790641,
+    "still bouncing": 0.0011257340531874564
+   },
+   "metrics": {
+    "peak": 34.62752914428711,
+    "mean": 21.14151510319411,
+    "area_px": 331,
+    "height_px": 11,
+    "k_amb": 0.18608865726425303,
+    "k_content": 4.0638653565491385e-05,
+    "contrast": {
+     "50": 8.13244896096133,
+     "150": 3.3787875273456547,
+     "500": 1.7137733364268686,
+     "1000": 1.356901358591717,
+     "5000": 1.071382622353026
+    }
+   }
+  },
+  {
+   "name": "C. Parabolic reflector + chin mirror",
+   "flux": {
+    "escapes up into the room": 0.10369507153566049,
+    "escapes sideways/down": 0.0018479394232436797,
+    "absorbed: deck": 0.03872334199104015,
+    "absorbed: end cap": 0.09053961257267473,
+    "absorbed: front lip (inside)": 0.04717074278946729,
+    "absorbed: lip top": 0.033736684960458035,
+    "absorbed: reflector (cap / mirror)": 0.09234994609540073,
+    "absorbed: ribbon surface": 0.40178097013155245,
+    "absorbed: back wall": 0.05799961026517587,
+    "absorbed: chin": 0.00507574888487971,
+    "absorbed: desk": 0.001265226368803432,
+    "absorbed: display underside": 0.06900827021923876,
+    "absorbed: hidden rows (black)": 0.007142416433731017,
+    "absorbed: light band": 0.03466837703318984,
+    "absorbed: lip front": 0.00011980955672561104,
+    "absorbed: screen content": 9.588912157449219e-05,
+    "still bouncing": 0.014780342617183851
+   },
+   "metrics": {
+    "peak": 75.89129786491392,
+    "mean": 46.88322342813747,
+    "area_px": 494,
+    "height_px": 6,
+    "k_amb": 0.030152466648018694,
+    "k_content": 1.3322746013034292e-06,
+    "contrast": {
+     "50": 98.67921281346264,
+     "150": 33.56335309765915,
+     "500": 10.769385612991492,
+     "1000": 5.884733488811416,
+     "5000": 1.9769532070303724
+    }
+   }
+  }
+ ],
+ "finishes": [
+  {
+   "finish": "matte white",
+   "peak": 68.61390776634217,
+   "mean": 41.6891858150773,
+   "k_amb": 0.06277980340870015,
+   "k_content": 0.0,
+   "c500": 5.172374960723006,
+   "c1000": 3.0861874803615024,
+   "fwhm_mm": 9.607350194493335
+  },
+  {
+   "finish": "satin white paint",
+   "peak": 60.43806009292602,
+   "mean": 35.747335261591495,
+   "k_amb": 0.15211999082864983,
+   "k_content": 2.9656671597762204e-05,
+   "c500": 2.4764044082317995,
+   "c1000": 1.7382293307943133,
+   "fwhm_mm": 12.56418904327387
+  },
+  {
+   "finish": "satin titanium, fine (a=0.12)",
+   "peak": 108.21228218078613,
+   "mean": 72.97372115675621,
+   "k_amb": 0.01028390660720547,
+   "k_content": 0.0,
+   "c500": 45.58494520565708,
+   "c1000": 23.292472602828543,
+   "fwhm_mm": 12.668245714022419
+  },
+  {
+   "finish": "satin titanium (a=0.25)",
+   "peak": 75.89129786491392,
+   "mean": 46.88322342813747,
+   "k_amb": 0.030152466648018694,
+   "k_content": 1.3322746013034292e-06,
+   "c500": 10.769385612991492,
+   "c1000": 5.884733488811416,
+   "fwhm_mm": 23.62024671909677
+  },
+  {
+   "finish": "satin titanium, coarse (a=0.40)",
+   "peak": 54.50354862213135,
+   "mean": 32.76739356124778,
+   "k_amb": 0.04632214430925417,
+   "k_content": 1.1780328943981441e-05,
+   "c500": 5.444178306072536,
+   "c1000": 3.222195667981042,
+   "fwhm_mm": 19.369501406351844
+  },
+  {
+   "finish": "polished titanium (a=0.04)",
+   "peak": 149.47600421905517,
+   "mean": 105.50491745637244,
+   "k_amb": 0.0017956313536573942,
+   "k_content": 0.0,
+   "c500": 370.1776409711527,
+   "c1000": 185.58882048557635,
+   "fwhm_mm": 26.882924962908874
+  },
+  {
+   "finish": "satin aluminium (a=0.25)",
+   "peak": 124.21260261535643,
+   "mean": 76.84336723449877,
+   "k_amb": 0.0488970094271354,
+   "k_content": 1.334976983861854e-06,
+   "c500": 10.87414470156052,
+   "c1000": 5.9370977581588935,
+   "fwhm_mm": 23.62024671909677
+  }
+ ],
+ "ramp": [
+  {
+   "ramp_deg": 0,
+   "peak": 40.5028190612793,
+   "mean": 29.662620175052698,
+   "c500": 28.399552294013002
+  },
+  {
+   "ramp_deg": 10,
+   "peak": 39.151133060455315,
+   "mean": 22.89443809441898,
+   "c500": 17.609225464275397
+  },
+  {
+   "ramp_deg": 20,
+   "peak": 53.25630435943603,
+   "mean": 34.71460223385068,
+   "c500": 16.676386757720323
+  },
+  {
+   "ramp_deg": 26,
+   "peak": 66.3349084854126,
+   "mean": 39.02710535891892,
+   "c500": 12.598094365937644
+  },
+  {
+   "ramp_deg": 32,
+   "peak": 80.13621039390564,
+   "mean": 46.928691159779866,
+   "c500": 9.340762370382205
+  },
+  {
+   "ramp_deg": 38,
+   "peak": 71.87030072212212,
+   "mean": 46.72701493955919,
+   "c500": 6.862189991140188
+  },
+  {
+   "ramp_deg": 44,
+   "peak": 56.58713150024414,
+   "mean": 35.10519789155387,
+   "c500": 3.5148229723104363
+  },
+  {
+   "ramp_deg": 50,
+   "peak": 47.95155038833617,
+   "mean": 28.89667330419316,
+   "c500": 2.603096506445178
+  }
+ ],
+ "band_height": [
+  {
+   "design": "parabolic + satin titanium",
+   "band_h": 4,
+   "rows": 17,
+   "mean": 23.94559537156208,
+   "peak": 39.76256389617921,
+   "area_px": 148,
+   "total": 6280.782873652875,
+   "c500": 5.898354591061491
+  },
+  {
+   "design": "parabolic + matte white floor",
+   "band_h": 4,
+   "rows": 17,
+   "mean": 32.36657839521356,
+   "peak": 52.355952453613284,
+   "area_px": 109,
+   "total": 6908.286563348025,
+   "c500": 4.147481111880946
+  },
+  {
+   "design": "parabolic + satin titanium",
+   "band_h": 8,
+   "rows": 34,
+   "mean": 34.87529488544018,
+   "peak": 58.51897175312041,
+   "area_px": 342,
+   "total": 15920.097810805775,
+   "c500": 8.967815840301853
+  },
+  {
+   "design": "parabolic + matte white floor",
+   "band_h": 8,
+   "rows": 34,
+   "mean": 38.466121918306904,
+   "peak": 66.69205474853511,
+   "area_px": 208,
+   "total": 12906.15154111106,
+   "c500": 4.871566044568834
+  },
+  {
+   "design": "parabolic + satin titanium",
+   "band_h": 12,
+   "rows": 51,
+   "mean": 46.88322342813747,
+   "peak": 75.89129786491392,
+   "area_px": 494,
+   "total": 28937.229185652046,
+   "c500": 10.769385612991492
+  },
+  {
+   "design": "parabolic + matte white floor",
+   "band_h": 12,
+   "rows": 51,
+   "mean": 41.6891858150773,
+   "peak": 68.61390776634217,
+   "area_px": 282,
+   "total": 17269.489728476852,
+   "c500": 5.172374960723006
+  },
+  {
+   "design": "parabolic + satin titanium",
+   "band_h": 16,
+   "rows": 69,
+   "mean": 47.899946327740544,
+   "peak": 75.62140769958495,
+   "area_px": 633,
+   "total": 35945.14877990261,
+   "c500": 9.762653651557368
+  },
+  {
+   "design": "parabolic + matte white floor",
+   "band_h": 16,
+   "rows": 69,
+   "mean": 40.511550613244374,
+   "peak": 67.85411858558656,
+   "area_px": 330,
+   "total": 19645.525918463245,
+   "c500": 4.618597922052547
+  },
+  {
+   "design": "parabolic + satin titanium",
+   "band_h": 24,
+   "rows": 103,
+   "mean": 56.62220438717502,
+   "peak": 86.68671584129333,
+   "area_px": 691,
+   "total": 46784.37462168373,
+   "c500": 11.633932935556626
+  },
+  {
+   "design": "parabolic + matte white floor",
+   "band_h": 24,
+   "rows": 103,
+   "mean": 44.12425983959137,
+   "peak": 70.17229576110839,
+   "area_px": 438,
+   "total": 26554.277874602936,
+   "c500": 4.68507019713109
+  },
+  {
+   "design": "parabolic + satin titanium",
+   "band_h": 32,
+   "rows": 137,
+   "mean": 53.81049026195276,
+   "peak": 87.00701351165772,
+   "area_px": 1003,
+   "total": 67063.63359374367,
+   "c500": 7.029058543290927
+  },
+  {
+   "design": "parabolic + matte white floor",
+   "band_h": 32,
+   "rows": 137,
+   "mean": 45.440608525596765,
+   "peak": 76.98614702224731,
+   "area_px": 502,
+   "total": 32592.5132208243,
+   "c500": 3.6637572498954456
+  }
+ ],
+ "daylight": {
+  "parabolic + satin titanium": {
+   "contrast": {
+    "50": 98.67921281346264,
+    "150": 33.56335309765915,
+    "500": 10.769385612991492,
+    "1000": 5.884733488811416,
+    "5000": 1.9769532070303724
+   },
+   "band_needed_glow": {
+    "50": 7.166314918372502,
+    "150": 21.496557737793903,
+    "500": 71.65240760576881,
+    "1000": 143.3036217028758,
+    "5000": 716.513334479732
+   },
+   "band_needed_notice": {
+    "50": 1.7915787295931256,
+    "150": 5.374139434448476,
+    "500": 17.913101901442204,
+    "1000": 35.82590542571895,
+    "5000": 179.128333619933
+   }
+  },
+  "matte white floor": {
+   "contrast": {
+    "50": 42.72374960723006,
+    "150": 14.907916535743354,
+    "500": 5.172374960723006,
+    "1000": 3.0861874803615024,
+    "5000": 1.4172374960723007
+   },
+   "band_needed_glow": {
+    "50": 16.777015646712183,
+    "150": 50.33104694013655,
+    "500": 167.77015646712184,
+    "1000": 335.5403129342437,
+    "5000": 1677.7015646712184
+   },
+   "band_needed_notice": {
+    "50": 4.194253911678046,
+    "150": 12.582761735034138,
+    "500": 41.94253911678046,
+    "1000": 83.88507823356092,
+    "5000": 419.4253911678046
+   }
+  }
+ },
+ "pattern": {
+  "highlight_peak_vs_width": {
+   "20": 0.15223057634997259,
+   "40": 0.26942667292226447,
+   "80": 0.43786336076622767,
+   "160": 0.5895081319437886
+  },
+  "row_bin_centroid_px": [
+   37.46858628355529,
+   37.307405741050694,
+   37.01522710626457,
+   37.81139663238658
+  ]
+ },
+ "viewing": {
+  "height": [
+   {
+    "eye_y": 380,
+    "mean": 43.65715870562954
+   },
+   {
+    "eye_y": 420,
+    "mean": 44.95592724150474
+   },
+   {
+    "eye_y": 460,
+    "mean": 46.928691159779866
+   },
+   {
+    "eye_y": 500,
+    "mean": 52.4604356069013
+   },
+   {
+    "eye_y": 540,
+    "mean": 49.6354627773453
+   },
+   {
+    "eye_y": 580,
+    "mean": 45.90375933579713
+   }
+  ],
+  "lateral": [
+   {
+    "eye_x": -400,
+    "mean": 47.82595664225796
+   },
+   {
+    "eye_x": -200,
+    "mean": 47.71497686794744
+   },
+   {
+    "eye_x": 0,
+    "mean": 46.928691159779866
+   },
+   {
+    "eye_x": 200,
+    "mean": 48.86560337589337
+   },
+   {
+    "eye_x": 400,
+    "mean": 51.884549270657935
+   }
+  ]
+ }
+}
