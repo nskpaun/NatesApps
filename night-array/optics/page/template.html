@@ -1,0 +1,422 @@
+<title>Light Ribbon Optics</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Jost:wght@300;400;500&display=swap">
+<style>
+/* Layout: one reading column; the live strip of the station's lower edge runs wider than the text, like the
+   station itself. Night Array's own palette (SPEC.md section 5), single dark look on purpose: the preview is
+   screen-referred light and needs a dark surround to be judged. */
+:root {
+  color-scheme: dark;
+  --bg: #0C0A09; --panel: #15110F; --panel2: #1E1915; --line: #2E2621;
+  --ink: #F2EAE1; --muted: #A39A90; --amber: #F2A04A; --amber-soft: #3A2614;
+  --titanium: #BDB2A4; --oxblood: #7A2E2A; --mirror: #7FB2E5; --dim: #5E564E;
+  --display: "Jost", "Avenir Next", "Segoe UI", sans-serif;
+  --body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.6 var(--body); padding-block: 0 72px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.wrap { max-width: 1120px; margin: 0 auto; display: flex; flex-direction: column; gap: 56px; }
+.col { max-width: 700px; }
+header { padding-top: 44px; display: flex; flex-direction: column; gap: 14px; }
+.eyebrow, h2, .lab { font-family: var(--display); text-transform: uppercase; letter-spacing: .16em; }
+.eyebrow { color: var(--amber); font-size: 12px; font-weight: 500; }
+h1 { font: 300 clamp(30px, 6vw, 52px)/1.05 var(--display); text-transform: uppercase; letter-spacing: .12em; margin: 0; text-wrap: balance; }
+h2 { font-size: 15px; font-weight: 400; color: var(--titanium); margin: 0; text-wrap: balance; }
+h3 { font: 500 15px/1.35 var(--body); margin: 0; }
+p { margin: 0; }
+.lede { font-size: 17px; line-height: 1.55; }
+.muted { color: var(--muted); }
+.small { font-size: 13px; line-height: 1.5; }
+section { display: flex; flex-direction: column; gap: 18px; }
+.stack { display: flex; flex-direction: column; gap: 12px; }
+b, strong { font-weight: 600; }
+.num { font-variant-numeric: tabular-nums; }
+
+/* preview */
+.stage { background: #000; border: 1px solid var(--line); border-radius: 6px; overflow-x: auto; }
+.stage-inner { min-width: 720px; position: relative; }
+canvas#view { display: block; width: 100%; aspect-ratio: 1212 / 223; }
+.key { position: absolute; left: 8px; font: 500 10px/1 var(--body); letter-spacing: .06em; text-transform: uppercase;
+  color: rgba(242,234,225,.72); text-shadow: 0 0 3px #000, 0 0 6px #000; pointer-events: none; transform: translateY(-50%); }
+.controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px 28px; }
+.ctl { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
+.lab { font-size: 11px; color: var(--muted); }
+.seg { display: flex; flex-wrap: wrap; gap: 6px; }
+.seg button { font: 500 13px/1 var(--body); color: var(--ink); background: var(--panel); border: 1px solid var(--line);
+  border-radius: 4px; padding: 9px 11px; cursor: pointer; }
+.seg button:hover { border-color: var(--dim); }
+.seg button[aria-pressed="true"] { background: var(--amber-soft); border-color: var(--amber); color: var(--amber); }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+input[type=range] { width: 100%; accent-color: var(--amber); }
+.readout { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 1px; background: var(--line);
+  border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.readout > div { background: var(--panel); padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.big { font: 300 30px/1.1 var(--display); letter-spacing: .02em; font-variant-numeric: tabular-nums; }
+.big small { font: 400 13px var(--body); color: var(--muted); letter-spacing: 0; }
+
+/* diagrams */
+.multi { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 18px; }
+.fig { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.fig svg, .detail svg { width: 100%; height: auto; display: block; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; }
+.fig.pick svg { border-color: var(--amber); }
+.bar { height: 6px; background: var(--panel2); border-radius: 3px; overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--dim); border-radius: 0 3px 3px 0; }
+.pick .bar i, .bar.hot i { background: var(--amber); }
+.detail { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 28px; align-items: start; }
+@media (max-width: 760px) { .detail { grid-template-columns: 1fr; } }
+dl.spec { display: grid; grid-template-columns: auto 1fr; gap: 9px 18px; margin: 0; font-size: 14px; }
+dl.spec dt { color: var(--muted); }
+dl.spec dd { margin: 0; font-variant-numeric: tabular-nums; }
+ol.parts { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 12px; color: var(--muted); }
+.legend span::before { content: ""; display: inline-block; width: 16px; height: 3px; margin-right: 6px; vertical-align: middle; background: var(--c); border-radius: 2px; }
+
+/* tables */
+.scroll { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 9px 12px 9px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font: 500 11px/1.3 var(--body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+td.r, th.r { text-align: right; }
+.chip { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.dots { display: inline-flex; gap: 2px; }
+.dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--line); }
+.dots i.on { background: var(--amber); }
+.sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 7px; vertical-align: -1px; border: 1px solid var(--line); }
+.heat td { text-align: center; padding: 9px 6px; border: 2px solid var(--bg); }
+.heat th { text-align: center; padding: 6px; border: 0; }
+.inbar { display: flex; align-items: center; gap: 10px; }
+.inbar .bar { flex: 1; min-width: 60px; }
+ul.plain { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 8px; }
+a { color: var(--amber); }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+hr { border: 0; border-top: 1px solid var(--line); margin: 0; }
+</style>
+
+<div class="wrap">
+<header>
+  <div class="eyebrow">Night Array · optics study</div>
+  <h1>Light ribbon</h1>
+  <p class="lede col">The idea works, with one change to where the mirror goes. A mirror below an open band is dim, because a monitor sends very little light steeply downward. Put a 45° mirror directly in front of <span id="v-feed">12 mm</span> of hidden rows instead, inside a slim sill, and a brushed cove under the display shows a ribbon of about <b><span id="v-nits">64</span> nits</b>. That is clear in office light and vivid in the evening; beside a bright window only the paler colours still read. The whole optical path fits in <b><span id="v-size">33 × 71</span> mm</b>.</p>
+</header>
+
+<section aria-labelledby="h-prev">
+  <h2 id="h-prev">What it would look like from the seat</h2>
+  <div class="stage" id="stage"><div class="stage-inner">
+    <canvas id="view" width="606" height="223" role="img" aria-label="Simulated view of the display's lower edge, sill, ribbon and base from the seated eye position"></canvas>
+    <span class="key" id="k-screen">screen</span><span class="key" id="k-band">visible band</span><span class="key" id="k-sill">sill</span><span class="key" id="k-ribbon">ribbon</span><span class="key" id="k-base">base</span><span class="key" id="k-desk">desk</span>
+  </div></div>
+  <div class="readout" aria-live="off">
+    <div><span class="lab">Ribbon</span><span class="big"><span id="r-ribbon">–</span> <small>nits</small></span></div>
+    <div><span class="lab">Cove surface without it</span><span class="big"><span id="r-bg">–</span> <small>nits</small></span></div>
+    <div><span class="lab">Reads as</span><span class="big" id="r-verdict">–</span></div>
+  </div>
+  <div class="controls">
+    <div class="ctl"><span class="lab" id="l-room">Room light</span><div class="seg" id="c-room" role="group" aria-labelledby="l-room"></div></div>
+    <div class="ctl"><span class="lab" id="l-pat">What RoseOS paints</span><div class="seg" id="c-pat" role="group" aria-labelledby="l-pat"></div></div>
+    <div class="ctl"><span class="lab" id="l-pre">Layout</span><div class="seg" id="c-pre" role="group" aria-labelledby="l-pre"></div></div>
+    <div class="ctl"><span class="lab" id="l-fin">Cove finish</span><div class="seg" id="c-fin" role="group" aria-labelledby="l-fin"></div></div>
+    <div class="ctl"><label class="lab" for="c-level">Band brightness <span id="v-level" class="num">100</span> %</label><input type="range" id="c-level" min="5" max="100" value="100" step="1">
+      <div class="seg" role="group" aria-label="Options"><button type="button" id="c-echo" aria-pressed="true">Visible band on screen</button><button type="button" id="c-play" aria-pressed="true">Motion</button></div></div>
+  </div>
+  <p class="small muted col">This strip is the traced response of the layout applied to the pattern in your browser, and it matches a full trace of the same pattern to within 1 % on average. It is not the final render. One pixel is 2 mm across. The panel's own white (350 nits) is this page's white and nothing is auto-exposed, so a dim ribbon looks dim. Flat pair of 27-inch panels with the 14 mm seam, eye centred 650 mm from the screen and 280 mm above the lowest pixel row.</p>
+</section>
+
+<section aria-labelledby="h-why">
+  <h2 id="h-why">Why the layout as drawn is dim, and why it grew bulky</h2>
+  <div class="col stack">
+    <p>A monitor is brightest straight ahead. Measured IPS panels give about 43 % of their on-axis luminance at 45° and 24 % at 60°. A mirror under the display can only catch light that leaves the screen heading steeply down, and the closer the mirror sits to the display, the steeper that angle.</p>
+    <p>Moving the mirror forward fixes the angle and costs the space. A lip 95 mm in front of the screen reaches <span id="t-bulky">22</span> nits; kept on the base it gets <span id="t-compact">3</span>. In both, the mirror also faces the rest of the screen, so your windows leak into the ribbon.</p>
+    <p>The sill version turns the problem round. The mirror sits 0 to 12 mm in front of the pixels and takes the light the panel emits best. Those rows are hidden behind the sill, so the ribbon never sees your windows.</p>
+  </div>
+  <div class="multi" id="multi"></div>
+  <div class="legend"><span style="--c: var(--ink)">screen</span><span style="--c: var(--mirror)">mirror</span><span style="--c: var(--amber)">satin cove, light path</span><span style="--c: var(--titanium)">shell</span><span style="--c: var(--dim)">dark surfaces, optics volume (dashed)</span></div>
+</section>
+
+<section aria-labelledby="h-sill">
+  <h2 id="h-sill">The compact layout, to scale</h2>
+  <div class="detail">
+    <div class="fig"><svg id="detail" role="img" aria-label="Cross-section of the sill, slot and cove"></svg>
+      <p class="small muted">Side view of the selected layout. The grid is 10 mm. Change the layout with the buttons above.</p></div>
+    <div class="stack">
+      <dl class="spec" id="spec"></dl>
+      <hr>
+      <ol class="parts small">
+        <li><b>Hidden feed rows.</b> The lowest rows of both panels sit behind the sill. RoseOS paints them; you never see them directly.</li>
+        <li><b>45° mirror in the sill.</b> It turns their light straight down through a slot in front of the panel's chin.</li>
+        <li><b>Mirror inside the sill's front wall.</b> It folds forward-going light back under the display. Without it the ribbon loses about a fifth.</li>
+        <li><b>Brushed cove.</b> An ellipse with the slot at one focus and your eyes at the other, so the whole surface lights at once. Brushing runs along its length: that keeps the pattern sharp sideways and soft vertically.</li>
+      </ol>
+      <p class="small muted">A flat ramp in place of the curved cove gives the same brightness but a ribbon about half as tall (<span id="t-flat">15</span> mm). A matte white cove would glow at <span id="t-matte">19</span> nits and wash out in office light, so the satin finish is doing most of the work.</p>
+    </div>
+  </div>
+</section>
+
+<section aria-labelledby="h-day">
+  <h2 id="h-day">Daylight: it depends on the colour</h2>
+  <p class="col">The ribbon competes with room light landing on the same cove. Luminance, not saturation, decides what survives daylight: amber carries about half of white's luminance, deep oxblood under a tenth. Rows are the selected layout at full band brightness.</p>
+  <div class="scroll"><table id="day"></table></div>
+  <p class="small muted col">Each cell is ribbon nits and how many times brighter that is than the cove surface without it. Tiers are a judgement call for a large, soft, coloured patch: under 0.05× invisible, to 0.2× faint, to 0.6× visible, to 2× clear, above that vivid. The room is modelled as an evenly bright surround; a window or lamp aimed straight into the cove would do worse, a shaded desk better.</p>
+</section>
+
+<section aria-labelledby="h-rows">
+  <h2 id="h-rows">How much screen it takes</h2>
+  <p class="col">Brightness climbs quickly up to about 12 mm of feed band and slowly after that. Ribbon height stops growing near 16 mm unless the cove also moves lower, which is what the Tall layout does. The hidden strip is the feed band plus the sill's 2.8 mm wall. Rows are for the measured brushed finish with the cove 34 mm below the slot.</p>
+  <div class="scroll"><table id="rows"></table></div>
+</section>
+
+<section aria-labelledby="h-eye">
+  <h2 id="h-eye">Seat position</h2>
+  <p class="col">Ribbon nits for a white band as your eyes move. The cove is shaped for the outlined seat. Leaning in or slouching costs little; standing close is the weak corner.</p>
+  <div class="scroll"><table class="heat" id="eye"></table></div>
+</section>
+
+<section aria-labelledby="h-fin">
+  <h2 id="h-fin">Cove finish</h2>
+  <div class="col stack"><p>The finish sets two things. Roughness along the ribbon decides how sharp the pattern stays sideways, so the brush should run along it. Roughness across the ribbon decides brightness and daylight contrast: a smoother cove sends more of the band's light to your eyes and less of the room's.</p>
+  <p>The first row uses roughness measured on brushed aluminium. A finer brush is <span id="t-fine-b">40</span> % brighter and holds <span id="t-fine-c">3</span>× the contrast in office light. It costs a little at the edges of the seat range (<span id="t-fine-w">20</span> nits against <span id="t-br-w">25</span> standing close) and the ribbon starts to read as a reflection instead of a glow. Bead-blast spreads light every way and loses on both counts. This choice is best made with samples in hand.</p></div>
+  <div class="scroll"><table id="fin"></table></div>
+</section>
+
+<section aria-labelledby="h-can">
+  <h2 id="h-can">What the ribbon can and cannot show</h2>
+  <ul class="plain col">
+    <li><b>Colour and brightness along its length, in fine detail.</b> Sideways blur is <span id="t-blur">7</span> mm at the centre and <span id="t-blur2">10</span> mm at the ends, so even 10 mm highlights survive. Try the test bars above. Slow swells and small moving glints both work; softness is a software choice.</li>
+    <li><b>Not a wave shape.</b> Height within the band barely maps to height in the ribbon. A pictured wave would have to come from brightness and colour moving along the ribbon, not from a line that rises and falls.</li>
+    <li><b>A dip at the seam and dim ends.</b> The 14 mm seam shows as a soft notch. On a flat pair the outer <span id="t-ends">45</span> mm of each end fade, because the ribbon there looks for band that is past the panel's edge. Night Array's 10° toe-in trims that by about a fifth.</li>
+    <li><b>Sharp edges lean.</b> The ribbon is an image a few centimetres behind the cove, seen at an angle, so a hard vertical edge tilts outward away from the centre. Smooth patterns hide it completely.</li>
+    <li><b>Not fully off in a dark room.</b> An IPS panel's black still leaks about 1/1000 of white, which leaves the ribbon near 0.06 nits. Faintly visible in a blacked-out room, gone in any light.</li>
+  </ul>
+</section>
+
+<section aria-labelledby="h-base">
+  <h2 id="h-base">What this rests on, and what to check on a bench</h2>
+  <div class="col stack">
+    <p>The tracer follows rays backward from the eye through the mirrors and a microfacet model of the satin surface to the panel or the room. It is checked against closed-form cases and against an independent forward photon count of the same layout (agreement within 3 %).</p>
+    <ul class="plain">
+      <li><b>Panel:</b> Samsung S60UD, 350 nits typical (280 minimum, which scales every ribbon number by 0.8). Angular falloff from two IPS monitors measured to 60°. The sill result moves by under 1 % across that measured range. The as-drawn base-mirror result moves by <span id="t-kap">30</span> %, because it lives on the steep tail where no measurement exists.</li>
+      <li><b>Mirror:</b> 90 % reflectance, between acrylic mirror sheet and enhanced aluminium.</li>
+      <li><b>Cove:</b> roughness fitted to measured brushed aluminium (0.05 along the brush, 0.14 across), 60 % reflectance with a warm tint. No measured data was found for bead-blast or PVD finishes; those rows are estimates.</li>
+      <li><b>Chin:</b> 16 mm from the Night Array spec. The S60UD's real bottom border may be nearer 24 mm; that lengthens the slot by 8 mm, changes brightness by under 2 % and shortens the ribbon by about 4 mm.</li>
+      <li><b>Not modelled:</b> polarisation. The panel's light is polarised and the direction is unknown; reflection off metal at these angles should change by a few percent either way.</li>
+    </ul>
+    <p>A one-evening bench test would settle the two real unknowns, the finish and polarisation: a strip of mirror tile at 45° against the bottom of the actual monitor, a card as the sill, and a length of brushed aluminium angle below it, viewed from the seat with the room lights on.</p>
+  </div>
+</section>
+</div>
+
+<script>
+const D = /*__DATA__*/null;
+const $ = id => document.getElementById(id);
+const fmt = (v, n = 0) => Number(v).toFixed(n);
+const TIERS = [[0.05, "Invisible"], [0.2, "Faint"], [0.6, "Visible"], [2, "Clear"], [Infinity, "Vivid"]];
+const tier = w => TIERS.findIndex(t => w < t[0]);
+const chip = w => { const k = tier(w); return `<span class="chip"><span class="dots" aria-hidden="true">${[1,2,3,4].map(i => `<i class="${i <= k ? "on" : ""}"></i>`).join("")}</span>${TIERS[k][1]}</span>`; };
+const srgb2lin = c => { c /= 255; return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
+const lin = rgb => rgb.map(srgb2lin);
+const luma = c => 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+const NITS = D.panel.nits, CONTENT_NITS = 40;
+const state = { preset: "balanced", finish: "brushed", room: "home office", pattern: "music", level: 1, echo: true,
+  play: !matchMedia("(prefers-reduced-motion: reduce)").matches };
+if (!state.play) state.pattern = "rest";
+const cur = () => D.variants[state.preset + "/" + state.finish];
+
+/* ------------------------------------------------------------------ band patterns (0.5 mm samples, linear RGB) */
+const PX0 = -604, PSTEP = 0.5, PN = 2417, SEAM = D.view.seam / 2, XEND = D.view.x1;
+const pat = new Float32Array(PN * 3);
+const STOPS = [[0, [200,110,30]], [.22, [255,170,60]], [.40, [255,236,205]], [.50, [255,150,110]], [.68, [235,70,110]], [.86, [170,35,60]], [1, [110,22,40]]].map(([u, c]) => [u, lin(c)]);
+const ramp = u => { for (let i = 1; i < STOPS.length; i++) if (u <= STOPS[i][0]) { const [u0, a] = STOPS[i - 1], [u1, b] = STOPS[i], t = (u - u0) / (u1 - u0); return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t]; } return STOPS[STOPS.length - 1][1]; };
+const RAMP = new Float32Array(PN * 3);
+for (let i = 0; i < PN; i++) { const c = ramp((PX0 + i * PSTEP - -XEND) / (2 * XEND)); RAMP.set(c.map(v => Math.max(0, v)), i * 3); }
+const g = (x, c, s) => Math.exp(-(((x - c) / s) ** 2));
+const GLINTS = Array.from({ length: 7 }, (_, i) => ({ x: -520 + i * 170, v: (i % 2 ? -1 : 1) * (18 + 9 * i), ph: i * 1.7, f: 0.7 + 0.23 * i }));
+const PATTERNS = {
+  music: { label: "Music", fill(t) {
+    const beat = Math.exp(-3.2 * ((t * 1.6) % 1)), pan = 260 * Math.sin(t * 0.33), slow = 0.5 + 0.5 * Math.sin(t * 0.21);
+    for (let i = 0; i < PN; i++) { const x = PX0 + i * PSTEP;
+      let e = 0.10 + (0.30 + 0.55 * beat) * g(x, pan, 230) + 0.22 * slow * g(x, -pan * 0.8, 320);
+      let hi = 0; for (const q of GLINTS) { const cx = ((q.x + q.v * t + 604) % 1208 + 1208) % 1208 - 604; hi += (0.5 + 0.5 * Math.sin(t * q.f * 3 + q.ph)) * g(x, cx, 11); }
+      const k = i * 3; pat[k] = RAMP[k] * e + 0.75 * hi; pat[k + 1] = RAMP[k + 1] * e + 0.62 * hi; pat[k + 2] = RAMP[k + 2] * e + 0.45 * hi; } } },
+  rest: { label: "At rest", still: true, fill() {
+    for (let i = 0; i < PN; i++) { const u = (PX0 + i * PSTEP + XEND) / (2 * XEND);
+      const e = (0.55 + 0.45 * Math.exp(-(((u - .4) / .16) ** 2))) * Math.pow(Math.max(0, Math.min(1, Math.min(u, 1 - u) / .05)), .7);
+      const k = i * 3; pat[k] = RAMP[k] * e; pat[k + 1] = RAMP[k + 1] * e; pat[k + 2] = RAMP[k + 2] * e; } } },
+  dock: { label: "Dock sweep", fill(t) {
+    const ph = (t % 3.4) / 1.1, head = -700 + 1400 * ph, fade = ph > 1.15 ? 0 : 1;
+    for (let i = 0; i < PN; i++) { const x = PX0 + i * PSTEP, d = head - x;
+      const e = fade * (d >= 0 ? Math.exp(-d / 260) : Math.exp(-((d / 28) ** 2)));
+      const k = i * 3; pat[k] = (0.35 * RAMP[k] + 0.65) * e; pat[k + 1] = (0.35 * RAMP[k + 1] + 0.52) * e; pat[k + 2] = (0.35 * RAMP[k + 2] + 0.36) * e; } } },
+  white: { label: "Solid white", still: true, fill() { pat.fill(1); } },
+  bars: { label: "Test bars", still: true, fill() { pat.fill(0); let x = -604 + 40;
+    for (const w of [80, 40, 20, 10, 5, 2.5]) { for (let n = 0; n < (w > 5 ? 4 : 8); n++) { for (let i = Math.round((x - PX0) / PSTEP); i < Math.round((x + w - PX0) / PSTEP); i++) pat.fill(1, i * 3, i * 3 + 3); x += 2 * w; } x += 50; } } },
+};
+function fillPattern(t) {
+  PATTERNS[state.pattern].fill(t);
+  for (let i = 0; i < PN; i++) { const ax = Math.abs(PX0 + i * PSTEP); if (ax < SEAM || ax > XEND) pat.fill(0, i * 3, i * 3 + 3); }
+}
+const samp = (x, c) => { const f = (x - PX0) / PSTEP; if (f < 0 || f > PN - 1) return 0; const i = f | 0, t = f - i, j = Math.min(PN - 1, i + 1); return pat[i * 3 + c] * (1 - t) + pat[j * 3 + c] * t; };
+
+/* ------------------------------------------------------------------ preview: traced columns x blurred pattern */
+const cv = $("view"), ctx = cv.getContext("2d"), W = cv.width, H = cv.height, PXMM = 2, VX0 = -606;
+const YS = D.view.ys, KX = D.view.kernel_x, NK = KX.length;
+const img = ctx.createImageData(W, H);
+const LUT = new Uint8ClampedArray(4096);
+for (let i = 0; i < 4096; i++) { const v = i / 4095; LUT[i] = 255 * (v <= 0.0031308 ? 12.92 * v : 1.055 * Math.pow(v, 1 / 2.4) - 0.055) + 0.5; }
+let P = null;
+function prepare() {
+  const st = cur().stations, xs = st.map(s => s.x), xmax = xs[xs.length - 1];
+  P = { band: new Float32Array(W * H * 3), amb: new Float32Array(W * H * 3), echo: new Float32Array(W * H), con: new Float32Array(W * H),
+        rsh: new Float32Array(W * H), mixw: new Float32Array(W), on: new Float32Array(W), k0: fineKernel(st[0].kernel), k1: fineKernel(st[st.length - 1].kernel) };
+  for (let i = 0; i < W; i++) {
+    const x = VX0 + PXMM * (i + 0.5), ax = Math.abs(x);
+    let a = 0; while (a < xs.length - 2 && ax > xs[a + 1]) a++;
+    const t = Math.max(0, Math.min(1, (ax - xs[a]) / (xs[a + 1] - xs[a]))), s0 = st[a], s1 = st[a + 1], mix = (u, v) => u * (1 - t) + v * t;
+    P.mixw[i] = Math.min(1, ax / xmax);
+    P.on[i] = ax >= SEAM && ax <= XEND ? 1 : 0;
+    for (let j = 0; j < H; j++) { const o = (j * W + i);
+      for (let c = 0; c < 3; c++) { P.band[o * 3 + c] = mix(s0.band[j][c], s1.band[j][c]); P.amb[o * 3 + c] = mix(s0.ambient[j][c], s1.ambient[j][c]); }
+      P.echo[o] = mix(s0.echo[j], s1.echo[j]); P.con[o] = mix(s0.content[j], s1.content[j]);
+      P.rsh[o] = mix(s0.rowshift[j], s1.rowshift[j]) * Math.sign(x); }
+  }
+}
+/* The pattern blurred sideways by the traced point-spread function (centre and end of the station), then
+   looked up per pixel at x + the traced sideways shift for that row. Same as ribbon/preview.py compose(). */
+function fineKernel(k) { const n = Math.round((KX[NK - 1] - KX[0]) / PSTEP) + 1, o = new Float32Array(n); let s = 0;
+  for (let i = 0; i < n; i++) { const f = i * PSTEP / (KX[1] - KX[0]), a = Math.min(NK - 2, f | 0), t = f - a; o[i] = k[a] * (1 - t) + k[a + 1] * t; s += o[i]; }
+  for (let i = 0; i < n; i++) o[i] /= s; return o; }
+const B0 = new Float32Array(PN * 3), B1 = new Float32Array(PN * 3), direct = new Float32Array(W * 3);
+function blur(k, out) { const h = (k.length - 1) >> 1; out.fill(0);
+  for (let q = 0; q < k.length; q++) { const w = k[q]; if (w < 1e-5) continue; const off = q - h;
+    for (let i = Math.max(0, -off), e = Math.min(PN, PN - off); i < e; i++) { const a = i * 3, b = (i + off) * 3; out[a] += w * pat[b]; out[a + 1] += w * pat[b + 1]; out[a + 2] += w * pat[b + 2]; } } }
+let peakHold = 0;
+function draw(t) {
+  fillPattern(t);
+  blur(P.k0, B0); blur(P.k1, B1);
+  const sky = D.rooms[state.room] / Math.PI, gain = NITS * state.level;
+  let frameMax = 0;
+  for (let i = 0; i < PN; i += 4) { const l = 0.2126 * B0[i * 3] + 0.7152 * B0[i * 3 + 1] + 0.0722 * B0[i * 3 + 2]; if (l > frameMax) frameMax = l; }
+  for (let i = 0; i < W; i++) { const x = VX0 + PXMM * (i + 0.5); for (let c = 0; c < 3; c++) direct[i * 3 + c] = samp(x, c); }
+  const d = img.data;
+  for (let j = 0; j < H; j++) { const row = (H - 1 - j) * W * 4;
+    for (let i = 0; i < W; i++) { const o = j * W + i, e = P.echo[o], con = P.con[o] * P.on[i] * CONTENT_NITS, mw = P.mixw[i];
+      const hasBand = P.band[o * 3 + 1] > 1e-4;
+      let f = 0, a = 0, tt = 0, b2 = 0, inside = false;
+      if (hasBand) { f = (VX0 + PXMM * (i + 0.5) + P.rsh[o] - PX0) / PSTEP; inside = f >= 0 && f < PN - 1; a = (f | 0) * 3; tt = f - (f | 0); b2 = a + 3; }
+      for (let c = 0; c < 3; c++) {
+        const bl = inside ? ((B0[a + c] * (1 - tt) + B0[b2 + c] * tt) * (1 - mw) + (B1[a + c] * (1 - tt) + B1[b2 + c] * tt) * mw) : 0;
+        let L = P.band[o * 3 + c] * bl * gain + P.amb[o * 3 + c] * sky + con;
+        L += state.echo ? e * direct[i * 3 + c] * gain : e * P.on[i] * CONTENT_NITS;
+        d[row + i * 4 + c] = LUT[Math.min(4095, (L / NITS * 4095) | 0)];
+      }
+      d[row + i * 4 + 3] = 255; } }
+  ctx.putImageData(img, 0, 0);
+  peakHold = Math.max(frameMax, peakHold * 0.985);
+}
+let lastRead = 0;
+function readout(now) {
+  if (now - lastRead < 250) return; lastRead = now;
+  const m = cur().metrics, ribbon = m.mean * NITS * state.level * peakHold;
+  const bg = m.ambient * D.rooms[state.room] / Math.PI + m.mean * NITS / 1000;
+  $("r-ribbon").textContent = ribbon >= 10 ? fmt(ribbon) : fmt(ribbon, 1);
+  $("r-bg").textContent = bg >= 10 ? fmt(bg) : fmt(bg, 1);
+  $("r-verdict").textContent = TIERS[tier(ribbon / bg)][1];
+}
+let t0 = performance.now(), tPause = 0;
+function frame(now) {
+  const anim = state.play && !PATTERNS[state.pattern].still;
+  const t = anim ? (now - t0) / 1000 : tPause;
+  if (anim) tPause = t;
+  draw(t); readout(now);
+  if (anim) requestAnimationFrame(frame); else { peakHold = 0; draw(t); lastRead = 0; readout(now + 1000); }
+}
+let running = false;
+function kick() { peakHold = 0; requestAnimationFrame(frame); }
+
+/* ------------------------------------------------------------------ controls */
+function seg(el, items, key, after) {
+  el.innerHTML = items.map(([v, l]) => `<button type="button" data-v="${v}" aria-pressed="${state[key] === v}">${l}</button>`).join("");
+  el.addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; state[key] = b.dataset.v;
+    el.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x === b)); after && after(); kick(); });
+}
+seg($("c-room"), Object.entries(D.rooms).map(([k, v]) => [k, `${k[0].toUpperCase() + k.slice(1)} · ${v} lx`]), "room");
+seg($("c-pat"), Object.entries(PATTERNS).map(([k, v]) => [k, v.label]), "pattern");
+seg($("c-pre"), D.presets.map(k => [k, k[0].toUpperCase() + k.slice(1)]), "preset", () => { prepare(); perPreset(); });
+seg($("c-fin"), [["brushed", "Brushed, as measured"], ["fine", "Finer brush"]], "finish", () => { prepare(); perPreset(); });
+$("c-level").addEventListener("input", e => { state.level = e.target.value / 100; $("v-level").textContent = e.target.value; kick(); });
+for (const [id, key] of [["c-echo", "echo"], ["c-play", "play"]]) { $(id).setAttribute("aria-pressed", state[key]);
+  $(id).addEventListener("click", () => { state[key] = !state[key]; $(id).setAttribute("aria-pressed", state[key]); if (key === "play") t0 = performance.now() - tPause * 1000; kick(); }); }
+
+/* ------------------------------------------------------------------ cross-sections */
+const STROKE = { screen: ["var(--ink)", 2.4], mirror: ["var(--mirror)", 2.4], ggx: ["var(--titanium)", 1.4], matte: ["var(--dim)", 1.4], black: ["var(--dim)", 1.4] };
+function section(lay, [x0, x1], [y0, y1], opts = {}) {
+  const pl = (pts, col, w, extra = "") => `<polyline points="${pts.map(p => `${p[0].toFixed(2)},${(-p[1]).toFixed(2)}`).join(" ")}" fill="none" stroke="${col}" stroke-width="${w}" vector-effect="non-scaling-stroke" stroke-linecap="round" stroke-linejoin="round" ${extra}/>`;
+  let s = "";
+  if (opts.grid) { for (let x = Math.ceil(x0 / 10) * 10; x <= x1; x += 10) s += pl([[x, y0], [x, y1]], "var(--line)", 0.6); for (let y = Math.ceil(y0 / 10) * 10; y <= y1; y += 10) s += pl([[x0, y], [x1, y]], "var(--line)", 0.6); }
+  for (const r of lay.rays) s += pl(r, "var(--amber)", 0.8, 'opacity="0.55"');
+  for (const gm of lay.geometry) { let [col, w] = STROKE[gm.kind]; if (gm.label === "cove") [col, w] = ["var(--amber)", 2.8]; if (gm.label === "desk") [col, w] = ["var(--dim)", 1]; s += pl(gm.pts, col, w); }
+  if (opts.box) { const b = lay.box; s += `<rect x="${b.z[0]}" y="${-b.y[1]}" width="${b.z[1] - b.z[0]}" height="${b.y[1] - b.y[0]}" fill="none" stroke="var(--dim)" stroke-width="1" stroke-dasharray="4 3" vector-effect="non-scaling-stroke"/>`; }
+  for (const L of opts.labels || []) { const [ax, ay] = L.at, [tx, ty] = L.to;
+    s += pl([[ax, ay], [tx + (L.anchor === "end" ? 1 : -1), ty]], "var(--muted)", 0.7);
+    s += `<text x="${tx}" y="${-ty}" font-size="${opts.fs || 3}" fill="var(--ink)" text-anchor="${L.anchor || "start"}" dominant-baseline="middle" font-family="Inter, sans-serif">${L.text}</text>`; }
+  return `viewBox="${x0} ${-y1} ${x1 - x0} ${y1 - y0}"|${s}`;
+}
+function setSvg(el, packed) { const [vb, body] = packed.split("|"); el.setAttribute("viewBox", vb.slice(9, -1)); el.innerHTML = body; }
+const LAYS = [["as_drawn_compact", "As drawn, mirror on the base"], ["as_drawn_bulky", "As drawn, mirror out front"], ["sill", "Sill periscope"]];
+const topNits = D.layouts.sill.nits.mean;
+$("multi").innerHTML = LAYS.map(([k, name]) => { const L = D.layouts[k];
+  return `<div class="fig ${k === "sill" ? "pick" : ""}"><svg id="s-${k}" role="img" aria-label="Cross-section: ${name}"></svg><h3>${name}</h3>
+    <div class="bar"><i style="width:${Math.max(1.5, 100 * L.nits.mean / topNits)}%"></i></div>
+    <p class="small"><b class="num">${fmt(L.nits.mean)} nits</b> over a ${fmt(L.metrics.height)} mm ribbon<br><span class="muted">Optics volume ${fmt(L.size[0])} × ${fmt(L.size[1])} mm${L.emit_angle ? ` · light leaves the screen ${fmt(L.emit_angle)}° off axis` : " · light leaves the screen near axis"}<br>Screen content leaking in: ${L.metrics.content > 0.002 ? fmt(L.metrics.content * 120, 1) + " nits from a 120-nit window" : "none"}</span></p></div>`; }).join("");
+for (const [k] of LAYS) setSvg($("s-" + k), section(D.layouts[k], [-70, 180], [-185, 55], { box: true }));
+
+/* ------------------------------------------------------------------ per-preset content */
+function perPreset() {
+  const p = cur(), pr = p.params, m = p.metrics;
+  $("v-feed").textContent = `${fmt(pr.h)} mm`; $("v-nits").textContent = fmt(p.nits.mean); $("v-size").textContent = `${fmt(p.size[0])} × ${fmt(p.size[1])}`;
+  const cove = p.geometry.find(q => q.label === "cove").pts, mid = cove[Math.floor(cove.length * 0.55)], ylo = Math.min(...cove.map(q => q[1]));
+  const y0 = Math.floor((ylo - 14) / 10) * 10;
+  setSvg($("detail"), section(p, [-50, 66], [y0, 40], { grid: true, fs: 3.1, labels: [
+    { at: [0, pr.h / 2], to: [-12, pr.h / 2 + 12], anchor: "end", text: `hidden rows, ${fmt(pr.h)} mm` },
+    { at: [0, p.hidden_mm + 6], to: [-12, p.hidden_mm + 20], anchor: "end", text: "visible screen" },
+    { at: [pr.h / 2, pr.h / 2], to: [26, 26], text: "45° mirror" },
+    { at: [p.sill_proud, 2], to: [26, 6], text: `sill, ${fmt(p.sill_proud, 1)} mm proud` },
+    { at: [pr.h, -9], to: [26, -12], text: "mirror inside" },
+    { at: [pr.h / 2, -pr.chin], to: [-12, -pr.chin - 2], anchor: "end", text: "slot" },
+    { at: mid, to: [-12, mid[1] - 9], anchor: "end", text: "brushed cove" },
+    { at: [44, mid[1] + 20], to: [36, mid[1] + 6], text: "to your eyes" },
+  ] }));
+  const rows = [["Ribbon, white band", `${fmt(p.nits.mean)} nits average, ${fmt(p.nits.peak)} peak`], ["Ribbon height as seen", `${fmt(m.height)} mm`],
+    ["Rows given up", `${p.hidden_rows} of 1440 (${fmt(p.hidden_mm, 1)} mm, ${fmt(100 * p.hidden_rows / 1440, 1)} %)`], ["Sill", `${fmt(p.sill_proud, 1)} mm proud of the screen, ${fmt(p.hidden_mm + pr.chin)} mm tall`],
+    ["Whole optical path", `${fmt(p.size[0])} mm deep × ${fmt(p.size[1])} mm tall`], ["Cove starts", `${fmt(pr.drop)} mm below the slot`], ["Parts", "2 mirror strips, 1 brushed extrusion, no electronics"]];
+  $("spec").innerHTML = rows.map(([a, b]) => `<dt>${a}</dt><dd>${b}</dd>`).join("");
+  const cols = Object.keys(D.colours);
+  $("day").innerHTML = `<thead><tr><th>Room</th>${cols.map(c => `<th><span class="sw" style="background:rgb(${D.colours[c].srgb})"></span>${c}<br><span class="muted">${fmt(100 * D.colours[c].luma)} % of white</span></th>`).join("")}</tr></thead><tbody>` +
+    Object.keys(D.rooms).map(r => `<tr><td>${r[0].toUpperCase() + r.slice(1)}<br><span class="muted">${D.rooms[r]} lux</span></td>${cols.map(c => { const q = p.contrast[r][c]; return `<td>${q.ribbon >= 10 ? fmt(q.ribbon) : fmt(q.ribbon, 1)} nits · ${q.weber >= 10 ? fmt(q.weber) : fmt(q.weber, q.weber < 1 ? 2 : 1)}×<br>${chip(q.weber)}</td>`; }).join("")}</tr>`).join("") + "</tbody>";
+  const e = p.eyebox, mx = Math.max(...e.mean.flat());
+  $("eye").innerHTML = `<thead><tr><th></th><th colspan="${e.eye_z.length}">Eye distance from the screen, mm</th></tr><tr><th>Eye height, mm</th>${e.eye_z.map(z => `<th>${z}</th>`).join("")}</tr></thead><tbody>` +
+    e.eye_y.slice().reverse().map(y => { const i = e.eye_y.indexOf(y); return `<tr><th>${y}</th>${e.eye_z.map((z, j) => { const v = e.mean[i][j], a = 0.08 + 0.72 * v / mx, here = y === D.eye.y && z === D.eye.z;
+      return `<td title="${fmt(v)} nits at ${z} mm away, ${y} mm up" style="background:rgba(242,160,74,${a.toFixed(2)});color:${a > 0.5 ? "#15110F" : "var(--ink)"};${here ? "outline:2px solid var(--ink);outline-offset:-2px" : ""}">${fmt(v)}${here ? '<span class="sr"> (design seat)</span>' : ""}</td>`; }).join("")}</tr>`; }).join("") + "</tbody>";
+  const keys = [["k-screen", 40], ["k-band", p.hidden_mm + 10], ["k-sill", p.hidden_mm / 2 - 8], ["k-ribbon", 0.5 * (m.y_lo + m.y_hi)], ["k-base", -150], ["k-desk", -172]];
+  for (const [id, y] of keys) $(id).style.top = `${100 * (YS[YS.length - 1] + 0.5 - y) / H}%`;
+  $("k-band").hidden = !state.echo;
+}
+$("c-echo").addEventListener("click", () => { $("k-band").hidden = !state.echo; });
+
+/* ------------------------------------------------------------------ static tables */
+const sw = D.sweeps, hmax = Math.max(...sw.band_height.map(r => r.mean));
+$("rows").innerHTML = `<thead><tr><th class="r">Feed band</th><th class="r">Rows hidden</th><th>Ribbon nits, white band</th><th class="r">Ribbon height</th><th class="r">Optics volume</th></tr></thead><tbody>` +
+  sw.band_height.map(r => `<tr><td class="r">${r.h} mm</td><td class="r">${r.hidden_rows} · ${fmt(100 * r.hidden_rows / 1440, 1)} %</td><td><div class="inbar"><span style="width:2.2em;text-align:right">${fmt(r.mean)}</span><div class="bar hot"><i style="width:${100 * r.mean / hmax}%"></i></div></div></td><td class="r">${fmt(r.height)} mm</td><td class="r">${fmt(r.size[0])} × ${fmt(r.size[1])} mm</td></tr>`).join("") + "</tbody>";
+const fmax = Math.max(...sw.finish.map(r => r.mean));
+$("fin").innerHTML = `<thead><tr><th>Finish (roughness along / across)</th><th>Ribbon nits</th><th class="r">Sideways blur</th><th>Office, white band</th><th>By a window, amber band</th></tr></thead><tbody>` +
+  sw.finish.map(r => `<tr><td>${r.label[0].toUpperCase() + r.label.slice(1)}</td><td><div class="inbar"><span style="width:2.2em;text-align:right">${fmt(r.mean)}</span><div class="bar hot"><i style="width:${100 * r.mean / fmax}%"></i></div></div></td><td class="r">${fmt(r.lateral_fwhm)} mm</td><td>${fmt(r.office_white, 1)}× · ${chip(r.office_white)}</td><td>${fmt(r.window_amber, 2)}× · ${chip(r.window_amber)}</td></tr>`).join("") + "</tbody>";
+$("t-bulky").textContent = fmt(D.layouts.as_drawn_bulky.nits.mean); $("t-compact").textContent = fmt(D.layouts.as_drawn_compact.nits.mean);
+$("t-flat").textContent = fmt(sw.flat_cove.height); $("t-matte").textContent = fmt(sw.matte_cove.mean);
+const stB = D.variants["balanced/brushed"].stations;
+$("t-blur").textContent = fmt(stB[0].fwhm); $("t-blur2").textContent = fmt(stB[stB.length - 1].fwhm); $("t-ends").textContent = Math.round(stB[stB.length - 1].shift / 5) * 5;
+const vb = D.variants["balanced/brushed"], vf = D.variants["balanced/fine"], worst = v => Math.min(...v.eyebox.mean.flat());
+$("t-fine-b").textContent = fmt(100 * (vf.nits.mean / vb.nits.mean - 1)); $("t-fine-c").textContent = fmt(vf.contrast.office.white.weber / vb.contrast.office.white.weber, 1);
+$("t-fine-w").textContent = fmt(worst(vf)); $("t-br-w").textContent = fmt(worst(vb));
+$("t-kap").textContent = fmt(100 * (1 - sw.kappa[sw.kappa.length - 1].as_drawn_compact / sw.kappa[0].as_drawn_compact));
+
+prepare(); perPreset(); kick();
+</script>

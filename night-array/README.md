@@ -52,6 +52,10 @@ All numbers are concept-level. The masses come from the CAD volumes and real mat
 - **[Kit overview](kit/README.md):** how the structure, power, video, wireless charging and light fit together, a before-you-buy checklist, and the status.
 - The printable shells, steel cut files, laptop-insert generator, wiring diagram and assembly guide are on hold for now.
 
+## Light ribbon (optics study)
+
+[`optics/`](optics/) checks an idea for the station's light: the screen's lowest rows paint it, a mirror in a slim sill folds it down, and a brushed cove under the display shows it as a soft ribbon, with no LEDs. A small ray tracer puts numbers on brightness, daylight visibility and size, and [`optics/page/light-ribbon.html`](optics/page/light-ribbon.html) previews it live.
+
 ## CAD files
 
 Everything is generated from one parametric CadQuery model and kept in [`cad/export/`](cad/export/):
