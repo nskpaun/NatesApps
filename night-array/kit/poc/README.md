@@ -231,3 +231,7 @@ Preview renders: `preview/assembled.png`, `preview/exploded.png`, `preview/under
   - per-device pocket fit.
 
   The offsets you record in Test B become its fixed coil positions.
+
+## 3D explorer
+
+`explorer/explorer.html` is an explodable, labelled 3D view of every part (published as a claude.ai artifact page; it loads three.js from jsDelivr). It reads `explorer/parts.json`, which bundles the assembled meshes from `build/` (written by `pocket_section.py`) with each part's name, description and print-list numbers. That file is generated, not committed.

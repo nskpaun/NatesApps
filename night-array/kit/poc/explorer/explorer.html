@@ -1,0 +1,173 @@
+<title>Pocket Section Explorer</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Mono:wght@400&display=swap">
+<style>
+/* Layout: workshop bench. Big 3D view, a parts list rail on the right; drafting-paper light theme, dark shop theme. */
+:root {
+  --bg: #EEEDE8; --panel: #F8F7F3; --ink: #1F2124; --muted: #6B6D70; --line: #D5D3CC; --accent: #C46A1B; --sel: #1F6FD1;
+  --sans: "IBM Plex Sans", system-ui, sans-serif; --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #16171A; --panel: #1E2024; --ink: #ECEAE4; --muted: #9A9893; --line: #34363B; --accent: #E89344; --sel: #5AA2F2; color-scheme: dark } }
+:root[data-theme="dark"] { --bg: #16171A; --panel: #1E2024; --ink: #ECEAE4; --muted: #9A9893; --line: #34363B; --accent: #E89344; --sel: #5AA2F2; color-scheme: dark }
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--ink); font-family: var(--sans); overflow: hidden; }
+.app { height: 100%; display: grid; grid-template-columns: 1fr 330px; }
+.view { position: relative; min-width: 0; }
+#c { position: absolute; inset: 0; }
+#c canvas { display: block; }
+.top { position: absolute; top: 14px; left: max(16px, env(safe-area-inset-left, 0px)); right: 16px; display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; pointer-events: none; }
+.top > * { pointer-events: auto; }
+h1 { margin: 0; font-size: 17px; font-weight: 500; letter-spacing: .02em; }
+h1 span { color: var(--muted); font-weight: 400; }
+.ctl { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; }
+.ctl input[type=range] { width: 150px; accent-color: var(--accent); }
+.ctl b { font-family: var(--mono); font-weight: 400; color: var(--ink); min-width: 3ch; }
+button.t { font: inherit; font-size: 12px; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 7px 11px; cursor: pointer; }
+button.t[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--sel); outline-offset: 2px; }
+.lbl { font-family: var(--sans); font-size: 11.5px; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-left: 3px solid var(--sw, var(--accent)); border-radius: 5px; padding: 3px 7px; white-space: nowrap; cursor: pointer; pointer-events: auto; transform: translateY(-14px); }
+.lbl.sel { border-color: var(--sel); color: var(--sel); }
+.hint { position: absolute; bottom: 12px; left: max(16px, env(safe-area-inset-left, 0px)); font-size: 12px; color: var(--muted); pointer-events: none; }
+aside { background: var(--panel); border-left: 1px solid var(--line); overflow-y: auto; padding-block: 16px 24px; padding-left: 16px; padding-right: max(16px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column; gap: 14px; }
+.card { border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
+.card h2 { margin: 0 0 4px; font-size: 15px; font-weight: 500; }
+.card p { margin: 0; font-size: 13px; line-height: 1.5; color: var(--muted); }
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; margin-top: 8px; font-size: 12px; }
+.kv dt { color: var(--muted); } .kv dd { margin: 0; font-family: var(--mono); font-size: 11.5px; }
+.sec { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 4px 0 -6px; }
+ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+li button { width: 100%; text-align: left; font: inherit; font-size: 13px; color: var(--ink); background: none; border: 0; border-top: 1px solid var(--line); padding: 7px 2px; cursor: pointer; display: flex; gap: 8px; align-items: center; }
+li button .dot { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+li button .q { margin-left: auto; font-family: var(--mono); font-size: 11px; color: var(--muted); }
+li button[aria-current="true"] { color: var(--sel); }
+.tot { font-size: 12.5px; color: var(--muted); line-height: 1.5; }
+.tot b { color: var(--ink); font-weight: 500; }
+@media (max-width: 760px) { body { overflow: auto; } .app { grid-template-columns: 1fr; grid-template-rows: 62vh auto; height: auto; } aside { border-left: 0; border-top: 1px solid var(--line); } .ctl input[type=range] { width: 110px; } }
+</style>
+
+<div class="app">
+  <div class="view">
+    <div id="c"></div>
+    <div class="top">
+      <h1>Pocket section <span>· proof of concept</span></h1>
+      <label class="ctl" for="ex">Explode <input id="ex" type="range" min="0" max="100" value="60"><b id="exv">60%</b></label>
+      <button class="t" id="labels" aria-pressed="true">Labels</button>
+      <button class="t" id="bought" aria-pressed="true">Bought parts</button>
+      <button class="t" id="reset">Reset view</button>
+    </div>
+    <div class="hint" id="hint">Loading parts…</div>
+  </div>
+  <aside>
+    <div class="card" id="info"><h2>Pick a part</h2><p>Click a part or a label to see what it is, how to print it and where it goes. Drag to orbit, scroll to zoom, right-drag to pan.</p></div>
+    <div class="sec">3D-printed parts</div><ul id="listP"></ul>
+    <div class="sec">Bought parts</div><ul id="listB"></ul>
+    <p class="tot" id="tot"></p>
+  </aside>
+</div>
+
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+const host = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+host.appendChild(renderer.domElement);
+const labelR = new CSS2DRenderer(); labelR.domElement.style.position = 'absolute'; labelR.domElement.style.inset = '0'; labelR.domElement.style.pointerEvents = 'none'; host.appendChild(labelR.domElement);
+const scene = new THREE.Scene();
+scene.add(new THREE.HemisphereLight(0xffffff, 0x8a8478, 1.5));
+const d1 = new THREE.DirectionalLight(0xffffff, 1.8); d1.position.set(-300, -500, 700); scene.add(d1);
+const d2 = new THREE.DirectionalLight(0xffffff, 0.7); d2.position.set(400, 600, -300); scene.add(d2);
+const cam = new THREE.PerspectiveCamera(30, 1, 1, 20000); cam.up.set(0, 0, 1);
+const controls = new OrbitControls(cam, renderer.domElement); controls.enableDamping = true;
+
+function decodeSTL(b64) {
+  const bin = atob(b64), buf = new ArrayBuffer(bin.length), u8 = new Uint8Array(buf);
+  for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+  const dv = new DataView(buf), n = dv.getUint32(80, true), pos = new Float32Array(n * 9);
+  for (let i = 0; i < n; i++) { const o = 84 + i * 50 + 12; for (let j = 0; j < 9; j++) pos[i * 9 + j] = dv.getFloat32(o + j * 4, true); }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.computeVertexNormals(); return g;
+}
+
+const items = []; let selected = null;
+const data = await (await fetch('parts.json')).json();
+const [b0, b1] = data.bounds;
+const center = new THREE.Vector3((b0[0] + b1[0]) / 2, (b0[1] + b1[1]) / 2, (b0[2] + b1[2]) / 2 - 40);
+for (const p of data.parts) {
+  const g = decodeSTL(p.stl); g.computeBoundingBox();
+  const mat = new THREE.MeshStandardMaterial({ color: p.color, roughness: .75, side: THREE.DoubleSide });
+  const mesh = new THREE.Mesh(g, mat);
+  const edges = new THREE.LineSegments(new THREE.EdgesGeometry(g, 28), new THREE.LineBasicMaterial({ color: 0x000000, transparent: true, opacity: .3 }));
+  const grp = new THREE.Group(); grp.add(mesh, edges); scene.add(grp);
+  const bb = g.boundingBox, el = document.createElement('div');
+  el.className = 'lbl'; el.textContent = p.name; el.style.setProperty('--sw', p.color);
+  const lbl = new CSS2DObject(el); lbl.position.set((bb.min.x + bb.max.x) / 2, (bb.min.y + bb.max.y) / 2, bb.max.z); grp.add(lbl);
+  const it = { p, grp, mesh, mat, lbl, el }; mesh.userData.it = it; items.push(it);
+  el.addEventListener('click', () => select(it));
+}
+
+const exEl = document.getElementById('ex'), exv = document.getElementById('exv');
+let showLabels = true, showBought = true;
+function apply() {
+  const k = exEl.value / 100 * 1.6; exv.textContent = exEl.value + '%';
+  for (const it of items) {
+    const e = it.p.explode; it.grp.position.set(e[0] * k, e[1] * k, e[2] * k);
+    const vis = showBought || it.p.group === 'print'; it.grp.visible = vis;
+    // Small bought bits (plugs, foam) only get a label when selected, to keep the view readable.
+    const small = /plug|foam/.test(it.p.id);
+    it.lbl.visible = vis && showLabels && (!small || it === selected);
+    it.el.classList.toggle('sel', it === selected);
+  }
+}
+exEl.addEventListener('input', apply);
+const tog = (id, f) => document.getElementById(id).addEventListener('click', e => { const v = f(); e.currentTarget.setAttribute('aria-pressed', String(v)); apply(); });
+tog('labels', () => (showLabels = !showLabels));
+tog('bought', () => (showBought = !showBought));
+
+function select(it) {
+  selected = it;
+  for (const x of items) { x.mat.emissive.set(x === it ? 0x1f6fd1 : 0x000000); x.mat.emissiveIntensity = x === it ? .35 : 0; }
+  document.querySelectorAll('li button').forEach(b => b.setAttribute('aria-current', String(it && b.dataset.id === it.p.id)));
+  const info = document.getElementById('info');
+  if (!it) { info.innerHTML = '<h2>Pick a part</h2><p>Click a part or a label to see what it is.</p>'; apply(); return; }
+  const p = it.p, pr = p.print;
+  info.innerHTML = `<h2></h2><p></p>` + (pr ? `<dl class="kv"><dt>Print file</dt><dd>print/${pr.file}</dd><dt>Quantity</dt><dd>${pr.qty}</dd><dt>Size</dt><dd>${pr.size.map(v => Math.round(v)).join(' × ')} mm</dd><dt>Filament</dt><dd>≈ ${Math.round(pr.grams)} g each</dd><dt>Time</dt><dd>≈ ${pr.hours} h each</dd><dt>Orientation</dt><dd></dd></dl>` : `<dl class="kv"><dt>Type</dt><dd>Bought / existing part</dd></dl>`);
+  info.querySelector('h2').textContent = p.name; info.querySelector('p').textContent = p.desc;
+  if (pr) info.querySelector('dl dd:last-child').textContent = pr.orient;
+  apply();
+}
+
+function listFor(group, ul) {
+  const seen = new Set();
+  for (const it of items.filter(x => (group === 'print') === (x.p.group === 'print'))) {
+    const li = document.createElement('li'), b = document.createElement('button'); b.dataset.id = it.p.id;
+    b.innerHTML = `<span class="dot"></span><span></span><span class="q"></span>`;
+    b.querySelector('.dot').style.background = it.p.color; b.children[1].textContent = it.p.name;
+    if (it.p.print) b.querySelector('.q').textContent = '×1';
+    b.addEventListener('click', () => select(it)); li.append(b); ul.append(li);
+    seen.add(it.p.id);
+  }
+}
+listFor('print', document.getElementById('listP')); listFor('bought', document.getElementById('listB'));
+const prints = items.filter(x => x.p.print); const g = prints.reduce((a, x) => a + x.p.print.grams, 0) + 3 * 1.5, h = prints.reduce((a, x) => a + x.p.print.hours, 0) + .3;
+document.getElementById('tot').innerHTML = `Print total, including 3 small joint keys not shown: <b>≈ ${(g / 1000).toFixed(2)} kg</b> of PETG and <b>≈ ${Math.round(h)} h</b>. Estimates; your slicer's numbers win.`;
+
+const ray = new THREE.Raycaster(), ptr = new THREE.Vector2(); let down = null;
+renderer.domElement.addEventListener('pointerdown', e => (down = [e.clientX, e.clientY]));
+renderer.domElement.addEventListener('pointerup', e => {
+  if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 5) return;
+  const r = renderer.domElement.getBoundingClientRect(); ptr.set((e.clientX - r.left) / r.width * 2 - 1, -(e.clientY - r.top) / r.height * 2 + 1);
+  ray.setFromCamera(ptr, cam);
+  const hit = ray.intersectObjects(items.filter(x => x.grp.visible).map(x => x.mesh))[0];
+  select(hit ? hit.object.userData.it : null);
+});
+
+function home() { cam.position.set(center.x - 420, center.y - 760, center.z + 520); controls.target.copy(center); controls.update(); }
+document.getElementById('reset').addEventListener('click', home);
+function size() { const w = host.clientWidth, hh = host.clientHeight; renderer.setSize(w, hh); labelR.setSize(w, hh); cam.aspect = w / hh; cam.updateProjectionMatrix(); }
+new ResizeObserver(size).observe(host); size(); home(); apply();
+document.getElementById('hint').textContent = 'Drag to orbit · scroll to zoom · right-drag to pan · click a part for details';
+(function loop() { controls.update(); renderer.render(scene, cam); labelR.render(scene, cam); requestAnimationFrame(loop); })();
+</script>
