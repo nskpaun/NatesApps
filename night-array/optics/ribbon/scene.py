@@ -95,6 +95,9 @@ class Design:
     cove_back_z: float = -140.0     # back wall (the base ends at z = -150)
     lip_h: float = 4.0              # front lip stands this far above the deck (y = 36)
     width: float = 1200.0
+    # scale < 1 shrinks the cove about the band's bottom edge (z = -62, y = 172); pass band_h and refl_f
+    # already scaled. Below ~0.8 the cove becomes a shelf hanging under the display, clear of the base.
+    scale: float = 1.0
     # viewer
     eye: tuple = (0.0, 460.0, 650.0)  # (x, y, z); seated eye ~460 mm above the desk, ~710 mm from the glass
 
@@ -184,26 +187,35 @@ def build_scene(d: Design) -> Scene:
         seg(tuple(a_), tuple(b_), "graphite", "mirror", label="reflector (cap / mirror)")
     m1 = refl_pts[-1]
 
-    # Cove: ramp from the front foot up to the back wall.
+    # Cove: ramp from the front foot up to the back wall (optionally scaled about the band's bottom edge).
+    k = d.scale
+    sz = lambda z: z_s + (z - z_s) * k
+    sy = lambda y: ACTIVE_BOTTOM + (y - ACTIVE_BOTTOM) * k
     b = math.radians(d.ramp_deg)
-    zf, zb = d.cove_front_z, d.cove_back_z
-    y_top = d.floor_y + (zf - zb) * math.tan(b)
-    y_top = min(y_top, CHIN_BOTTOM - 5.0)
-    # from back-top to front-foot: direction (+z, -y), left normal points up/forward
-    A_, B_ = np.array([zb, y_top]), np.array([zf, d.floor_y])
+    zf, zb = sz(d.cove_front_z), sz(d.cove_back_z)
+    floor_y = sy(d.floor_y)
+    y_top = floor_y + (zf - zb) * math.tan(b)
+    y_top = min(y_top, CHIN_BOTTOM - 5.0 * k)
+    A_, B_ = np.array([zb, y_top]), np.array([zf, floor_y])
     nrm = np.array([-(B_ - A_)[1], (B_ - A_)[0]]); nrm /= np.linalg.norm(nrm)   # up/forward
     ts = np.linspace(0, 1, 17 if d.ramp_sag else 2)
-    rp = A_[None] + ts[:, None] * (B_ - A_)[None] - (4 * d.ramp_sag * ts * (1 - ts))[:, None] * nrm[None]
+    rp = A_[None] + ts[:, None] * (B_ - A_)[None] - (4 * d.ramp_sag * k * ts * (1 - ts))[:, None] * nrm[None]
     for a_, b_ in zip(rp[:-1], rp[1:]):
         seg(tuple(a_), tuple(b_), d.ramp_finish, "black_matte", label="ribbon surface")
-    # back wall from the ramp top to the display underside (normal +z, toward the cove)
     seg((zb, CHIN_BOTTOM), (zb, y_top), "black_matte", label="back wall")
-    # front lip (dark), deck, base front face
-    lip_top = BASE_TOP + d.lip_h
-    seg((zf, d.floor_y), (zf, lip_top), "graphite", label="front lip (inside)")  # normal -z
-    seg((zf, lip_top), (zf + 12.0, lip_top), "graphite", label="lip top")
-    seg((zf + 12.0, lip_top), (zf + 12.0, BASE_TOP), "graphite", label="lip front")
-    seg((zf + 12.0, BASE_TOP), (BASE_FRONT_Z, BASE_TOP), "graphite", label="deck")
+    lip_top = sy(BASE_TOP + d.lip_h)
+    lw = 12.0 * k
+    seg((zf, floor_y), (zf, lip_top), "graphite", label="front lip (inside)")
+    seg((zf, lip_top), (zf + lw, lip_top), "graphite", label="lip top")
+    if k >= 0.999:
+        seg((zf + lw, lip_top), (zf + lw, BASE_TOP), "graphite", label="lip front")
+        seg((zf + lw, BASE_TOP), (BASE_FRONT_Z, BASE_TOP), "graphite", label="deck")
+    else:
+        shelf_bot = floor_y - 3.0
+        seg((zf + lw, lip_top), (zf + lw, shelf_bot), "graphite", label="lip front")
+        seg((zf + lw, shelf_bot), (zb, shelf_bot), "graphite", label="shelf underside")
+        seg((zb, shelf_bot), (zb, y_top), "graphite", label="shelf back")
+        seg((-150.0, BASE_TOP), (BASE_FRONT_Z, BASE_TOP), "graphite", label="deck")
     seg((BASE_FRONT_Z, BASE_TOP), (BASE_FRONT_Z, 0.0), "graphite", label="base front")
     seg((BASE_FRONT_Z, 0.0), (3000.0, 0.0), "desk", finite=False, label="desk")
 
@@ -216,6 +228,6 @@ def build_scene(d: Design) -> Scene:
     labels = [s[5] for s in segs]
 
     # The end caps close the cove below the display: polygon under the display/reflector.
-    cap = np.array([(z_s, CHIN_BOTTOM), (zb, CHIN_BOTTOM), (zb, y_top), (zf, d.floor_y),
+    cap = np.array([(z_s, CHIN_BOTTOM), (zb, CHIN_BOTTOM), (zb, y_top), (zf, floor_y),
                     (zf, lip_top)] + [tuple(p) for p in refl_pts[::-1]], float)
     return Scene(d, p0, p1, mf, mb, fin, labels, cap, y0, y1)
