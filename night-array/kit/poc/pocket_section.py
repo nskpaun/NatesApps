@@ -77,15 +77,15 @@ MOUSE_COIL_DY = 0.0
 PAD_W = 100.0            # square pad
 PAD_H = 11.2
 PAD_R = 14.0             # plan corner radius (estimate)
-PAD_FIT = 0.3            # pad-to-carrier-wall clearance per side (snug, drop-in)
+PAD_FIT = 0.5            # pad-to-carrier-wall clearance per side (snug, drop-in)
 PLUG_LEN = 30.0          # straight micro-USB plug + strain relief sticking out of the pad edge
 PLUG_W = 12.0            # plug overmould width
 
 # --- Clearances / fits ----------------------------------------------------------------------------------------------
-KB_CLR = 1.0             # keyboard-to-pocket-wall clearance per side
-MOUSE_CLR = 1.5          # mouse-to-pocket-wall clearance per side
-FIT = 0.2                # sliding/drop-in fit per side (floor block in its seat, keys in their holes)
-HATCH_FIT = 0.25         # hatch-to-recess clearance per side
+KB_CLR = 2.5             # keyboard-to-pocket-wall clearance per side
+MOUSE_CLR = 3.0          # mouse-to-pocket-wall clearance per side
+FIT = 0.4                # sliding/drop-in fit per side (floor block in its seat, keys in their holes)
+HATCH_FIT = 0.4         # hatch-to-recess clearance per side
 
 # --- Vertical stack (z = 0 is the tray underside) -------------------------------------------------------------------
 HATCH_T = 4.0            # hatch plate, flush in a recess in the tile underside; carrier sits on it
@@ -116,8 +116,8 @@ CAR_WALL_GAP = 24.0      # gap in the middle of each wall: micro-USB plug, LED l
 EAR_Y = 63.5             # lock-screw line, +/- y from the pad centre: PAD_W/2 + 10 + washer radius 3.5 -> steel >= 10 mm off the pad
 EAR_HALF_X = 20.0        # ear half-width (slot 30 + 3.4 long)
 EAR_OUT = 5.0            # ear extends this far past the screw line
-SLOT_D = 3.4             # M3 clearance
-NUT_AF = 5.8             # M3 nut channel width (nut is 5.5 across flats -> cannot turn)
+SLOT_D = 3.6             # M3 clearance
+NUT_AF = 6.0             # M3 nut channel width (nut is 5.5 across flats -> cannot turn)
 NUT_WALL_H = 2.6         # nut channel walls (M3 nut 2.4 thick)
 
 # --- Cavity galleries for the carrier ears (cavity extension in y, roofed by the floor block) -----------------------
@@ -131,7 +131,7 @@ HATCH_SCREW_IN = 6.0     # hatch screws: this far outside the cavity corner, in 
 FINGER_WIN = 50.0        # square window under the carrier centre: push the carrier with a fingertip, read the ticks
 HEAD_CB_D, HEAD_CB_H = 6.4, 2.2   # counterbore for an M3 ISO 7380 button head (5.7 x 1.65)
 LOCK_CB_W, LOCK_CB_H = 7.6, 2.4   # counterbored slot for button head + M3 washer (7 OD)
-HEX_D = 6.5              # printed nut trap, across corners (M3 nut 6.35) -- press the nut in
+HEX_D = 6.7              # printed nut trap, across corners (M3 nut 6.35) -- press the nut in
 
 # --- Layout in the tray -----------------------------------------------------------------------------------------------
 WALL_MIN = 3.0           # minimum plastic between a hatch recess and the tile's outer edge
@@ -150,8 +150,8 @@ JOINT_X = math.floor(TRAY_W / 2)  # tile split line (x).  Passes through the key
                                   # of both hatch recesses; never through a 1.0 mm charging floor.
 
 # --- Pocket details ---------------------------------------------------------------------------------------------------
-TAG_RELIEF_DEPTH = 11.0  # Magic Tag plug/fold relief into the keyboard pocket's left wall
-TAG_RELIEF_LEN = 34.0    # its length along y, centred on the USB-C port
+TAG_RELIEF_DEPTH = 14.0  # Magic Tag plug/fold relief into the keyboard pocket's left wall
+TAG_RELIEF_LEN = 37.0    # its length along y, centred on the USB-C port
 KB_NOTCH_W = 34.0        # finger notches in the keyboard pocket's front wall (one near each end)
 KB_NOTCH_IN = 45.0       # notch centre from the keyboard's left/right edge
 KB_NOTCH_FRONT = 7.0     # front wall left standing in front of each notch
@@ -168,7 +168,7 @@ JOINT_SCREW_Z = 7.0
 JOINT_POCKET = (28.0, 12.0, 14.0)   # left-tile access pocket (x long, y wide, z high), open underneath, for the hex key
 JOINT_WALL = 6.0         # plastic between the access pocket and the joint face
 JOINT_NUT_AT = 9.0       # right tile: nut slot this far from the joint face
-NUT_T_SLOT = 2.8         # nut slot thickness (M3 nut 2.4)
+NUT_T_SLOT = 3.0         # nut slot thickness (M3 nut 2.4)
 
 # --- Underside ------------------------------------------------------------------------------------------------------
 FOOT_D, FOOT_DEPTH = 10.5, 1.2    # pockets for 10 mm x ~3 mm self-adhesive rubber bumpers (stand ~1.8 mm proud)

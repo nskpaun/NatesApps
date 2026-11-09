@@ -8,7 +8,7 @@ It is built for function, not looks: plain PETG (PLA is fine for a test), no pai
 
 | | |
 |---|---|
-| Tray | **480 × 205 × 44 mm** (W × D × H), plus about 1.8 mm of rubber feet |
+| Tray | **483 × 205 × 44 mm** (W × D × H), plus about 1.8 mm of rubber feet |
 | Devices | Keychron K3 Ultra 8K with a NILLKIN Magic Tag Type-C Short; Lenovo Multi-Device Wireless Mouse X9 Edition |
 | Chargers | 2 × Anker 313 Wireless Charger (Pad) A2503, used intact |
 | Printer | Bambu Lab, 256 mm bed. Every part fits 245 × 245 × 245 mm as oriented. |
@@ -204,7 +204,7 @@ If a device will not charge through the coupon at all, don't print the tray yet.
   - the exact spot of the status LED on the pad.
 
   The carrier's open wall gaps and the sight slot are there because of that last point.
-- **Printed fits.** The fits (0.2 mm per side at the block seats and keys, 0.25 mm at the hatches) suit a well-tuned Bambu. Expect to file a seat edge on a less accurate printer.
+- **Printed fits.** Fits are deliberately roomy for a prototype: 0.4 mm per side at the floor-block seats, joint keys and hatches, 0.5 mm round each pad in its carrier, 3.6 mm M3 clearance holes and slightly loose nut traps (a dab of glue holds a nut if it falls out). The keyboard has 2.5 mm per side in its pocket, the mouse 3 mm, and the Magic Tag notch is 14 mm deep and 37 mm long. If your printer runs tight or loose, change `FIT`, `HATCH_FIT`, `KB_CLR` and `MOUSE_CLR` at the top of `pocket_section.py` and run it again.
 - **Unsupported floor.** The 1 mm floor is unsupported where the cavity is wider than the pad (galleries and plug bay). One of the keyboard's front-left feet can land on such a span. It will flex a few tenths of a millimetre, which is harmless here.
 - **Grams and hours.** These are volume-based estimates, as described above.
 
