@@ -89,6 +89,34 @@ def psf_width(res, cols):
     return float(np.nanmedian(w))
 
 
+def mean_psf(res, cols, edges=np.arange(-400, 401, 10.0)):
+    """Single-column response averaged over many columns, aligned on each column's centre and
+    binned in x. Returns bin centres (mm from the lit column) and the normalised profile."""
+    acc = np.zeros(len(edges) - 1)
+    width = None
+    for cb in cols:
+        xs, pr = x_response(res, res.x_world, 0, cb)
+        ok = np.isfinite(xs)
+        xs, pr = xs[ok], pr[ok]
+        # column centre in world x
+        xc = (cb + 0.5) / res.nbx * 1200.0 - 600.0
+        h, _ = np.histogram(xs - xc, edges, weights=pr)
+        n, _ = np.histogram(xs - xc, edges)
+        acc += h / np.maximum(n, 1)
+    acc /= max(acc.max(), 1e-12)
+    return 0.5 * (edges[1:] + edges[:-1]), acc
+
+
+def bin_profile(xs, prof, bw=15.0, lo=-600, hi=600):
+    edges = np.arange(lo, hi + bw, bw)
+    ok = np.isfinite(xs)
+    h, _ = np.histogram(xs[ok], edges, weights=prof[ok])
+    n, _ = np.histogram(xs[ok], edges)
+    c = 0.5 * (edges[1:] + edges[:-1])
+    keep = n > 0
+    return c[keep], (h / np.maximum(n, 1))[keep]
+
+
 def fwhm(xs, prof):
     ok = np.isfinite(xs)
     xs, prof = xs[ok], prof[ok]

@@ -1,6 +1,6 @@
 """Run every light-ribbon experiment and write figures + results to optics/out/.
 
-    python3 night-array/optics/run.py            # full quality (~10 min on 4 cores)
+    python3 night-array/optics/run.py            # full quality (~11 min on 4 cores)
     python3 night-array/optics/run.py --quick    # low sample counts, for iterating
 
 Requires numpy and matplotlib only.
@@ -123,9 +123,9 @@ def exp_finish_and_ramp(q, R):
         d = PARA.with_(ramp_finish=fin) if fin != "matte_white" else MATTE
         res = cam(d, q)
         m = an.metrics(res)
-        xs, prof = an.x_response(res, res.x_world, d.width, col_bin=int(res.nbx * 0.25))
-        w = an.psf_width(res, range(int(res.nbx * 0.15), int(res.nbx * 0.4), 4))
-        psf[label] = (xs, prof / max(prof.max(), 1e-9))
+        xs, prof = an.mean_psf(res, range(int(res.nbx * 0.12), int(res.nbx * 0.42), 2))
+        w = an.energy_width(xs, prof)
+        psf[label] = (xs, prof)
         rows.append(dict(finish=label, **{k: m[k] for k in ("peak", "mean", "k_amb", "k_content")},
                          c500=m["contrast"].get(500), c1000=m["contrast"].get(1000), fwhm_mm=w))
         print(f"   {label:34s} peak {m['peak']:6.1f}  C500 {m['contrast'].get(500, 0):5.2f}  FWHM {w:5.0f} mm")
@@ -229,6 +229,8 @@ def exp_daylight(q, R):
         ax.set_xlabel("room illuminance on the desk (lux)")
     axs[0].set_yscale("log")
     axs[0].axhline(1.5, color=INK2, lw=1, ls="--"); axs[0].axhline(3, color=INK2, lw=1, ls=":")
+    axs[0].text(12000, 1.5, " noticeable", va="center", fontsize=7, color=INK2)
+    axs[0].text(12000, 3, " glowing", va="center", fontsize=7, color=INK2)
     axs[0].set_ylabel("ribbon contrast (lit ÷ unlit)")
     axs[0].set_title("Contrast with the band at 350 cd/m²")
     axs[0].legend()
@@ -254,7 +256,7 @@ def exp_pattern(q, R, res):
     # (a) flat field: full white vs designed uniform
     w = mask.astype(float)
     target_level = np.percentile(full[mask], 30)
-    p_flat = an.design_pattern(res, np.where(mask, target_level, 0.0), weight=w)
+    p_flat = an.design_pattern(res, np.where(mask, target_level, 0.0), weight=w, smooth=0.3)
     img_flat = res.image(p_flat)
 
     def prof(img):
@@ -266,22 +268,23 @@ def exp_pattern(q, R, res):
     def gauss(x0, s):
         return np.exp(-0.5 * ((xb - x0) / s) ** 2)
     rows_out = {}
-    fig, axs = plt.subplots(2, 2, figsize=(13, 7))
+    fig, axs = plt.subplots(2, 2, figsize=(13, 7.6), gridspec_kw=dict(hspace=0.45))
     ax = axs[0, 0]
     for k, (lab, col) in enumerate((("satin titanium (a=0.25)", S1), ("matte white", S2),
                                      ("satin titanium, fine (a=0.12)", S3))):
         xs, pr = R["_psf"][lab]
         ok = np.isfinite(xs)
         ax.plot(xs[ok], pr[ok], color=col, label=lab)
-    ax.set_xlim(-600, 600)
-    ax.set_xlabel("x along the ribbon (mm)"); ax.set_ylabel("relative luminance")
-    ax.set_title("One lit band column (9.4 mm wide at x = -300) as seen on the ribbon")
+    ax.set_xlim(-400, 400)
+    ax.set_xlabel("distance along the ribbon from the lit column (mm)"); ax.set_ylabel("relative luminance")
+    ax.set_title("Blur: one lit 9 mm band column, as seen on the ribbon")
     ax.legend(fontsize=8)
 
     ax = axs[0, 1]
     ok = np.isfinite(xs_img)
-    ax.plot(xs_img[ok], prof(full)[ok], color=S2, label="band full white (naive)")
-    ax.plot(xs_img[ok], prof(img_flat)[ok], color=S1, label="designed pattern (uniform target)")
+    ax.plot(*an.bin_profile(xs_img, prof(full)), color=S2, label="band full white (naive)")
+    ax.plot(*an.bin_profile(xs_img, prof(img_flat)), color=S1, label="designed pattern (uniform target)")
+    ax.set_ylim(bottom=0)
     ax.set_xlabel("x along the ribbon (mm)"); ax.set_ylabel("cd/m²")
     ax.set_title("Flat field: ends and the 14 mm seam need compensation")
     ax.legend(fontsize=8)
