@@ -7,13 +7,13 @@
       "orientation": "underside down (as assembled)",
       "supports": "none",
       "size_mm": [
-        241.0,
+        243.0,
         205.0,
         44.0
       ],
-      "grams_each_est": 308.3,
-      "hours_each_est": 8.77,
-      "solid_volume_cm3": 878.3
+      "grams_each_est": 307.2,
+      "hours_each_est": 8.74,
+      "solid_volume_cm3": 877.2
     },
     {
       "file": "print/tile_right.stl",
@@ -22,13 +22,13 @@
       "orientation": "underside down (as assembled)",
       "supports": "none",
       "size_mm": [
-        242.0,
+        244.0,
         205.0,
         44.0
       ],
-      "grams_each_est": 317.6,
-      "hours_each_est": 9.03,
-      "solid_volume_cm3": 938.3
+      "grams_each_est": 318.3,
+      "hours_each_est": 9.05,
+      "solid_volume_cm3": 942.8
     },
     {
       "file": "print/kb_floor_block.stl",
@@ -41,9 +41,9 @@
         165.4,
         23.8
       ],
-      "grams_each_est": 87.1,
-      "hours_each_est": 2.55,
-      "solid_volume_cm3": 138.8
+      "grams_each_est": 84.3,
+      "hours_each_est": 2.47,
+      "solid_volume_cm3": 130.8
     },
     {
       "file": "print/mouse_floor_block.stl",
@@ -56,9 +56,9 @@
         165.4,
         23.8
       ],
-      "grams_each_est": 113.3,
-      "hours_each_est": 3.29,
-      "solid_volume_cm3": 233.1
+      "grams_each_est": 109.3,
+      "hours_each_est": 3.17,
+      "solid_volume_cm3": 226.6
     },
     {
       "file": "print/pad_carrier.stl",

@@ -137,7 +137,7 @@ HEX_D = 6.7              # printed nut trap, across corners (M3 nut 6.35) -- pre
 WALL_MIN = 3.0           # minimum plastic between a hatch recess and the tile's outer edge
 FRONT_RIM = 20.0         # keyboard pocket front wall from the tray front edge
 TRAY_D = 205.0           # tray depth (y)
-POCKET_GAP = 12.0        # wall between the keyboard pocket and the mouse pocket
+POCKET_GAP = 16.0       # wall between the keyboard pocket and the mouse pocket at floor level (the two coves meet ~1 mm below the rim)
 MOUSE_PAD_Y = 92.0       # mouse pad (and pocket) centre, y
 # Keyboard left edge: as far left as its carrier bay allows (hatch recess keeps WALL_MIN to the tile edge).
 KB_X0 = WALL_MIN + HATCH_MARGIN + CH - TAG_COIL_FROM_LEFT         # 33.5
@@ -156,6 +156,9 @@ KB_NOTCH_W = 34.0        # finger notches in the keyboard pocket's front wall (o
 KB_NOTCH_IN = 45.0       # notch centre from the keyboard's left/right edge
 KB_NOTCH_FRONT = 7.0     # front wall left standing in front of each notch
 KB_NOTCH_DIP = 4.0       # notch dips this far below the floor so a fingertip gets under the keyboard (thick floor only)
+POCKET_STRAIGHT = 6.0    # pocket walls rise straight this far above the floor, so devices still land over the chargers
+POCKET_FLARE = 12.0      # above that, a soft cove widens the opening by this much per side at the rim
+COVE_STEPS = 10          # loft sections through the cove (smooth surface, not stair steps)
 MOUSE_POCKET_R = 18.0    # mouse pocket plan corner radius
 MOUSE_NOTCH_W = 30.0     # finger notches either side of the mouse
 MOUSE_NOTCH_IN = 6.0
@@ -319,6 +322,27 @@ def feet_positions():
 # the solid tray ("monolith"): outer block with the pockets cut -- tiles and floor blocks are both cut from it
 # =====================================================================================================================
 
+def cove_pocket(x0, x1, y0, y1, r):
+    """Pocket cut: straight walls for POCKET_STRAIGHT above the floor, then a quarter-ellipse round-over that is
+    vertical where it leaves the straight wall and flattens out to POCKET_FLARE wider per side at the rim."""
+    zs = Z_FLOOR + POCKET_STRAIGHT
+    lower = rbox(x0, x1, y0, y1, Z_FLOOR, zs + 0.3, r)   # overlaps the cove's narrow bottom so the union is clean
+    H = TRAY_H - zs
+    wires = []
+    for k in range(COVE_STEPS + 1):
+        t = math.pi / 2 * k / COVE_STEPS
+        off = POCKET_FLARE * (1 - math.cos(t))
+        z = zs + H * math.sin(t)
+        a0, a1, b0, b1 = x0 - off, x1 + off, y0 - off, y1 + off
+        w = cq.Wire.makePolygon([cq.Vector(a0, b0, z), cq.Vector(a1, b0, z), cq.Vector(a1, b1, z), cq.Vector(a0, b1, z)], close=True)
+        wires.append(w.fillet2D(r + off, w.Vertices()))
+    cove = cq.Workplane().add(cq.Solid.makeLoft(wires, False))
+    o = POCKET_FLARE
+    above = rbox(x0 - o, x1 + o, y0 - o, y1 + o, TRAY_H - 0.3, TRAY_H + 1, r + o)
+    out = lower.union(cove, clean=True).union(above, clean=True)
+    assert len(out.solids().vals()) == 1, 'cove pocket union failed'
+    return out
+
 def monolith():
     m = box(0, TRAY_W, 0, TRAY_D, 0, TRAY_H)
     top = TRAY_H + 1
@@ -326,7 +350,7 @@ def monolith():
     # keyboard pocket
     kx0, kx1 = KB_X0 - KB_CLR, KB_X0 + KB_W + KB_CLR
     ky0, ky1 = KB_Y0 - KB_CLR, KB_Y0 + KB_D + KB_CLR
-    cuts.append(rbox(kx0, kx1, ky0, ky1, Z_FLOOR, top, KB_CORNER_R + KB_CLR))
+    cuts.append(cove_pocket(kx0, kx1, ky0, ky1, KB_CORNER_R + KB_CLR))
     # Magic Tag relief (left wall, centred on the USB-C port)
     py = KB_Y0 + KB_D - KB_PORT_FROM_REAR
     cuts.append(rbox(kx0 - TAG_RELIEF_DEPTH, kx0 + 3, py - TAG_RELIEF_LEN / 2, py + TAG_RELIEF_LEN / 2, Z_FLOOR, top, 2))
@@ -340,7 +364,7 @@ def monolith():
     # mouse pocket + side notches
     mx, my = MOUSE_X, MOUSE_PAD_Y
     hw, hl = MOUSE_W / 2 + MOUSE_CLR, MOUSE_L / 2 + MOUSE_CLR
-    cuts.append(rbox(mx - hw, mx + hw, my - hl, my + hl, Z_FLOOR, top, MOUSE_POCKET_R))
+    cuts.append(cove_pocket(mx - hw, mx + hw, my - hl, my + hl, MOUSE_POCKET_R))
     for s in (-1, 1):
         xa = mx + s * hw
         cuts.append(rbox(min(xa, xa + s * MOUSE_NOTCH_IN) - (2 if s > 0 else 0), max(xa, xa + s * MOUSE_NOTCH_IN) + (2 if s < 0 else 0),
