@@ -1,0 +1,146 @@
+{
+  "parts": [
+    {
+      "file": "print/tile_left.stl",
+      "qty": 1,
+      "material": "PETG (PLA works for a test)",
+      "orientation": "underside down (as assembled)",
+      "supports": "none",
+      "size_mm": [
+        240.0,
+        205.0,
+        44.0
+      ],
+      "grams_each_est": 309.3,
+      "hours_each_est": 8.8,
+      "solid_volume_cm3": 885.1
+    },
+    {
+      "file": "print/tile_right.stl",
+      "qty": 1,
+      "material": "PETG (PLA works for a test)",
+      "orientation": "underside down (as assembled)",
+      "supports": "none",
+      "size_mm": [
+        240.0,
+        205.0,
+        44.0
+      ],
+      "grams_each_est": 316.1,
+      "hours_each_est": 8.99,
+      "solid_volume_cm3": 934.8
+    },
+    {
+      "file": "print/kb_floor_block.stl",
+      "qty": 1,
+      "material": "PETG (PLA works for a test)",
+      "orientation": "1.0 mm charging floor DOWN on the bed (as assembled)",
+      "supports": "none",
+      "size_mm": [
+        167.4,
+        165.4,
+        23.8
+      ],
+      "grams_each_est": 89.0,
+      "hours_each_est": 2.6,
+      "solid_volume_cm3": 149.5
+    },
+    {
+      "file": "print/mouse_floor_block.stl",
+      "qty": 1,
+      "material": "PETG (PLA works for a test)",
+      "orientation": "1.0 mm charging floor DOWN on the bed (as assembled)",
+      "supports": "none",
+      "size_mm": [
+        167.4,
+        165.4,
+        23.8
+      ],
+      "grams_each_est": 114.7,
+      "hours_each_est": 3.33,
+      "solid_volume_cm3": 241.8
+    },
+    {
+      "file": "print/pad_carrier.stl",
+      "qty": 2,
+      "material": "PETG (PLA works for a test)",
+      "orientation": "base down (as assembled)",
+      "supports": "none",
+      "size_mm": [
+        104.8,
+        137.0,
+        9.0
+      ],
+      "grams_each_est": 40.7,
+      "hours_each_est": 1.25,
+      "solid_volume_cm3": 39.5
+    },
+    {
+      "file": "print/kb_hatch.stl",
+      "qty": 1,
+      "material": "PETG (PLA works for a test)",
+      "orientation": "outside face (tick scale) down",
+      "supports": "none",
+      "size_mm": [
+        183.5,
+        174.5,
+        4.0
+      ],
+      "grams_each_est": 76.4,
+      "hours_each_est": 2.25,
+      "solid_volume_cm3": 96.8
+    },
+    {
+      "file": "print/mouse_hatch.stl",
+      "qty": 1,
+      "material": "PETG (PLA works for a test)",
+      "orientation": "outside face (tick scale) down",
+      "supports": "none",
+      "size_mm": [
+        183.5,
+        174.5,
+        4.0
+      ],
+      "grams_each_est": 76.4,
+      "hours_each_est": 2.25,
+      "solid_volume_cm3": 96.8
+    },
+    {
+      "file": "print/joint_key.stl",
+      "qty": 3,
+      "material": "PETG (PLA works for a test)",
+      "orientation": "flat",
+      "supports": "none",
+      "size_mm": [
+        20.0,
+        10.0,
+        6.0
+      ],
+      "grams_each_est": 1.5,
+      "hours_each_est": 0.14,
+      "solid_volume_cm3": 1.2
+    },
+    {
+      "file": "print/coupon.stl",
+      "qty": 1,
+      "material": "PETG (PLA works for a test)",
+      "orientation": "flipped: the 1.0 mm plate on the bed, skirt up",
+      "supports": "none",
+      "size_mm": [
+        110.0,
+        110.0,
+        4.0
+      ],
+      "grams_each_est": 16.8,
+      "hours_each_est": 0.57,
+      "solid_volume_cm3": 13.2
+    }
+  ],
+  "estimate_model": {
+    "shell_mm": 1.0,
+    "infill": 0.15,
+    "rate_cm3_per_h": 28.0,
+    "density": 1.27,
+    "note": "rough volume-based estimate; the slicer's number wins"
+  }
+}
