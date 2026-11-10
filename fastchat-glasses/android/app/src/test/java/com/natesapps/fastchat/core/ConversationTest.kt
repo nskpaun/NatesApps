@@ -7,7 +7,12 @@ import org.junit.Test
 
 class ConversationTest {
 
-    private val four = listOf("Yes, I'd love to.", "No, not today.", "Where would we go?", "Maybe later.")
+    private val four = listOf(
+        Reply("👍", "Yes, I'd love to."),
+        Reply("🙅", "No, not today."),
+        Reply("❓", "Where would we go?"),
+        Reply("🤷", "Maybe later."),
+    )
 
     /** Feeds [events] through the reducer, returning the final state and every effect in order. */
     private fun run(vararg events: Event, from: State = State()): Pair<State, List<Effect>> {
@@ -59,11 +64,19 @@ class ConversationTest {
     }
 
     @Test
+    fun `the emoji is shown on the glasses but never spoken or sent back to the model`() {
+        val (state, effects) = run(Event.Input(GlassesInput.Pick(Dpad.UP)), from = choosing())
+        assertEquals(Effect.Speak("Yes, I'd love to."), effects.last())
+        assertEquals(Turn(Speaker.ME, "Yes, I'd love to."), state.history.last())
+        assertEquals(four[0], (screenFor(choosing()) as GlassesScreen.Choices).replies[0])
+    }
+
+    @Test
     fun `each direction says the reply in its slot`() {
         val expected = mapOf(Dpad.UP to four[0], Dpad.RIGHT to four[1], Dpad.DOWN to four[2], Dpad.LEFT to four[3])
         for ((direction, reply) in expected) {
             val (state, _) = run(Event.Input(GlassesInput.Pick(direction)), from = choosing())
-            assertEquals(Phase.Speaking(reply), state.phase)
+            assertEquals(Phase.Speaking(reply.text), state.phase)
         }
     }
 
@@ -75,7 +88,7 @@ class ConversationTest {
             Event.Replies(1, four.take(1), done = false),
             Event.Input(GlassesInput.Pick(Dpad.UP)),
         )
-        assertEquals(Phase.Speaking(four[0]), state.phase)
+        assertEquals(Phase.Speaking(four[0].text), state.phase)
         assertTrue(Effect.CancelGeneration in effects)
     }
 
@@ -94,12 +107,12 @@ class ConversationTest {
         val phase = state.phase as Phase.Choosing
         assertTrue(phase.replies.isEmpty())
         assertEquals(1, phase.round)
-        assertEquals(Effect.Generate(2, state.history, avoid = four), effects.last())
+        assertEquals(Effect.Generate(2, state.history, avoid = four.map { it.text }), effects.last())
 
         // A second "more" avoids both earlier sets.
-        val second = listOf("Sure.", "I can't.", "What time?", "Let me think.")
+        val second = listOf("Sure.", "I can't.", "What time?", "Let me think.").map { Reply("🙂", it) }
         val (_, again) = run(Event.Replies(2, second, done = true), Event.Input(GlassesInput.More), from = state)
-        assertEquals(four + second, (again.last() as Effect.Generate).avoid)
+        assertEquals((four + second).map { it.text }, (again.last() as Effect.Generate).avoid)
     }
 
     @Test
@@ -179,7 +192,7 @@ class ConversationTest {
             ).first
         }
         assertEquals(HISTORY_TURNS, state.history.size)
-        assertEquals(Turn(Speaker.ME, four[0]), state.history.last())
+        assertEquals(Turn(Speaker.ME, four[0].text), state.history.last())
     }
 
     @Test
@@ -196,7 +209,7 @@ class ConversationTest {
         )
 
         val speaking = run(Event.Input(GlassesInput.Pick(Dpad.RIGHT)), from = choosing()).first
-        assertEquals(GlassesScreen.Status("Saying", four[1]), screenFor(speaking))
+        assertEquals(GlassesScreen.Status("Saying", four[1].text), screenFor(speaking))
     }
 
     @Test

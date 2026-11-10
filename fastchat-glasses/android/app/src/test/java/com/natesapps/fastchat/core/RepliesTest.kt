@@ -9,25 +9,41 @@ class RepliesTest {
 
     @Test
     fun `only finished lines count while the model is still writing`() {
-        val soFar = "1. Yes, I'd love to.\n2. No, not tod"
-        assertEquals(listOf("Yes, I'd love to."), ReplyParser.parse(soFar, finished = false))
-        assertEquals(listOf("Yes, I'd love to.", "No, not tod"), ReplyParser.parse(soFar, finished = true))
+        val soFar = "1. 👍 Yes, I'd love to.\n2. 🙅 No, not tod"
+        assertEquals(listOf(Reply("👍", "Yes, I'd love to.")), ReplyParser.parse(soFar, finished = false))
+        assertEquals(
+            listOf(Reply("👍", "Yes, I'd love to."), Reply("🙅", "No, not tod")),
+            ReplyParser.parse(soFar, finished = true),
+        )
     }
 
     @Test
-    fun `a complete answer yields four replies`() {
-        val text = "1. Yes, please.\n2. No, thank you.\n3. What kind?\n4. Maybe later."
+    fun `a complete answer yields four replies, each with its emoji`() {
+        val text = "1. 👍 Yes, please.\n2. ❌ No, thank you.\n3. ❓ What kind?\n4. ☀️ Maybe later."
         assertEquals(
-            listOf("Yes, please.", "No, thank you.", "What kind?", "Maybe later."),
+            listOf(
+                Reply("👍", "Yes, please."),
+                Reply("❌", "No, thank you."),
+                Reply("❓", "What kind?"),
+                Reply("☀️", "Maybe later."),
+            ),
             ReplyParser.parse(text, finished = true),
         )
     }
 
     @Test
-    fun `quotes, stray lines and extra replies are cleaned up`() {
-        val text = "Here are some replies:\n1. \"Sounds good.\"\n\n2) Not really.\n3. \n4. Why?\n5. Extra\n6. More\n"
+    fun `a reply without an emoji still parses, and one word is never mistaken for an emoji`() {
         assertEquals(
-            listOf("Sounds good.", "Not really.", "Why?", "Extra"),
+            listOf(Reply("", "I am not sure."), Reply("", "Yes."), Reply("", "2 sugars, please.")),
+            ReplyParser.parse("1. I am not sure.\n2. Yes.\n3. 2 sugars, please.", finished = true),
+        )
+    }
+
+    @Test
+    fun `quotes, stray lines and extra replies are cleaned up`() {
+        val text = "Here are some replies:\n1. 🙂 \"Sounds good.\"\n\n2) Not really.\n3. \n4. 🤔 Why?\n5. Extra\n6. More\n"
+        assertEquals(
+            listOf(Reply("🙂", "Sounds good."), Reply("", "Not really."), Reply("🤔", "Why?"), Reply("", "Extra")),
             ReplyParser.parse(text, finished = true),
         )
     }
@@ -68,10 +84,11 @@ class RepliesTest {
     }
 
     @Test
-    fun `the grammar asks for exactly four numbered lines`() {
+    fun `the grammar asks for exactly four numbered lines, each starting with an emoji`() {
         assertEquals(
             "root ::= \"1. \" line \"\\n\" \"2. \" line \"\\n\" \"3. \" line \"\\n\" \"4. \" line\n" +
-                "line ::= [^\\n\\r]{2,70}\n",
+                "line ::= emoji \" \" [^\\n\\r]{2,70}\n" +
+                "emoji ::= [\\U0001F300-\\U0001FAFF\\u2600-\\u27BF] [\\uFE0F]?\n",
             ReplyPrompt.GRAMMAR,
         )
     }

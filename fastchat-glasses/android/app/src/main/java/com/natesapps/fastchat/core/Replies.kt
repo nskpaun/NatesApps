@@ -15,14 +15,17 @@ const val REPLY_COUNT = 4
 object ReplyPrompt {
 
     /**
-     * GBNF grammar the sampler is constrained to: exactly four numbered lines. With it the output
-     * always parses and never runs long, whatever the model would otherwise have added.
+     * GBNF grammar the sampler is constrained to: exactly four numbered lines, each an emoji, a
+     * space and a short sentence. With it the output always parses and never runs long, whatever
+     * the model would otherwise have added.
      */
     val GRAMMAR: String = buildString {
         append("root ::= ")
         append((1..REPLY_COUNT).joinToString(" \"\\n\" ") { "\"$it. \" line" })
         append("\n")
-        append("line ::= [^\\n\\r]{2,$MAX_REPLY_CHARS}\n")
+        append("line ::= emoji \" \" [^\\n\\r]{2,$MAX_REPLY_CHARS}\n")
+        // One pictograph, optionally followed by the "show as emoji" variation selector.
+        append("emoji ::= [\\U0001F300-\\U0001FAFF\\u2600-\\u27BF] [\\uFE0F]?\n")
     }
 
     fun system(persona: Persona): String = buildString {
@@ -33,11 +36,14 @@ object ReplyPrompt {
         append("in the first person, as natural spoken English.\n")
         append("Rules:\n")
         append("- Each reply is one short sentence, 10 words at most.\n")
+        append("- Start each reply with one emoji that shows its meaning at a glance, then a space. ")
+        append("Use a different emoji for each reply.\n")
         append("- Make the $REPLY_COUNT replies mean different things, so there is a real choice: ")
         append("for example one that agrees or says yes, one that disagrees or says no, ")
         append("one that asks a question back, and one that is neutral or changes the subject.\n")
         append("- Answer what was actually said. Never invent facts about $who.\n")
-        append("- Output only a numbered list, 1 to $REPLY_COUNT, one reply per line.")
+        append("- Output only a numbered list, 1 to $REPLY_COUNT, one reply per line, ")
+        append("like: 1. \uD83D\uDC4D Yes, I would love to.")
         val about = persona.about.trim()
         if (about.isNotEmpty()) {
             append("\n\nAbout $who (use this to make replies sound like them):\n")
@@ -87,15 +93,29 @@ object ReplyParser {
      * newline after it has arrived, or once [finished] says the model has stopped, so a reply is
      * never shown (or spoken) half written.
      */
-    fun parse(text: String, finished: Boolean): List<String> {
+    fun parse(text: String, finished: Boolean): List<Reply> {
         val lines = text.split('\n')
         val complete = if (finished) lines else lines.dropLast(1)
         return complete
             .mapNotNull { line -> numbered.find(line)?.groupValues?.get(2) }
-            .map(::clean)
-            .filter { it.isNotEmpty() }
+            .map(::reply)
+            .filter { it.text.isNotEmpty() }
             .take(REPLY_COUNT)
     }
+
+    /** Splits "👍 Yes, I would." into its emoji and its words; a line without an emoji is fine. */
+    private fun reply(line: String): Reply {
+        val trimmed = line.trim()
+        val first = trimmed.substringBefore(' ')
+        return if (first.isNotEmpty() && first != trimmed && isEmoji(first)) {
+            Reply(first, clean(trimmed.substring(first.length)))
+        } else {
+            Reply("", clean(trimmed))
+        }
+    }
+
+    /** Pictographs and symbols only: nothing a sentence would start with. */
+    private fun isEmoji(token: String): Boolean = token.codePoints().allMatch { it >= 0x2190 }
 
     private fun clean(reply: String): String =
         reply.trim().trim('"', '\u201C', '\u201D').trim()

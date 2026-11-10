@@ -7,7 +7,12 @@ import com.meta.wearable.dat.core.Wearables
 import com.meta.wearable.dat.core.selectors.AutoDeviceSelector
 import com.meta.wearable.dat.core.session.DeviceSession
 import com.meta.wearable.dat.core.session.DeviceSessionState
+import com.meta.wearable.dat.core.types.Device
+import com.meta.wearable.dat.core.types.DeviceCompatibility
+import com.meta.wearable.dat.core.types.DeviceIdentifier
 import com.meta.wearable.dat.core.types.DeviceSessionError
+import com.meta.wearable.dat.core.types.DonState
+import com.meta.wearable.dat.core.types.LinkState
 import com.meta.wearable.dat.core.types.RegistrationState
 import com.meta.wearable.dat.display.Display
 import com.meta.wearable.dat.display.addDisplay
@@ -34,6 +39,7 @@ import com.meta.wearable.dat.mockdevice.api.MockGlasses
 import com.natesapps.fastchat.core.Dpad
 import com.natesapps.fastchat.core.GlassesInput
 import com.natesapps.fastchat.core.GlassesScreen
+import com.natesapps.fastchat.core.Reply
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -51,8 +57,8 @@ import kotlinx.coroutines.launch
 
 private const val TAG = "FastChatGlasses"
 
-/** Wait before reconnecting after the glasses end a session, so a dead link is not hammered. */
-private const val RECONNECT_DELAY_MS = 3_000L
+/** How often to try again while registered glasses exist but no session is open. */
+private const val RETRY_MS = 5_000L
 
 /**
  * Everything that talks to the Meta Ray-Ban Display glasses through Meta's Wearables Device Access
@@ -88,6 +94,10 @@ class GlassesLink(private val appContext: Context, private val scope: CoroutineS
         val dpad: Boolean = false,
         val simulated: Boolean = false,
         val problem: String? = null,
+        /** The glasses the Meta AI app has shared with FastChat, as "name: state" lines. */
+        val devices: List<String> = emptyList(),
+        /** What the wearer should do next when no session can be opened. */
+        val hint: String? = null,
     )
 
     private val _status = MutableStateFlow(Status())
@@ -111,7 +121,10 @@ class GlassesLink(private val appContext: Context, private val scope: CoroutineS
 
     private var session: DeviceSession? = null
     private var sessionJob: Job? = null
-    private var reconnectJob: Job? = null
+
+    /** Latest state of each pair of glasses Meta AI has shared with this app. */
+    private val seen = mutableMapOf<DeviceIdentifier, Device>()
+    private val metadataJobs = mutableMapOf<DeviceIdentifier, Job>()
 
     /** Starts the toolkit. Needs the Bluetooth permission, so call it once that is granted. */
     fun start() {
@@ -127,15 +140,43 @@ class GlassesLink(private val appContext: Context, private val scope: CoroutineS
 
     private fun observe() {
         scope.launch {
-            combine(Wearables.registrationState, Wearables.devices) { registration, devices ->
-                registration to devices
-            }.collect { (registration, devices) ->
+            Wearables.registrationState.collect { registration ->
                 if (registration != RegistrationState.REGISTERED) {
                     endSession()
-                    setStage(Stage.NOT_REGISTERED)
-                } else if (session == null) {
-                    if (devices.isEmpty()) setStage(Stage.NO_GLASSES) else connect()
+                    _status.update { it.copy(stage = Stage.NOT_REGISTERED, devices = emptyList(), hint = null) }
+                } else {
+                    connectIfPossible()
                 }
+            }
+        }
+        // Follow every pair of glasses Meta AI shares with us. A pair shows up in the list before
+        // it is linked (or while it is folded in its case), so the session can only be opened
+        // once its own state says it is connected: watch that, not just the list.
+        scope.launch {
+            Wearables.devices.collect { ids ->
+                (metadataJobs.keys - ids).forEach { gone ->
+                    metadataJobs.remove(gone)?.cancel()
+                    seen.remove(gone)
+                }
+                ids.forEach { id ->
+                    metadataJobs.getOrPut(id) {
+                        launch {
+                            Wearables.devicesMetadata[id]?.collect { device ->
+                                seen[id] = device
+                                connectIfPossible()
+                            }
+                        }
+                    }
+                }
+                connectIfPossible()
+            }
+        }
+        // Some reasons a session cannot open (glasses not worn yet, busy with another app) are
+        // not reported as a state change, so keep trying while there is something to connect to.
+        scope.launch {
+            while (true) {
+                delay(RETRY_MS)
+                connectIfPossible()
             }
         }
         scope.launch {
@@ -169,14 +210,56 @@ class GlassesLink(private val appContext: Context, private val scope: CoroutineS
         screen.value = next
     }
 
+    /**
+     * Opens a session if we are registered, none is open, and display glasses are connected;
+     * otherwise publishes what is missing so the app can tell the wearer.
+     */
+    private fun connectIfPossible() {
+        if (!started || Wearables.registrationState.value != RegistrationState.REGISTERED) return
+        val devices = seen.values.toList()
+        val described = devices.map(::describe)
+        if (described != _status.value.devices) Log.i(TAG, "glasses: $described")
+        _status.update { it.copy(devices = described) }
+        if (session != null) return
+
+        val displays = devices.filter { it.isDisplayCapable() }
+        val hint = when {
+            // The list can be ahead of the per-device state; let the toolkit decide then.
+            devices.isEmpty() && Wearables.devices.value.isNotEmpty() -> null
+            devices.isEmpty() ->
+                "Meta AI has not shared any glasses with FastChat. In the Meta AI app, check that the glasses " +
+                    "are connected and that the Device Access Toolkit is installed on them (Dev Mode)."
+            displays.isEmpty() ->
+                "FastChat needs Meta Ray-Ban Display glasses. Meta AI only shared: ${devices.joinToString { it.name }}."
+            displays.any { it.compatibility == DeviceCompatibility.DEVICE_UPDATE_REQUIRED } ->
+                "${displays.first().name} needs a firmware update in the Meta AI app."
+            displays.none { it.linkState == LinkState.CONNECTED } ->
+                "${displays.first().name} is not connected. Open the glasses and put them on."
+            else -> null
+        }
+        _status.update { it.copy(hint = hint) }
+        if (hint == null) connect() else setStage(Stage.NO_GLASSES)
+    }
+
+    private fun describe(device: Device): String {
+        val state = buildList {
+            add(if (device.linkState == LinkState.CONNECTED) "connected" else "not connected")
+            if (!device.isDisplayCapable()) add("no display")
+            if (device.donState == DonState.DONNED) add("on your face")
+            if (device.donState == DonState.DOFFED) add("not being worn")
+            if (device.compatibility == DeviceCompatibility.DEVICE_UPDATE_REQUIRED) add("needs an update")
+        }
+        return "${device.name}: ${state.joinToString(", ")}"
+    }
+
     /** Tries to open a session with the first connected display-capable glasses. */
-    fun connect() {
+    private fun connect() {
         if (!started || session != null) return
-        reconnectJob?.cancel()
-        setStage(Stage.CONNECTING)
         Wearables.createSession(AutoDeviceSelector(filter = { it.isDisplayCapable() })).fold(
             onSuccess = { created ->
                 session = created
+                Log.i(TAG, "session created")
+                setStage(Stage.CONNECTING)
                 sessionJob = scope.launch {
                     launch {
                         created.errors.collect { error ->
@@ -190,12 +273,13 @@ class GlassesLink(private val appContext: Context, private val scope: CoroutineS
                         }
                     }
                     created.state.collect { state ->
+                        Log.i(TAG, "session $state")
                         when (state) {
                             DeviceSessionState.STARTED -> attach(created)
                             DeviceSessionState.STOPPED -> {
+                                // The retry loop opens a new one when the glasses are back.
                                 endSession()
                                 setStage(Stage.NO_GLASSES)
-                                reconnectLater()
                             }
                             else -> Unit
                         }
@@ -205,18 +289,9 @@ class GlassesLink(private val appContext: Context, private val scope: CoroutineS
             },
             onFailure = { error, _ ->
                 setStage(Stage.NO_GLASSES)
-                if (error != DeviceSessionError.NO_ELIGIBLE_DEVICE) report(error.description)
+                report("Could not start on the glasses: ${error.description}")
             },
         )
-    }
-
-    private fun reconnectLater() {
-        reconnectJob?.cancel()
-        reconnectJob = scope.launch {
-            delay(RECONNECT_DELAY_MS)
-            val registered = Wearables.registrationState.value == RegistrationState.REGISTERED
-            if (registered && Wearables.devices.value.isNotEmpty()) connect()
-        }
     }
 
     /** Adds the Display and Inputs capabilities; only legal once the session has STARTED. */
@@ -295,7 +370,6 @@ class GlassesLink(private val appContext: Context, private val scope: CoroutineS
 
     /** Stops showing content and closes the session, e.g. when the app is closed. */
     fun disconnect() {
-        reconnectJob?.cancel()
         endSession()
         if (started && _status.value.stage > Stage.NO_GLASSES) setStage(Stage.NO_GLASSES)
     }
@@ -393,7 +467,7 @@ class GlassesLink(private val appContext: Context, private val scope: CoroutineS
                             background = FlexBoxBackground.CARD,
                         ) {
                             icon(direction.caret())
-                            text(reply ?: "…", style = TextStyle.BODY, flexGrow = 1f, flexShrink = 1f)
+                            text(reply?.label() ?: "…", style = TextStyle.BODY, flexGrow = 1f, flexShrink = 1f)
                         }
                     } else if (reply != null) {
                         flexBox(
@@ -401,7 +475,7 @@ class GlassesLink(private val appContext: Context, private val scope: CoroutineS
                             background = FlexBoxBackground.CARD,
                             onClick = { _inputs.tryEmit(GlassesInput.Pick(direction)) },
                         ) {
-                            text(reply, style = TextStyle.BODY)
+                            text(reply.label(), style = TextStyle.BODY)
                         }
                     }
                 }
@@ -418,6 +492,9 @@ class GlassesLink(private val appContext: Context, private val scope: CoroutineS
             }
         }
     }
+
+    /** The emoji first, so the eye can find a reply without reading it. */
+    private fun Reply.label(): String = if (emoji.isEmpty()) text else "$emoji  $text"
 
     private fun Dpad.caret(): IconName = when (this) {
         Dpad.UP -> IconName.CARET_UP

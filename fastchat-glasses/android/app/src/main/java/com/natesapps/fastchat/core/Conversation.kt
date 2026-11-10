@@ -26,6 +26,12 @@ sealed interface GlassesInput {
 
 enum class Speaker { PARTNER, ME }
 
+/**
+ * One thing the wearer could say. [emoji] is shown beside it on the glasses so the choice can be
+ * read at a glance; only [text] is spoken. [emoji] may be empty.
+ */
+data class Reply(val emoji: String, val text: String)
+
 data class Turn(val speaker: Speaker, val text: String)
 
 sealed interface Phase {
@@ -41,7 +47,7 @@ sealed interface Phase {
      */
     data class Choosing(
         val heard: String?,
-        val replies: List<String>,
+        val replies: List<Reply>,
         val done: Boolean,
         val round: Int = 0,
     ) : Phase {
@@ -67,7 +73,7 @@ sealed interface Event {
     data object Start : Event
     data object Stop : Event
     data class Heard(val text: String) : Event
-    data class Replies(val generation: Int, val replies: List<String>, val done: Boolean) : Event
+    data class Replies(val generation: Int, val replies: List<Reply>, val done: Boolean) : Event
     data class GenerationFailed(val generation: Int, val message: String) : Event
     data class Input(val input: GlassesInput) : Event
     data object SpeechFinished : Event
@@ -89,7 +95,12 @@ data class Step(val state: State, val effects: List<Effect> = emptyList())
 const val HISTORY_TURNS = 8
 
 /** Fixed replies offered on a pinch while listening; no model needed, so they are instant. */
-val QUICK_PHRASES = listOf("Yes", "No", "Thank you", "Please give me a moment")
+val QUICK_PHRASES = listOf(
+    Reply("✅", "Yes"),
+    Reply("❌", "No"),
+    Reply("🙏", "Thank you"),
+    Reply("⏳", "Please give me a moment"),
+)
 
 fun reduce(state: State, event: Event): Step {
     val phase = state.phase
@@ -166,7 +177,7 @@ private fun onInput(state: State, input: GlassesInput): Step {
         is Phase.Choosing -> when (input) {
             is GlassesInput.Pick -> {
                 // A reply can be picked as soon as it is on screen, without waiting for the rest.
-                val text = phase.replies.getOrNull(input.direction.ordinal) ?: return Step(state)
+                val text = phase.replies.getOrNull(input.direction.ordinal)?.text ?: return Step(state)
                 Step(
                     state.copy(
                         phase = Phase.Speaking(text),
@@ -179,7 +190,7 @@ private fun onInput(state: State, input: GlassesInput): Step {
 
             GlassesInput.More -> {
                 if (phase.isQuickPhrases) return listen(state)
-                val offered = (state.offered + phase.replies).distinct()
+                val offered = (state.offered + phase.replies.map { it.text }).distinct()
                 val generation = state.generation + 1
                 Step(
                     state.copy(

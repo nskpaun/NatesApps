@@ -16,7 +16,7 @@ sealed interface GlassesScreen {
      */
     data class Choices(
         val heard: String?,
-        val replies: List<String?>,
+        val replies: List<Reply?>,
         val done: Boolean,
         val quick: Boolean,
     ) : GlassesScreen

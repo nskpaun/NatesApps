@@ -15,6 +15,8 @@ data class Settings(
     val voice: Int = DEFAULT_VOICE,
     /** Speaking rate; 1.0 is the voice's natural pace. */
     val speed: Float = 1.0f,
+    /** Loudness of the voice from the phone's speaker, 0 (silent) to 1 (as loud as it goes). */
+    val volume: Float = 0.8f,
     /** Use the toolkit's simulated glasses instead of a real pair. */
     val simulatedGlasses: Boolean = false,
 ) {
@@ -39,6 +41,7 @@ class SettingsStore(context: Context) {
             putString("about", next.about)
             putInt("voice", next.voice)
             putFloat("speed", next.speed)
+            putFloat("volume", next.volume)
             putBoolean("simulatedGlasses", next.simulatedGlasses)
         }
     }
@@ -48,6 +51,7 @@ class SettingsStore(context: Context) {
         about = prefs.getString("about", "").orEmpty(),
         voice = prefs.getInt("voice", Settings.DEFAULT_VOICE),
         speed = prefs.getFloat("speed", 1.0f),
+        volume = prefs.getFloat("volume", 0.8f),
         simulatedGlasses = prefs.getBoolean("simulatedGlasses", false),
     )
 }

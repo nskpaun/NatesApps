@@ -4,7 +4,7 @@ An AAC (augmentative and alternative communication) app for people who cannot sp
 
 1. The person you are talking with holds your phone and speaks to it.
 2. The phone transcribes what they said and a local language model writes four possible replies.
-3. The replies appear on your glasses, one per d-pad direction.
+3. The replies appear on your glasses, one per d-pad direction, each with an emoji so it can be read at a glance.
 4. You swipe up, right, down or left on the Neural Band, and the phone says that reply aloud.
 
 Everything in a conversation happens on the phone: speech recognition, the language model and the voice. Nothing that is said or written leaves it. The internet is used only to download the models once and to register with the Meta AI app.
@@ -14,7 +14,7 @@ Everything in a conversation happens on the phone: speech recognition, the langu
 | Hearing | Silero VAD finds the utterance, NVIDIA Parakeet TDT 0.6b v2 transcribes it (via [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx)) |
 | Replies | [Ternary Bonsai 2 9B](https://huggingface.co/prism-ml/Ternary-Bonsai-2-9B-gguf) (`Q2_0`) on [llama.cpp](https://github.com/ggml-org/llama.cpp) v0.9.0, with a grammar that forces exactly four short lines |
 | Glasses | Meta Wearables Device Access Toolkit 1.0.1: Display capability for the screen, Inputs capability for the Neural Band d-pad |
-| Voice | Supertonic 3 text-to-speech (via sherpa-onnx), played from the phone's loudspeaker |
+| Voice | Supertonic 3 text-to-speech (via sherpa-onnx), played from the phone's loudspeaker at the volume set in the app |
 
 ## Gestures
 
@@ -30,10 +30,14 @@ The temple touchpad on the glasses does the same things as the band.
 
 Working on a Galaxy Z Fold with the toolkit's **simulated** Meta Ray-Ban Display, which goes through the same session, display and input code as a real pair: hearing real speech, writing replies, picking one with a d-pad swipe, and speaking it.
 
-Not yet tried on real glasses. Two things to know before you do:
+On **real** Meta Ray-Ban Display glasses (Developer Mode): registration through Meta AI, the session, and drawing on the display all work, and the Inputs capability reports active with the Neural Band. A full turn picked with the band has not been confirmed yet.
 
-- **The d-pad needs Meta's approval for your app.** The Inputs capability is experimental: it has to be enabled for the app in the [Wearables Developer Center](https://wearables.developer.meta.com), and apps using it cannot be published to production channels yet. Without it the app still works: replies are drawn as cards you move focus between and tap ("tap to pick" in the status chip).
+Two things to know:
+
+- **The d-pad is an experimental capability.** Inputs works in Developer Mode, but it has to be enabled for the app in the [Wearables Developer Center](https://wearables.developer.meta.com) for a registered app, and apps using it cannot be published to production channels yet. Without it the app still works: replies are drawn as cards you move focus between and tap ("tap to pick" in the status chip).
 - **Replies are slow on the phone's CPU.** See [Speed](#speed).
+
+If the status chip says "No glasses in range", open **Settings → Glasses**: it lists each pair Meta AI has shared with the app and what is missing (not connected, not worn, needs an update).
 
 ## Install and set up
 
@@ -120,6 +124,10 @@ Things that should make it faster, not yet tried:
 - **The phone's GPU.** llama.cpp v0.9.0 has an OpenCL path for `Q2_0` tuned for Adreno. The build here is CPU only.
 - **Bonsai's `PQ2_0` file with its MTP draft head**, which needs the [PrismML fork](https://github.com/PrismML-Eng/llama.cpp) of llama.cpp. The fork's API matches, so it is a two-line change in `cpp/CMakeLists.txt` plus the file name in `models/ModelStore.kt`.
 - **A smaller Bonsai** (2B or 4B) for the first replies.
+
+## Volume
+
+The voice has its own volume slider (on the talk screen and in Settings), because the phone's volume keys move the glasses' volume while they are connected and cannot reach the loudspeaker. To make that work the voice plays on Android's alarm channel: the app turns that channel up for the length of each sentence and puts it back afterwards, and silent mode does not mute it.
 
 ## Limits
 

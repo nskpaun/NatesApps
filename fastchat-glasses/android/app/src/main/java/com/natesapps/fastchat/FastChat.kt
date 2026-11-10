@@ -243,7 +243,7 @@ class FastChat(private val app: Application) {
                 speakJob = scope.launch {
                     try {
                         val current = settings.settings.value
-                        checkNotNull(voice).speak(effect.text, current.voice, current.speed)
+                        checkNotNull(voice).speak(effect.text, current.voice, current.speed, current.volume)
                     } catch (e: CancellationException) {
                         throw e // stopped on purpose: the state machine has already moved on
                     } catch (e: Exception) {
@@ -264,7 +264,7 @@ class FastChat(private val app: Application) {
         if (speakJob?.isActive == true) return
         speakJob = scope.launch {
             val current = settings.settings.value
-            runCatching { loaded.speak("Hi, this is how I sound.", current.voice, current.speed) }
+            runCatching { loaded.speak("Hi, this is how I sound.", current.voice, current.speed, current.volume) }
         }
     }
 }

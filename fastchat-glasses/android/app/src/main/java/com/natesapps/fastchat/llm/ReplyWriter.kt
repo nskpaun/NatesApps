@@ -1,6 +1,7 @@
 package com.natesapps.fastchat.llm
 
 import com.natesapps.fastchat.core.Persona
+import com.natesapps.fastchat.core.Reply
 import com.natesapps.fastchat.core.ReplyParser
 import com.natesapps.fastchat.core.ReplyPrompt
 import com.natesapps.fastchat.core.Turn
@@ -20,7 +21,7 @@ private const val MAX_OUTPUT_TOKENS = 120
 /** Asks the model for replies and streams them out one at a time as each line is finished. */
 class ReplyWriter(private val engine: LlamaEngine) {
 
-    data class Update(val replies: List<String>, val done: Boolean, val stats: LlamaEngine.Stats? = null)
+    data class Update(val replies: List<Reply>, val done: Boolean, val stats: LlamaEngine.Stats? = null)
 
     /** All model calls run here, one at a time: the engine is not thread-safe. */
     private val modelThread = Executors.newSingleThreadExecutor { runnable ->

@@ -28,6 +28,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.VolumeOff
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
@@ -67,6 +69,7 @@ import com.natesapps.fastchat.core.Phase
 import com.natesapps.fastchat.core.State
 import com.natesapps.fastchat.glasses.GlassesLink
 import java.util.Locale
+import kotlin.math.roundToInt
 
 @Composable
 fun FastChatScreen(
@@ -193,9 +196,12 @@ private fun TalkScreen(
 
     Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(24.dp)) {
         Column(Modifier.weight(1f).fillMaxHeight()) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
                 GlassesChip(glasses, onClick = onSettings, modifier = Modifier.weight(1f, fill = false))
-                Spacer(Modifier.weight(1f))
                 IconButton(onClick = onSettings) {
                     Icon(Icons.Default.Settings, contentDescription = "Settings", tint = Muted)
                 }
@@ -208,7 +214,11 @@ private fun TalkScreen(
             conversation.problem?.let {
                 Text(it, color = Alert, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(bottom = 12.dp))
             }
+            (glasses.hint ?: glasses.problem.takeIf { glasses.stage != GlassesLink.Stage.READY })?.let {
+                Text(it, color = Alert, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(bottom = 12.dp))
+            }
             if (glasses.simulated && !sideBySide) SimulatedGlasses(fastChat, Modifier.fillMaxWidth().padding(bottom = 16.dp))
+            VolumeControl(fastChat, Modifier.padding(bottom = 8.dp))
 
             if (running) {
                 OutlinedButton(onClick = fastChat::stop, modifier = Modifier.fillMaxWidth().height(56.dp)) { Text("Pause") }
@@ -418,6 +428,8 @@ private fun SettingsScreen(
         } else {
             Text("Voices appear once the models have loaded.", color = Muted, style = MaterialTheme.typography.bodyMedium)
         }
+        Text("Speaker volume", style = MaterialTheme.typography.bodyMedium)
+        VolumeControl(fastChat, playSample = true)
         Text("Speed: ${String.format(Locale.US, "%.1f", settings.speed)}×", style = MaterialTheme.typography.bodyMedium)
         Slider(
             value = settings.speed,
@@ -429,6 +441,8 @@ private fun SettingsScreen(
 
         Section("Glasses")
         Text(glassesSummary(glasses), style = MaterialTheme.typography.bodyLarge)
+        glasses.devices.forEach { Text(it, color = Muted, style = MaterialTheme.typography.bodyMedium) }
+        glasses.hint?.let { Text(it, color = Alert, style = MaterialTheme.typography.bodyMedium) }
         glasses.problem?.let { Text(it, color = Alert, style = MaterialTheme.typography.bodyMedium) }
         if (!glasses.simulated) {
             val registered = glasses.stage > GlassesLink.Stage.NOT_REGISTERED
@@ -465,6 +479,29 @@ private fun SettingsScreen(
             )
         }
         Spacer(Modifier.height(24.dp))
+    }
+}
+
+/**
+ * How loud the voice is from the phone's speaker. It is the app's own control because the phone's
+ * volume keys move the glasses' volume while they are connected.
+ */
+@Composable
+private fun VolumeControl(fastChat: FastChat, modifier: Modifier = Modifier, playSample: Boolean = false) {
+    val settings by fastChat.settings.settings.collectAsStateWithLifecycle()
+    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Icon(
+            if (settings.volume == 0f) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
+            contentDescription = "Speaker volume",
+            tint = Muted,
+        )
+        Slider(
+            value = settings.volume,
+            onValueChange = { volume -> fastChat.settings.update { it.copy(volume = volume) } },
+            onValueChangeFinished = { if (playSample) fastChat.previewVoice() },
+            modifier = Modifier.weight(1f),
+        )
+        Text("${(settings.volume * 100).roundToInt()}%", style = MaterialTheme.typography.bodyMedium, color = Muted)
     }
 }
 
