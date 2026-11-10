@@ -22,7 +22,7 @@ struct LoadParams {
 };
 
 struct GenParams {
-    // Bonsai's recommended settings with thinking off.
+    // The settings the reply prompt was tuned with.
     float temperature = 0.7f;
     float top_p = 0.8f;
     int top_k = 20;

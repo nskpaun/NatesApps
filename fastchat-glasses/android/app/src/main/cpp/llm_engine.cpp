@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 
 #include "llama.h"
 
@@ -58,7 +59,7 @@ std::unique_ptr<Engine> Engine::load(const std::string& model_path, const LoadPa
     std::unique_ptr<Engine> engine(new Engine());
 
     llama_model_params model_params = llama_model_default_params();
-    model_params.n_gpu_layers = 0; // CPU: the ternary kernels are NEON, not GPU
+    model_params.n_gpu_layers = 0; // CPU only: fast enough for a small model, and it runs on any phone
     engine->model_ = llama_model_load_from_file(model_path.c_str(), model_params);
     if (!engine->model_) {
         *error = "Could not load the model file " + model_path;
@@ -135,7 +136,7 @@ bool Engine::ensure_prefix(const std::string& prefix, bool* reused, int* evaluat
             *reused = true;
             return true;
         }
-        // Bonsai's hybrid (recurrent + attention) memory cannot be trimmed back to an earlier
+        // The model's hybrid (recurrent + attention) memory cannot be trimmed back to an earlier
         // position, so rewind by restoring the snapshot taken when the prefix was evaluated.
         llama_memory_clear(memory, true);
         if (!prefix_state_.empty() &&
@@ -200,17 +201,19 @@ bool Engine::generate(const std::string& prefix, const std::string& suffix,
     stats->prompt_tokens = prefix_evaluated + (int) suffix_tokens.size();
     stats->prompt_ms = ms_since(prompt_start);
 
-    // The grammar goes first so every later stage only ever sees tokens it allows.
-    std::unique_ptr<llama_sampler, SamplerDeleter> sampler(
-        llama_sampler_chain_init(llama_sampler_chain_default_params()));
+    // The grammar is kept apart from the rest of the sampler. Checking every token in the
+    // vocabulary against it costs more than running a small model for a token, so the model's own
+    // pick is tested first and the full check only happens when that pick breaks the format.
+    std::unique_ptr<llama_sampler, SamplerDeleter> rules;
     if (!grammar.empty()) {
-        llama_sampler* constrained = llama_sampler_init_grammar(vocab_, grammar.c_str(), "root");
-        if (!constrained) {
+        rules.reset(llama_sampler_init_grammar(vocab_, grammar.c_str(), "root"));
+        if (!rules) {
             *error = "The reply grammar did not parse";
             return false;
         }
-        llama_sampler_chain_add(sampler.get(), constrained);
     }
+    std::unique_ptr<llama_sampler, SamplerDeleter> sampler(
+        llama_sampler_chain_init(llama_sampler_chain_default_params()));
     llama_sampler_chain_add(sampler.get(),
                             llama_sampler_init_penalties(llama_vocab_n_tokens(vocab_), 64, 1.0f,
                                                          0.0f, params.presence_penalty));
@@ -218,6 +221,19 @@ bool Engine::generate(const std::string& prefix, const std::string& suffix,
     llama_sampler_chain_add(sampler.get(), llama_sampler_init_top_p(params.top_p, 1));
     llama_sampler_chain_add(sampler.get(), llama_sampler_init_temp(params.temperature));
     llama_sampler_chain_add(sampler.get(), llama_sampler_init_dist(params.seed));
+
+    std::vector<llama_token_data> candidates((size_t) llama_vocab_n_tokens(vocab_));
+    // Picks the next token from the latest logits, optionally restricted to what the grammar allows.
+    const auto pick = [&](bool constrained) -> llama_token {
+        const float* logits = llama_get_logits_ith(ctx_, -1);
+        for (size_t id = 0; id < candidates.size(); ++id) {
+            candidates[id] = llama_token_data{(llama_token) id, logits[id], 0.0f};
+        }
+        llama_token_data_array all = {candidates.data(), candidates.size(), -1, false};
+        if (constrained) llama_sampler_apply(rules.get(), &all);
+        llama_sampler_apply(sampler.get(), &all);
+        return all.selected >= 0 ? all.data[all.selected].id : llama_vocab_eos(vocab_);
+    };
 
     const auto output_start = Clock::now();
     std::string pending; // bytes not yet handed to on_text (an unfinished UTF-8 character)
@@ -227,7 +243,15 @@ bool Engine::generate(const std::string& prefix, const std::string& suffix,
             stats->cancelled = true;
             break;
         }
-        const llama_token token = llama_sampler_sample(sampler.get(), ctx_, -1);
+        llama_token token = pick(/*constrained=*/false);
+        if (rules) {
+            llama_token_data chosen = {token, 1.0f, 0.0f};
+            llama_token_data_array one = {&chosen, 1, -1, false};
+            llama_sampler_apply(rules.get(), &one); // the grammar marks a forbidden token -inf
+            if (one.data[0].logit == -INFINITY) token = pick(/*constrained=*/true);
+            llama_sampler_accept(rules.get(), token);
+        }
+        llama_sampler_accept(sampler.get(), token);
         if (llama_vocab_is_eog(vocab_, token)) break;
         stats->output_tokens++;
 

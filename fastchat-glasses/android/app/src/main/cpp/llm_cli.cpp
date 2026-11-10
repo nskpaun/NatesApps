@@ -43,8 +43,13 @@ int main(int argc, char** argv) {
     }
 
     for (int run = 0; run < runs; ++run) {
+        // Sampling can be overridden from the environment, to try a model's own recommended settings.
         fastchat::GenParams params;
         if (const char* seed = std::getenv("SEED")) params.seed = (uint32_t) std::atoi(seed);
+        if (const char* v = std::getenv("TEMP")) params.temperature = (float) std::atof(v);
+        if (const char* v = std::getenv("TOP_P")) params.top_p = (float) std::atof(v);
+        if (const char* v = std::getenv("TOP_K")) params.top_k = std::atoi(v);
+        if (const char* v = std::getenv("PRESENCE")) params.presence_penalty = (float) std::atof(v);
         fastchat::GenStats stats;
         std::printf("--- run %d\n", run + 1);
         const bool ok = engine->generate(

@@ -55,41 +55,85 @@ class RepliesTest {
     }
 
     @Test
-    fun `the prompt carries the conversation, the persona and the rejected replies`() {
+    fun `stray emoji, asterisks and quotes never reach the voice`() {
+        assertEquals(
+            listOf(Reply("🎬", "The Godfather?"), Reply("😊", "Thank you so much!")),
+            ReplyParser.parse("1. 🎬 *The Godfather*?\n2. 😊 Thank you so much! 🎉", finished = true),
+        )
+    }
+
+    @Test
+    fun `the hidden line about the situation is not a reply`() {
+        val text = "(They are asking if I am hungry. I can say yes, say no, or ask what there is.)\n" +
+            "1. 😋 Yes, I'm starving.\n2. 🙅 No, I just ate.\n"
+        assertEquals(
+            listOf(Reply("😋", "Yes, I'm starving."), Reply("🙅", "No, I just ate.")),
+            ReplyParser.parse(text, finished = false),
+        )
+    }
+
+    @Test
+    fun `the conversation is sent as chat turns, with the other person as the user`() {
         val history = listOf(
             Turn(Speaker.PARTNER, "How was your weekend?"),
             Turn(Speaker.ME, "It was good."),
             Turn(Speaker.PARTNER, "What did you do?"),
         )
-        val prompt = ReplyPrompt.build(
-            Persona(name = "Sam", about = "I love sailing."),
-            history,
-            avoid = listOf("Not much."),
-        )
-
-        assertTrue(prompt.startsWith("<|im_start|>system\n"))
-        assertTrue("Sam" in prompt)
-        assertTrue("I love sailing." in prompt)
-        assertTrue("Them: How was your weekend?\nMe: It was good.\nThem: What did you do?\n" in prompt)
-        assertTrue("- Not much.\n" in prompt)
-        // Thinking is off: the assistant turn opens with an empty think block.
-        assertTrue(prompt.endsWith("<|im_start|>assistant\n<think>\n\n</think>\n\n"))
-    }
-
-    @Test
-    fun `the prompt has no persona or avoid section when there is nothing to put in them`() {
-        val prompt = ReplyPrompt.build(Persona(), listOf(Turn(Speaker.PARTNER, "Hi")), avoid = emptyList())
-        assertFalse("About " in prompt)
-        assertFalse("did not want" in prompt)
-    }
-
-    @Test
-    fun `the grammar asks for exactly four numbered lines, each starting with an emoji`() {
         assertEquals(
-            "root ::= \"1. \" line \"\\n\" \"2. \" line \"\\n\" \"3. \" line \"\\n\" \"4. \" line\n" +
-                "line ::= emoji \" \" [^\\n\\r]{2,70}\n" +
+            "<|im_start|>user\nHow was your weekend?<|im_end|>\n" +
+                "<|im_start|>assistant\n<think></think>It was good.<|im_end|>\n" +
+                "<|im_start|>user\nWhat did you do?<|im_end|>\n" +
+                // Thinking is off: the model's turn opens with an empty think block.
+                "<|im_start|>assistant\n<think></think>",
+            ReplyPrompt.turnBlock(history),
+        )
+    }
+
+    @Test
+    fun `a line the wearer did not answer is dropped, and the wearer's own lines are joined`() {
+        val history = listOf(
+            Turn(Speaker.PARTNER, "Hello?"),
+            Turn(Speaker.PARTNER, "Are you there?"),
+            Turn(Speaker.ME, "Yes"),
+            Turn(Speaker.ME, "Please give me a moment"),
+            Turn(Speaker.PARTNER, "Sure."),
+        )
+        assertEquals(
+            "<|im_start|>user\nAre you there?<|im_end|>\n" +
+                "<|im_start|>assistant\n<think></think>Yes Please give me a moment<|im_end|>\n" +
+                "<|im_start|>user\nSure.<|im_end|>\n" +
+                "<|im_start|>assistant\n<think></think>",
+            ReplyPrompt.turnBlock(history),
+        )
+    }
+
+    @Test
+    fun `the fixed part of the prompt names the wearer and teaches by example`() {
+        val block = ReplyPrompt.systemBlock(Persona(name = "Sam"))
+        assertTrue(block.startsWith("<|startoftext|><|im_start|>system\nYou are Sam."))
+        // Every example answer has the hidden line followed by four replies.
+        val answers = block.split("<|im_start|>assistant\n<think></think>").drop(1)
+        assertTrue(answers.size >= 8)
+        for (answer in answers) {
+            assertTrue(answer.startsWith("(They "))
+            assertEquals(4, ReplyParser.parse(answer.substringBefore("<|im_end|>"), finished = true).size)
+        }
+        assertTrue(ReplyPrompt.systemBlock(Persona()).contains("You are a person."))
+    }
+
+    @Test
+    fun `the grammar asks for the hidden line and then exactly four emoji replies`() {
+        assertEquals(
+            "root ::= \"(They \" [^\\n\\r()]{5,70} \" I can \" [^\\n\\r()]{5,110} \")\\n\" " +
+                "\"1. \" line \"\\n\" \"2. \" line \"\\n\" \"3. \" line \"\\n\" \"4. \" line\n" +
+                "line ::= emoji \" \" [^\\n\\r<(]{2,50}\n" +
                 "emoji ::= [\\U0001F300-\\U0001FAFF\\u2600-\\u27BF] [\\uFE0F]?\n",
             ReplyPrompt.GRAMMAR,
         )
+    }
+
+    @Test
+    fun `replies that sound the same count as the same`() {
+        assertEquals(ReplyParser.sameWords("No thanks, I'm fine."), ReplyParser.sameWords("no thanks  im fine"))
     }
 }

@@ -5,9 +5,8 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-# llama.cpp, pinned. Upstream runs Bonsai's Q2_0 file from b11556 on; v0.9.0 is the first stable
-# release after that. To use Bonsai's PQ2_0 / MTP files instead, point these at the PrismML fork
-# (https://github.com/PrismML-Eng/llama.cpp, tag prism-b12128-d7b2896): its llama.h matches.
+# llama.cpp, pinned. LFM3 is supported from v0.8.0 on; v0.9.0 is the stable release this was
+# built and measured against.
 set(LLAMA_REPO "https://github.com/ggml-org/llama.cpp.git" CACHE STRING "llama.cpp repository")
 set(LLAMA_TAG "v0.9.0" CACHE STRING "llama.cpp tag")
 set(LLAMA_DIR "${CMAKE_CURRENT_LIST_DIR}/../../../../third_party/llama.cpp" CACHE PATH "llama.cpp checkout")
@@ -33,14 +32,15 @@ set(LLAMA_BUILD_APP OFF CACHE BOOL "" FORCE)
 set(LLAMA_OPENSSL OFF CACHE BOOL "" FORCE)
 set(GGML_OPENMP OFF CACHE BOOL "" FORCE)
 set(GGML_CCACHE OFF CACHE BOOL "" FORCE)
-# CPU only, on purpose: Bonsai's ternary kernels are CPU (NEON) kernels.
+# CPU only, on purpose: a small model is fast enough there, and it works on every phone.
 set(GGML_METAL OFF CACHE BOOL "" FORCE)
 if(ANDROID)
     set(GGML_NATIVE OFF CACHE BOOL "" FORCE)
     set(GGML_LLAMAFILE OFF CACHE BOOL "" FORCE)
     # Baseline: ARMv8.2 with dot-product and half-float, which every flagship phone since 2019
-    # has. The Q2_0 kernel uses the dot-product instructions directly.
-    set(GGML_CPU_ARM_ARCH "armv8.2-a+dotprod+fp16" CACHE STRING "" FORCE)
+    # has. Override FASTCHAT_ARM_ARCH to try a newer instruction set (for example adding +i8mm).
+    set(FASTCHAT_ARM_ARCH "armv8.2-a+dotprod+fp16" CACHE STRING "CPU features to compile for")
+    set(GGML_CPU_ARM_ARCH "${FASTCHAT_ARM_ARCH}" CACHE STRING "" FORCE)
 endif()
 
 add_subdirectory(${LLAMA_DIR} llama-build EXCLUDE_FROM_ALL)

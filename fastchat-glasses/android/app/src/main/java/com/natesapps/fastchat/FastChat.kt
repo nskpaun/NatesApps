@@ -1,6 +1,7 @@
 package com.natesapps.fastchat
 
 import android.app.Application
+import android.content.pm.ApplicationInfo
 import android.util.Log
 import com.natesapps.fastchat.core.Effect
 import com.natesapps.fastchat.core.Event
@@ -50,6 +51,9 @@ class FastChat(private val app: Application) {
     }
 
     private val scope = MainScope()
+
+    /** Debug builds log what was heard and offered, to test from a computer. Release builds never do. */
+    private val debuggable = app.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0
 
     val settings = SettingsStore(app)
     val models = ModelStore(File(app.getExternalFilesDir(null) ?: app.filesDir, "models"))
@@ -135,7 +139,7 @@ class FastChat(private val app: Application) {
                 _setup.value = Setup.Loading("Voice")
                 val loadedVoice = withContext(Dispatchers.Default) { Voice(app, models) }
 
-                _setup.value = Setup.Loading("Reply writer (Bonsai)")
+                _setup.value = Setup.Loading("Reply writer")
                 val loadedWriter = withContext(Dispatchers.Default) {
                     ReplyWriter(LlamaEngine.load(models.path(Models.LLM)))
                 }
@@ -174,7 +178,13 @@ class FastChat(private val app: Application) {
     fun debugHeard(text: String) {
         if (_setup.value != Setup.Ready) return
         listenJob?.cancel()
+        Log.i(TAG, "heard: $text")
         dispatch(Event.Heard(text))
+    }
+
+    /** Test hook: forgets the conversation so far, so test turns do not build on each other. */
+    fun debugReset() {
+        _conversation.value = _conversation.value.copy(history = emptyList())
     }
 
     /** Test hook: performs [input] through the simulated glasses when they are on. */
@@ -218,8 +228,11 @@ class FastChat(private val app: Application) {
                             update.stats?.let {
                                 _lastStats.value = it
                                 Log.i(TAG, "replies: prompt ${it.promptTokens} tok in ${it.promptMs} ms" +
-                                    (if (it.prefixReused) " (persona cached)" else "") +
+                                    (if (it.prefixReused) " (examples cached)" else "") +
                                     ", output ${it.outputTokens} tok in ${it.outputMs} ms = ${it.tokensPerSecond} tok/s")
+                            }
+                            if (debuggable && update.done) {
+                                Log.i(TAG, "offered: " + update.replies.joinToString(" | ") { "${it.emoji} ${it.text}" })
                             }
                             if (update.done && update.replies.isEmpty()) {
                                 dispatch(Event.GenerationFailed(effect.generation, "The model wrote no replies"))

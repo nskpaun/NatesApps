@@ -74,11 +74,13 @@ class MainActivity : ComponentActivity() {
     /**
      * Debug builds only: drive the app from a computer, e.g.
      * `adb shell am start -n com.natesapps.fastchat/.MainActivity --es heard "Want some lunch?"`
-     * and `--es gesture up|right|down|left|pinch|back`. See the README.
+     * `--es gesture up|right|down|left|pinch|back`, and `--ez reset true` to forget the conversation.
+     * See the README.
      */
     private fun handleDebugExtras(intent: Intent?) {
         if (intent == null || applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE == 0) return
         if (intent.getBooleanExtra("start", false)) startConversation()
+        if (intent.getBooleanExtra("reset", false)) fastChat.debugReset()
         intent.getStringExtra("heard")?.let(fastChat::debugHeard)
         val gesture = when (intent.getStringExtra("gesture")) {
             "up" -> GlassesInput.Pick(Dpad.UP)

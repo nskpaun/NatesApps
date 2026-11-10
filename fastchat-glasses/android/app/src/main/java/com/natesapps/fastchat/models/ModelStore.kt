@@ -22,19 +22,22 @@ data class ModelFile(
 
 /**
  * The on-device models. Everything runs locally once these files are on the phone; they are too
- * big for the APK (about 3.4 GB together), so the app downloads them on first run.
+ * big for the APK (about 1.9 GB together), so the app downloads them on first run.
  */
 object Models {
-    private const val BONSAI = "https://huggingface.co/prism-ml/Ternary-Bonsai-2-9B-gguf/resolve/main"
+    private const val LFM3 = "https://huggingface.co/LiquidAI/LFM3-1.7B-GGUF/resolve/main"
     private const val PARAKEET = "https://huggingface.co/csukuangfj/sherpa-onnx-nemo-parakeet-tdt-0.6b-v2-int8/resolve/main"
     private const val SUPERTONIC = "https://huggingface.co/csukuangfj2/sherpa-onnx-supertonic-3-tts-int8-2026-05-11/resolve/main"
 
-    /** Reply writer: Ternary Bonsai 2 9B, the Q2_0 packing (the one upstream llama.cpp runs). */
+    /**
+     * Reply writer: Liquid AI's LFM3-1.7B, the 4-bit file trained to recover what 4-bit
+     * quantization loses. About ten times faster on a phone CPU than the 9B model it replaced.
+     */
     val LLM = ModelFile(
-        "llm/Ternary-Bonsai-2-9B-Q2_0.gguf",
-        "$BONSAI/Ternary-Bonsai-2-9B-Q2_0.gguf",
-        2_556_640_128,
-        "1f884aa56aacd2bbbb2e4b7abaead2b1102b74a9c75a23fc33dab916813a384d",
+        "llm/LFM3-1.7B-QAD-Q4_0.gguf",
+        "$LFM3/LFM3-1.7B-QAD-Q4_0.gguf",
+        1_049_615_680,
+        "43a7d09a0e9cba91b63eb7052488b9564569bddfd65754d2e426465e572a7452",
     )
 
     /** Finds where an utterance starts and ends: Silero VAD. */
