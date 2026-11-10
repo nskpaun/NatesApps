@@ -99,6 +99,8 @@ class GlassesLink(private val appContext: Context, private val scope: CoroutineS
         NOT_REGISTERED,
         /** Registered, but no display glasses are connected. */
         NO_GLASSES,
+        /** Display glasses are connected, and FastChat is staying off them: nothing is running. */
+        STANDING_BY,
         CONNECTING,
         /** The display is up and showing our content. */
         READY,
@@ -139,6 +141,14 @@ class GlassesLink(private val appContext: Context, private val scope: CoroutineS
     private val displayStarted = MutableStateFlow(false)
 
     private var started = false
+
+    /** See [setWanted]. */
+    private var wanted = false
+
+    private val _closedOnGlasses = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+
+    /** Fires when the wearer leaves FastChat on the glasses while a conversation is running. */
+    val closedOnGlasses: SharedFlow<Unit> = _closedOnGlasses.asSharedFlow()
 
     /** True once the toolkit is running (after [start], or with the simulated glasses on). */
     val isStarted: Boolean get() = started
@@ -262,7 +272,24 @@ class GlassesLink(private val appContext: Context, private val scope: CoroutineS
             else -> null
         }
         _status.update { it.copy(hint = hint) }
-        if (hint == null) connect() else setStage(Stage.NO_GLASSES)
+        when {
+            hint != null -> setStage(Stage.NO_GLASSES)
+            !wanted -> setStage(Stage.STANDING_BY)
+            else -> connect()
+        }
+    }
+
+    /**
+     * Whether FastChat should be on the glasses right now. It should only while a conversation is
+     * running: a session takes over the glasses' display, so holding one while paused (or
+     * reopening it every time it ends) keeps pushing FastChat in front of whatever the wearer
+     * went to do instead.
+     */
+    fun setWanted(on: Boolean) {
+        if (wanted == on) return
+        wanted = on
+        if (!on) endSession()
+        connectIfPossible()
     }
 
     private fun describe(device: Device): String {
@@ -301,9 +328,21 @@ class GlassesLink(private val appContext: Context, private val scope: CoroutineS
                         when (state) {
                             DeviceSessionState.STARTED -> attach(created)
                             DeviceSessionState.STOPPED -> {
-                                // The retry loop opens a new one when the glasses are back.
                                 endSession()
-                                setStage(Stage.NO_GLASSES)
+                                val stillConnected = seen.values.any {
+                                    it.isDisplayCapable() && it.linkState == LinkState.CONNECTED
+                                }
+                                if (stillConnected) {
+                                    // The glasses are still there, so the session was closed on
+                                    // them: the wearer left FastChat. Do not reopen it; let the
+                                    // conversation be paused instead.
+                                    wanted = false
+                                    setStage(Stage.STANDING_BY)
+                                    _closedOnGlasses.tryEmit(Unit)
+                                } else {
+                                    // The link dropped. The retry loop reopens when it is back.
+                                    setStage(Stage.NO_GLASSES)
+                                }
                             }
                             else -> Unit
                         }

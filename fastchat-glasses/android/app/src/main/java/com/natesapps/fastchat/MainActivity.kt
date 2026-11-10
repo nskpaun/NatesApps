@@ -81,6 +81,7 @@ class MainActivity : ComponentActivity() {
     private fun handleDebugExtras(intent: Intent?) {
         if (intent == null || applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE == 0) return
         if (intent.getBooleanExtra("start", false)) startConversation()
+        if (intent.getBooleanExtra("stop", false)) fastChat.stop()
         if (intent.getBooleanExtra("reset", false)) fastChat.debugReset()
         if (intent.hasExtra("simulated")) {
             val on = intent.getBooleanExtra("simulated", false)

@@ -306,7 +306,7 @@ private fun MicOrb(hearing: Boolean) {
 
 @Composable
 private fun GlassesChip(glasses: GlassesLink.Status, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    val ready = glasses.stage == GlassesLink.Stage.READY
+    val ready = glasses.stage == GlassesLink.Stage.READY || glasses.stage == GlassesLink.Stage.STANDING_BY
     Row(
         modifier.clip(RoundedCornerShape(50)).background(Panel).clickable(onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 8.dp),
@@ -322,6 +322,7 @@ private fun glassesSummary(glasses: GlassesLink.Status): String {
     val state = when (glasses.stage) {
         GlassesLink.Stage.NOT_STARTED, GlassesLink.Stage.NOT_REGISTERED -> "Glasses not connected"
         GlassesLink.Stage.NO_GLASSES -> "No glasses in range"
+        GlassesLink.Stage.STANDING_BY -> "Glasses connected"
         GlassesLink.Stage.CONNECTING -> "Connecting to glasses…"
         GlassesLink.Stage.READY -> if (glasses.dpad) "Glasses ready · swipe to pick" else "Glasses ready · tap to pick"
     }

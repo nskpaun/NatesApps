@@ -91,6 +91,14 @@ class FastChat(private val app: Application) {
     init {
         scope.launch { glasses.inputs.collect { dispatch(Event.Input(it)) } }
         scope.launch {
+            glasses.closedOnGlasses.collect {
+                if (_conversation.value.phase != Phase.Off) {
+                    dispatch(Event.Stop)
+                    dispatch(Event.Problem("Paused, because FastChat was closed on the glasses."))
+                }
+            }
+        }
+        scope.launch {
             settings.settings.map { it.simulatedGlasses }.distinctUntilChanged().collect(glasses::setSimulated)
         }
         // Re-evaluate the persona part of the prompt as soon as it changes, not on the next reply.
@@ -205,6 +213,8 @@ class FastChat(private val app: Application) {
         if (focus != null && focus != (before.phase as? Phase.Choosing)?.focus && settings.settings.value.tick) {
             tick.play()
         }
+        // FastChat is on the glasses only while a conversation is running.
+        glasses.setWanted(step.state.phase != Phase.Off)
         glasses.show(screenFor(step.state))
         step.effects.forEach(::perform)
     }

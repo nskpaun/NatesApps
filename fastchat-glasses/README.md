@@ -171,6 +171,10 @@ The phone warms up under continuous use and drops towards 35 tokens per second.
 
 The voice has its own volume slider (on the talk screen and in Settings), because the phone's volume keys move the glasses' volume while they are connected and cannot reach the loudspeaker. To make that work the voice plays on Android's alarm channel: the app turns that channel up for the length of each sentence and puts it back afterwards, and silent mode does not mute it.
 
+## When FastChat is on the glasses
+
+Only while a conversation is running. Pressing **Start** opens it on the glasses and **Pause** takes it off again, so a paused or backgrounded app never pushes itself in front of whatever else the wearer is doing. If FastChat is closed on the glasses themselves while a conversation is running, the phone pauses the conversation rather than reopening it. If the Bluetooth link drops mid-conversation, it comes back on its own when the glasses return.
+
 ## Limits
 
 - English only (Parakeet v2 and the prompt are English).
