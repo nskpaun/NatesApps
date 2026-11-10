@@ -1,6 +1,7 @@
 """Builds the Night Array with the light-ribbon optics in Blender and path-traces it with Cycles.
 
     python scene.py --view hero --out out_dir [--samples 600] [--width 2400] [--band band.png]
+    python scene.py --out out_dir --export model.glb        (geometry only, for the 3D viewer)
 
 Needs the `bpy` module (pip install bpy) and the textures from screen_ui.py in out_dir. Writes
 out_dir/<view>.exr: a multilayer EXR with one pass per light group, so develop.py can set the room light, the
@@ -402,6 +403,7 @@ def main():
     ap.add_argument("--width", type=int, default=2400)
     ap.add_argument("--band", default="band.png")
     ap.add_argument("--tag", default="")
+    ap.add_argument("--export", help="write the station with the ribbon optics as a GLB (for the 3D viewer) and stop")
     a = ap.parse_args(sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else None)
     out = Path(a.out)
 
@@ -440,6 +442,15 @@ def main():
     screen = load_station(col, mats, out)
     z0 = screen_plane(screen)
     optics, bands, info = ribbon_optics(col, mats, a.band, z0)
+    info["screen_z0_mm"] = z0
+    if a.export:
+        # geometry only: the viewer assigns its own materials by name (Y-up, metres, like station.glb)
+        (Path(a.export).with_suffix(".json")).write_text(json.dumps(info))
+        bpy.ops.export_scene.gltf(filepath=a.export, export_format="GLB", export_yup=True, export_apply=True,
+                                  export_texcoords=True, export_normals=True, export_materials="EXPORT",
+                                  export_image_format="NONE", export_extras=True)
+        print("wrote", a.export)
+        return
     room(col, mats)
     screen.lightgroup = "screen"
     for b in bands:

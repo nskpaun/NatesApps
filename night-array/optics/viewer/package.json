@@ -1,0 +1,10 @@
+{
+  "name": "night-array-ribbon-viewer",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Orbit viewer for the Night Array with the light-ribbon optics (three.js, one self-contained HTML file)",
+  "type": "module",
+  "scripts": { "build": "node build.mjs" },
+  "dependencies": { "three": "0.170.0" },
+  "devDependencies": { "esbuild": "0.24.0" }
+}

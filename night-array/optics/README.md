@@ -96,6 +96,15 @@ python render/scene.py --view calib --out work --samples 300 --width 600 --band 
 python render/make_images.py work            # render/out/*.jpg and the gallery
 ```
 
+## 3D model
+
+[`viewer/ribbon-3d.html`](viewer/ribbon-3d.html) is the same geometry as the render in a real-time orbit viewer (three.js, one self-contained file: open it in a browser). It has view presets, a cut-away to see the hidden rows, mirrors and slot, and the ribbon drawn as a live reflection of the slot in the cove, so it brightens and fades with the viewpoint. It is not ray traced and its brightness is not to scale.
+
+```
+python render/scene.py --out work --export viewer/assets/station-ribbon.glb     # the model, from the render scene
+cd viewer && npm install && node build.mjs                                     # viewer/ribbon-3d.html
+```
+
 ## What this rests on
 
 - **Tracer.** Rays are followed backward from the eye through the mirrors and a GGX microfacet model of the satin surface to the panel or the room (`ribbon/trace.py`). `python -m ribbon.checks` compares it with closed-form cases and with an independent forward photon count of the sill layout; the two agree within 3 %.
