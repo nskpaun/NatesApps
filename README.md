@@ -35,6 +35,14 @@ A concept desk battle station you can explore: two 27" QHD monitors in one titan
 - **Build it yourself:** a verified, priced [shopping list](night-array/kit/BOM.md) of real parts (screens, dock, power, keyboard, mouse, wireless chargers, steel), also in the app.
 - **Install:** download [`night-array/NightArray.apk`](night-array/NightArray.apk) on an Android phone and open it.
 
+### [FastChat Glasses](fastchat-glasses/)
+
+An AAC app for people who cannot speak, for **Meta Ray-Ban Display** glasses and the Neural Band. The person you are talking with speaks to your phone, a local language model writes four replies onto your glasses, and a d-pad swipe on the band says the one you pick.
+
+- **Fully on-device:** speech recognition (Parakeet), replies (Ternary Bonsai 2 9B on llama.cpp) and the voice (Supertonic 3) all run on the phone. Nothing said in a conversation leaves it.
+- **Native Android app** (Kotlin + Jetpack Compose, C++ for the model) using Meta's Wearables Device Access Toolkit, with simulated glasses for trying it without a pair.
+- **Status:** working end to end on a Galaxy Z Fold with the simulated glasses; not yet tried on real ones. Build it from source: see its README.
+
 ## Repository layout
 
 ```
