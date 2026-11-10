@@ -100,11 +100,14 @@ object ReplyPrompt {
      * The part of the prompt that changes every turn: the conversation so far as real chat turns
      * (their words as the user, the wearer's spoken replies as the model), then the model's turn.
      *
+     * [facts] is the wearer's \"about you\" text, passed only when this turn needs it.
+     *
      * A chat alternates, so lines in a row from one speaker become one turn. For the wearer they
      * are joined. For the other person only the last is kept: an earlier line is one the wearer
      * chose not to answer, and a small model shown both tries to answer both.
      */
-    fun turnBlock(history: List<Turn>): String = buildString {
+    fun turnBlock(history: List<Turn>, facts: String? = null): String = buildString {
+        val blocks = mutableListOf<String>()
         var index = 0
         while (index < history.size) {
             val speaker = history[index].speaker
@@ -113,12 +116,70 @@ object ReplyPrompt {
                 run += history[index].text.replace('\n', ' ').trim()
                 index++
             }
-            append(if (speaker == Speaker.PARTNER) them(run.last()) else me(run.joinToString(" ")))
+            blocks += if (speaker == Speaker.PARTNER) them(run.last()) else me(run.joinToString(" "))
         }
+        // The wearer's own facts go in right before the line being answered, and only on turns
+        // that need them (see [PersonaCheck]): always present, they leak into every reply.
+        if (!facts.isNullOrBlank() && blocks.isNotEmpty()) {
+            blocks.add(blocks.size - 1, "<|im_start|>system\nFacts about you, in case they help you answer: ${facts.trim()}<|im_end|>\n")
+        }
+        blocks.forEach(::append)
         append(GENERATE)
     }
 
     fun build(persona: Persona, history: List<Turn>): String = systemBlock(persona) + turnBlock(history)
+}
+
+/**
+ * The decision step: a one-word model call, made before the replies are written, that says
+ * whether answering this line needs the wearer's "about you" facts ("How old are you?" does,
+ * "Is this seat taken?" does not). The facts are then sent with the reply prompt only when the
+ * answer is yes.
+ *
+ * It costs one short prompt and a single output token per turn. Its own prefix (the facts, the
+ * rule and the examples) is cached by the engine alongside the reply prompt's.
+ */
+object PersonaCheck {
+
+    /** The model may only answer with one of these two words. */
+    const val GRAMMAR = "root ::= \"yes\" | \"no\"\n"
+
+    private val EXAMPLES = listOf(
+        "How old are you?" to "yes",
+        "Sorry I'm late." to "no",
+        "Do you have any pets?" to "yes",
+        "What do you want to drink?" to "no",
+        "What do you do for work?" to "yes",
+        "Can I borrow your pen?" to "no",
+        "Who do you live with?" to "yes",
+        "Nice weather today." to "no",
+        "What do you do for fun?" to "yes",
+        "Thanks for your help!" to "no",
+        "Do you want to go for a walk?" to "no",
+        "Where did you two meet?" to "yes",
+        "I love your scarf." to "no",
+        "Goodbye, see you soon!" to "no",
+    )
+
+    /** The fixed part: the facts, the rule and the examples. Changes only with the persona. */
+    fun systemBlock(persona: Persona): String = buildString {
+        val name = persona.name.trim().ifEmpty { "this person" }
+        append("<|startoftext|><|im_start|>system\n")
+        append("Facts about $name: ${persona.about.trim()}\n\n")
+        append("Each message is something another person says to $name. Answer yes only if it is a question about ")
+        append("$name's own life (age, work, home, family, pets, likes) or names someone or something from the facts. ")
+        append("Greetings, thanks, compliments, offers, invitations and news are no.")
+        append("<|im_end|>\n")
+        for ((said, answer) in EXAMPLES) {
+            append("<|im_start|>user\n$said<|im_end|>\n<|im_start|>assistant\n<think></think>$answer<|im_end|>\n")
+        }
+    }
+
+    /** The part that changes: the line just heard, then the model's one-word turn. */
+    fun turnBlock(said: String): String =
+        "<|im_start|>user\n${said.replace('\n', ' ').trim()}<|im_end|>\n<|im_start|>assistant\n<think></think>"
+
+    fun saysYes(answer: String): Boolean = answer.trim().startsWith("yes", ignoreCase = true)
 }
 
 object ReplyParser {

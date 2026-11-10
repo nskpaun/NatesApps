@@ -409,7 +409,7 @@ private fun SettingsScreen(
             value = settings.about,
             onValueChange = { about -> update { it.copy(about = about) } },
             label = { Text("About you") },
-            supportingText = { Text("Family, work, interests, how you like to talk. Replies are written to sound like you. This never leaves the phone.") },
+            supportingText = { Text("Your age, work, family, pets, what you like. Used only when someone asks about you. This never leaves the phone.") },
             minLines = 3,
             modifier = Modifier.fillMaxWidth(),
         )

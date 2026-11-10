@@ -42,6 +42,10 @@ int main(int argc, char** argv) {
         return 1;
     }
 
+    // With ALT_PREFIX set, odd runs use that prefix instead: both should be "reused" from run 3 on.
+    const char* alt_path = std::getenv("ALT_PREFIX");
+    const std::string alt_prefix = alt_path ? read_file(alt_path) : "";
+
     for (int run = 0; run < runs; ++run) {
         // Sampling can be overridden from the environment, to try a model's own recommended settings.
         fastchat::GenParams params;
@@ -53,7 +57,7 @@ int main(int argc, char** argv) {
         fastchat::GenStats stats;
         std::printf("--- run %d\n", run + 1);
         const bool ok = engine->generate(
-            prefix, suffix, grammar, params,
+            (alt_path && run % 2 == 1) ? alt_prefix : prefix, suffix, grammar, params,
             [](const std::string& text) {
                 std::fputs(text.c_str(), stdout);
                 std::fflush(stdout);

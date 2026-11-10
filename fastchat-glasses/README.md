@@ -42,7 +42,7 @@ If the status chip says "No glasses in range", open **Settings → Glasses**: it
 
 1. Build and install (below), or install `app-debug.apk`.
 2. Open the app and download the models (1.9 GB, once, over Wi-Fi).
-3. In **Settings**, enter your name and pick a voice.
+3. In **Settings**, enter your name and a few lines about yourself (age, work, family, pets, what you like), and pick a voice.
 4. In **Settings → Glasses**, choose **Connect through Meta AI**. This needs the Meta AI app, with Developer Mode on (Meta AI → Settings → App Info → tap the version five times) and the Device Access Toolkit installed on the glasses from there.
 5. Press **Start conversation** and hand the phone over.
 
@@ -92,6 +92,7 @@ $A --ez start true                              # press Start
 $A --es heard "Do you want to get lunch?"       # as if the partner had said this
 $A --es gesture down                            # up | right | down | left | pinch | back
 $A --ez reset true                              # forget the conversation so far
+$A --es name Sam --es about "I have a dog."      # set the wearer's details
 adb logcat -s FastChat                          # timings for hearing, replies and voice
 ```
 
@@ -118,6 +119,21 @@ Them: I'm going to the store, do you want anything?
 
 A model this small, asked straight for "four replies", often answers as the wrong person ("I'm sorry I scratched your car"). Having it state who did what first fixes most of that, and nine worked examples in the prompt teach the format, the length and the perspective. On a deliberately hard test set roughly one reply in ten is still wrong; apologies for damaging the wearer's things are the worst case.
 
+### About you, only when it is needed
+
+The "about you" text is not part of every prompt: a small model that always sees "loves strong coffee" brings coffee into everything. Instead a decision step runs first, a one-word (yes/no) call to the same model asking whether the line just heard is about the wearer's own life or names something from their facts. Only on a yes are the facts added to the reply prompt, right before the line being answered.
+
+| Heard | Decision | A reply offered |
+|---|---|---|
+| Do you have any pets? | needed | 🐕 My dog is named Biscuit. |
+| What do you do for work? | needed | 🎨 I work as a graphic designer. |
+| Is this seat taken? | not needed | ❌ No, it's free. |
+| What do you want to eat? | not needed | 🍕 Pizza sounds good. |
+
+On the Fold the decision takes about 0.1 s every turn, and a turn that does use the facts spends about 0.15 s more reading them. On a 30-sentence test it decided correctly 25 times; its mistakes lean towards yes for lines that merely touch a fact ("Do you want to get some coffee?"). Without the facts the model invents answers to personal questions ("I work as a barista").
+
+The engine keeps a snapshot for each prompt's fixed part, so the decision prompt and the reply prompt take turns without either being re-read.
+
 "More replies" does not tell the model what to avoid, which does not work at this size. The app asks again with looser sampling and drops anything already offered.
 
 ## Speed
@@ -128,11 +144,12 @@ Measured on a Galaxy Z Fold (Snapdragon 8 Elite Gen 5, 12 GB), CPU only, six thr
 |---|---|
 | Loading the models when the app opens | about 4 s |
 | Transcribing a 2 to 4 s sentence | 0.1 to 0.5 s |
-| Reading the new turn (15 to 40 tokens) | 0.1 to 0.2 s |
+| Deciding whether "about you" is needed | 0.1 s |
+| Reading the new turn (15 to 40 tokens; about 60 with the facts) | 0.1 to 0.3 s |
 | Writing the hidden line and four replies (55 to 90 tokens at 45 to 50 tokens per second) | 1.1 to 1.8 s |
 | Synthesising a reply (1.4 to 2 s of speech) | 0.4 to 0.8 s |
 
-So all four replies are on the glasses about 1.2 to 1.9 seconds after the sentence is transcribed. The first version used Ternary Bonsai 2 9B, which wrote better replies but took 13 to 17 seconds for the same turn.
+So all four replies are on the glasses about 1.3 to 2.2 seconds after the sentence is transcribed. The first version used Ternary Bonsai 2 9B, which wrote better replies but took 13 to 17 seconds for the same turn.
 
 Three things make it fast:
 

@@ -133,6 +133,41 @@ class RepliesTest {
     }
 
     @Test
+    fun `the wearer's facts are sent only when asked for, right before the line being answered`() {
+        val history = listOf(
+            Turn(Speaker.PARTNER, "Hi!"),
+            Turn(Speaker.ME, "Hello."),
+            Turn(Speaker.PARTNER, "Do you have any pets?"),
+        )
+        assertFalse("Facts about you" in ReplyPrompt.turnBlock(history))
+        assertEquals(
+            "<|im_start|>user\nHi!<|im_end|>\n" +
+                "<|im_start|>assistant\n<think></think>Hello.<|im_end|>\n" +
+                "<|im_start|>system\nFacts about you, in case they help you answer: I have a dog, Biscuit.<|im_end|>\n" +
+                "<|im_start|>user\nDo you have any pets?<|im_end|>\n" +
+                "<|im_start|>assistant\n<think></think>",
+            ReplyPrompt.turnBlock(history, facts = " I have a dog, Biscuit. "),
+        )
+        // The fixed, cached part of the reply prompt never carries the facts.
+        assertFalse("Biscuit" in ReplyPrompt.systemBlock(Persona("Sam", "I have a dog, Biscuit.")))
+    }
+
+    @Test
+    fun `the decision prompt holds the facts and asks for one word`() {
+        val block = PersonaCheck.systemBlock(Persona("Sam", "I'm 34. I have a dog, Biscuit."))
+        assertTrue(block.startsWith("<|startoftext|><|im_start|>system\nFacts about Sam: I'm 34. I have a dog, Biscuit."))
+        assertTrue("<|im_start|>user\nHow old are you?<|im_end|>\n<|im_start|>assistant\n<think></think>yes<|im_end|>\n" in block)
+        assertEquals(
+            "<|im_start|>user\nIs this seat taken?<|im_end|>\n<|im_start|>assistant\n<think></think>",
+            PersonaCheck.turnBlock(" Is this seat taken?\n"),
+        )
+        assertEquals("root ::= \"yes\" | \"no\"\n", PersonaCheck.GRAMMAR)
+        assertTrue(PersonaCheck.saysYes("yes"))
+        assertFalse(PersonaCheck.saysYes("no"))
+        assertFalse(PersonaCheck.saysYes(""))
+    }
+
+    @Test
     fun `replies that sound the same count as the same`() {
         assertEquals(ReplyParser.sameWords("No thanks, I'm fine."), ReplyParser.sameWords("no thanks  im fine"))
     }
