@@ -69,6 +69,33 @@ The figure in brackets is ribbon luminance divided by the cove's own luminance w
 
 The strips are traced directly (flat pair of panels, eye centred) and tone-mapped so the panel's white is display white. [`page/light-ribbon.html`](page/light-ribbon.html) is an interactive version: an animated ribbon under selectable room light, pattern, layout and finish.
 
+## Ray-traced render
+
+[`render/`](render/) builds the station with these optics in Blender and path-traces it with Cycles: Balanced preset, finer brush. The brushed cove runs on over a rounded lip into a raked wall that lands on the base deck, so the cove is the stand.
+
+![Night Array with the light ribbon, home office light](render/out/hero-home-on.jpg)
+
+| | |
+|---|---|
+| ![Close view of sill, slot and ribbon](render/out/detail.jpg) | ![From the seated eye](render/out/seat.jpg) |
+| Sill, ribbon and stand, left of the seam | From the seated eye, very wide lens |
+| ![Feed rows black](render/out/hero-home-off.jpg) | ![Office light](render/out/hero-office-on.jpg) |
+| Same frame with the feed rows black | Office light, 500 lux |
+
+- **It agrees with the study.** With a white band the render puts 81.5 nits on the ribbon from the seat; the study's tracer predicts 81.2 for the same eye and the same spot on the panel. The two share the cross-section in `ribbon/designs.py` and nothing else.
+- **Light groups.** One render holds the feed rows, the rest of the screen and the room as separate passes (`render/scene.py`), so `render/make_images.py` sets the room's lux, the exposure and ribbon on/off afterwards. `render/out/index.html` is a small gallery with those switches.
+- **The stand.** The wall is raked back 22° and meets the deck 2 mm in front of the screen plane. It runs the full width with no gap; the stowed keyboard and mouse clear it by 11 mm or more. No band light reaches it, so the ribbon numbers above are unchanged.
+- **Choices made for the render.** The sill's outside is dark satin (in titanium its bevel outshone the ribbon beneath it). The amber LEDs are off. Keyboard and mouse are in the work pose.
+
+```
+pip install bpy OpenEXR oidn pillow          # Blender 5.2 as a Python module
+python render/screen_ui.py work              # the RoseOS desktop and the feed-row pattern
+python render/scene.py --view probe --out work --samples 512
+python render/scene.py --view hero --out work --samples 400 --width 2000      # also: detail, seat, front
+python render/scene.py --view calib --out work --samples 300 --width 600 --band band_white.png
+python render/make_images.py work            # render/out/*.jpg and the gallery
+```
+
 ## What this rests on
 
 - **Tracer.** Rays are followed backward from the eye through the mirrors and a GGX microfacet model of the satin surface to the panel or the room (`ribbon/trace.py`). `python -m ribbon.checks` compares it with closed-form cases and with an independent forward photon count of the sill layout; the two agree within 3 %.

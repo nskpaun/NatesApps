@@ -1,0 +1,115 @@
+<title>Light Ribbon Render</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Jost:wght@300;400;500&display=swap">
+<style>
+/* Layout: the render leads, full width; controls and notes sit under it in a narrow column. Night Array's
+   palette, single dark look on purpose (the images are judged against a dark surround). */
+:root {
+  color-scheme: dark;
+  --bg: #0C0A09; --panel: #15110F; --line: #2E2621; --ink: #F2EAE1; --muted: #A39A90;
+  --amber: #F2A04A; --amber-soft: #3A2614; --titanium: #BDB2A4;
+  --display: "Jost", "Avenir Next", "Segoe UI", sans-serif;
+  --body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.6 var(--body); padding-block: 0 72px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.wrap { max-width: 1280px; margin: 0 auto; display: flex; flex-direction: column; gap: 48px; }
+header { padding-top: 40px; display: flex; flex-direction: column; gap: 12px; }
+.eyebrow, h2, .lab { font-family: var(--display); text-transform: uppercase; letter-spacing: .16em; }
+.eyebrow { color: var(--amber); font-size: 12px; font-weight: 500; }
+h1 { font: 300 clamp(28px, 5.5vw, 46px)/1.05 var(--display); text-transform: uppercase; letter-spacing: .12em; margin: 0; }
+h2 { font-size: 15px; font-weight: 400; color: var(--titanium); margin: 0; }
+p { margin: 0; }
+.col { max-width: 700px; }
+.lede { font-size: 17px; line-height: 1.55; }
+.muted { color: var(--muted); }
+.small { font-size: 13px; line-height: 1.5; }
+section { display: flex; flex-direction: column; gap: 16px; }
+figure { margin: 0; display: flex; flex-direction: column; gap: 10px; }
+figure img { display: block; width: 100%; height: auto; border-radius: 6px; border: 1px solid var(--line); background: #000; }
+figcaption { font-size: 13px; color: var(--muted); max-width: 700px; }
+.controls { display: flex; flex-wrap: wrap; gap: 14px 32px; }
+.ctl { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
+.lab { font-size: 11px; color: var(--muted); }
+.seg { display: flex; flex-wrap: wrap; gap: 6px; }
+.seg button { font: 500 13px/1 var(--body); color: var(--ink); background: var(--panel); border: 1px solid var(--line);
+  border-radius: 4px; padding: 9px 11px; cursor: pointer; }
+.seg button:hover { border-color: #5E564E; }
+.seg button[aria-pressed="true"] { background: var(--amber-soft); border-color: var(--amber); color: var(--amber); }
+button:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+.pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px; }
+ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 8px; }
+b { font-weight: 600; }
+.num { font-variant-numeric: tabular-nums; }
+</style>
+
+<div class="wrap">
+<header>
+  <div class="eyebrow">Night Array · light ribbon</div>
+  <h1>Ray-traced render</h1>
+  <p class="lede col">Balanced layout, finer brush. The brushed cove now runs from the display down to the base deck as the stand itself. Everything the ribbon shows here is screen light followed through the sill's two mirrors and off the cove by a path tracer; there are no lamps behind it.</p>
+</header>
+
+<section aria-labelledby="h-hero">
+  <h2 id="h-hero">Over the shoulder, on the seat's line of sight</h2>
+  <figure>
+    <img id="hero" src="hero-home-on.jpg" width="2000" height="1000" alt="Night Array with the light ribbon glowing in the brushed cove under the display">
+  </figure>
+  <div class="controls">
+    <div class="ctl"><span class="lab" id="l-room">Room light</span><div class="seg" id="c-room" role="group" aria-labelledby="l-room">
+      <button type="button" data-v="dark" aria-pressed="false">Dark · 2 lx</button>
+      <button type="button" data-v="home" aria-pressed="true">Home office · 200 lx</button>
+      <button type="button" data-v="office" aria-pressed="false">Office · 500 lx</button>
+      <button type="button" data-v="window" aria-pressed="false">By a window · 2000 lx</button></div></div>
+    <div class="ctl"><span class="lab" id="l-rib">Ribbon</span><div class="seg" id="c-rib" role="group" aria-labelledby="l-rib">
+      <button type="button" data-v="on" aria-pressed="true">On</button>
+      <button type="button" data-v="off" aria-pressed="false">Feed rows black</button></div></div>
+  </div>
+  <p class="small muted col" id="hero-note"></p>
+</section>
+
+<section aria-labelledby="h-views">
+  <h2 id="h-views">Other views, home office light</h2>
+  <figure><img src="detail.jpg" width="1600" height="900" alt="Close view of the sill, the slot beneath it and the ribbon in the cove, left of the seam">
+    <figcaption>Left of the seam, from above the seat. The dark sill hides the feed rows and the mirror; the ribbon sits in the scoop under it; below the rounded lip the same brushed part rakes back to the deck.</figcaption></figure>
+  <div class="pair">
+    <figure><img src="seat.jpg" width="1800" height="900" alt="View from the seated eye position with a wide lens">
+      <figcaption>From the seated eye itself, 650 mm from the screen, with a very wide lens so both ends are in frame.</figcaption></figure>
+    <figure><img src="front.jpg" width="1800" height="760" alt="Low frontal view of the station">
+      <figcaption>Low and frontal, close to the concept picture's viewpoint. The cove is shaped for the seat, so from down here the ribbon is fainter and the stand mostly mirrors the deck.</figcaption></figure>
+  </div>
+</section>
+
+<section aria-labelledby="h-notes">
+  <h2 id="h-notes">What is in the render</h2>
+  <ul class="col">
+    <li><b>Checked against the study.</b> With a white band, the render puts <span class="num" id="n-cyc">81</span> nits on the ribbon from the seat; the optics study's own tracer predicts <span class="num" id="n-trc">81</span>. Two independent renderers, same geometry.</li>
+    <li><b>The stand.</b> The cove continues over a rounded lip into a wall raked back <span class="num" id="n-rake">23</span>° and lands on the deck just in front of the screen plane. It runs the full width with no gap: the stowed keyboard and mouse clear it by <span class="num" id="n-clear">11</span> mm or more. The old neck stays behind it as the load path. No band light reaches the wall, so the ribbon is the same as before.</li>
+    <li><b>The sill is dark satin</b>, like the panel's own chin. In titanium its bevel caught the room light and outshone the ribbon directly beneath it.</li>
+    <li><b>The amber LEDs are off</b> (neck bar, under-glow, charge marks), so every warm glow in these images comes from the screen.</li>
+    <li><b>Exposure.</b> The dark and home-office frames are exposed 1.4× over the panel's white, the office frame 1×, the window frame 0.5×, the way a camera would follow the room. Within a frame nothing is adjusted: toggle the ribbon to see exactly what it adds.</li>
+    <li><b>Still assumed:</b> the finer-brush roughness (no measured data), a 16 mm chin, unpolarised light, and a simple room (one window, a ceiling wash, a low sun patch on the wall).</li>
+  </ul>
+</section>
+</div>
+
+<script>
+const NOTES = {
+  dark: "Dark room. The ribbon and the screen are the only light; the wall of the stand picks up a little of the glow that spills onto the deck.",
+  home: "Home office, 200 lux on the desk. The ribbon reads clearly along its whole length.",
+  office: "Office, 500 lux. Amber and the pale core hold up; the oxblood end is close to the brushed metal around it.",
+  window: "By a window, 2000 lux, exposed down to keep the wall from clipping. Only the pale core of the ribbon still reads, as the study predicted.",
+};
+const state = { room: "home", rib: "on" };
+const img = document.getElementById("hero"), note = document.getElementById("hero-note");
+function show() { img.src = `hero-${state.room}-${state.rib}.jpg`; note.textContent = NOTES[state.room]; }
+for (const [id, key] of [["c-room", "room"], ["c-rib", "rib"]]) {
+  const el = document.getElementById(id);
+  el.addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; state[key] = b.dataset.v;
+    el.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x === b)); show(); });
+}
+const N = {"n-cyc": "82", "n-trc": "81", "n-rake": "22", "n-clear": "11"};
+for (const [id, v] of Object.entries(N)) { const el = document.getElementById(id); if (el) el.textContent = v; }
+show();
+</script>
