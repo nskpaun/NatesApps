@@ -6,6 +6,8 @@ It is built for function, not looks, and every part prints on a **Formlabs Form 
 
 ![assembled](preview/assembled.png)
 
+**Quick start:** (1) print `coupon.stl` and do Test A; (2) if both devices charge through it, print everything in the table under *Printing on the Form 4*; (3) wash and fully post-cure; (4) follow *Assembly*; (5) tune with Test B.
+
 | | |
 |---|---|
 | Tray | **487 × 205 × 44 mm** (W × D × H), plus about 1.8 mm of rubber feet |
@@ -62,18 +64,18 @@ Total about **1936 mL** of resin. PreForm adds supports and shows the real volum
 ![exploded](preview/exploded.png)
 
 - **Six pieces** form the tray (front/back × left/middle/right, up to 190 × 103 × 44 mm each), glued along the seams with printed dowel pins for alignment.
-  - They join down the middle with **3 printed keys** and **4 × M3 screws into nuts in printed slots**, all driven from underneath.
-  - The joint runs through the keyboard pocket's thick floor, about 50 mm from either charging area. It never crosses a 1 mm floor.
+  - The left/middle and middle/right seams run between the two charging areas. The front/back seam crosses both pockets; the floor blocks above it and the hatches below it bridge it.
+  - No seam crosses a 1 mm charging floor (those are in the separate floor blocks).
 - **Two floor blocks**, one over each pad (orange in the renders).
-  - A 1.0 mm floor is only accurate and support-free when it is the first layers on the bed. So the part of the tray directly above each pad cavity is a separate block, printed with its underside down.
+  - Keeping the 1.0 mm floor in its own part means it can be printed with no supports on its top face, so it comes out flat and exact. The part of the tray directly above each pad cavity is that separate block.
   - That underside **is** the charging floor: flat and exactly 1.0 mm thick wherever the pad can reach.
-  - The block drops into a 45° tapered seat in the tile **from below**. The pad pushes it up into the seat, and its top sits flush with the rim.
+  - The block drops into a 45° tapered seat in the tray **from below**. The pad pushes it up into the seat, and its top sits flush with the rim.
   - Each block carries its share of the pocket walls and rim. You will see a hairline seam in the pocket floor and rim. That is expected.
 - **Two pad carriers** (identical parts).
   - Each holds an Anker 313 in short corner walls, with a gap in the middle of every side for the micro-USB plug and the LED light.
   - The pad sits on **four 20 × 20 mm squares of 3 mm foam**, squeezed to 2 mm, which press its top face against the underside of the 1.0 mm floor.
   - Each carrier slides **±15 mm in x (left/right) and ±15 mm in y (front/back)** inside its cavity.
-- **Two hatches** close the cavities from below with 4 × M3 each, into nuts pressed into the tile. Each hatch has:
+- **Two hatches** close the cavities from below with 4 × M3 each, into nuts pressed into the tray. Each hatch has:
   - **Two lock slots.** The lock screws come up through each hatch slot (running front to back) and the carrier slot (running left to right) into a captive nut on the carrier's ear. Where the two slots cross, one screw locks both directions.
   - **A 50 × 50 mm finger window.** Push the carrier with a fingertip on the cone dimple under its centre.
   - **A tick scale** engraved round the window, every 5 mm from −15 to +15. The dimple shows where the pad sits.
@@ -144,7 +146,7 @@ Do everything **with the tray upside down on a towel**. That way the nuts drop i
 
 ### Test A: the coupon (do this before printing anything else)
 
-1. Measure the coupon's plate with calipers. It should be **1.00 ± 0.05 mm**. If not, fix your first-layer height and flow first.
+1. Measure the coupon's plate with calipers. It should be **1.00 ± 0.05 mm**. If it's thicker, check that no support nub is left on the top face, and that the part was fully washed and cured.
 2. Plug an Anker 313 into one 5 V/2 A port and put it on the desk.
    - The LED shows **solid blue for about 3 s and then goes off**.
    - **Flashing green** means the adapter or cable is not good enough.
@@ -209,13 +211,12 @@ If a device will not charge through the coupon at all, don't print the tray yet.
   The carrier's open wall gaps and the sight slot are there because of that last point.
 - **Printed fits.** Fits are set for resin: 0.25 mm per side at the floor-block seats and hatches, 0.5 mm round each pad in its carrier, 3.4 mm M3 clearance holes and press-fit nut traps. The keyboard has 2.5 mm per side in its pocket, the mouse 3 mm. Each pocket wall rises straight for 6 mm (so the devices land over the chargers), then a concave, bowl-shaped cove curves up to the rim, 12 mm wider per side at the top (`POCKET_STRAIGHT`, `POCKET_FLARE`), and the Magic Tag notch is 14 mm deep and 37 mm long. If parts come out tight or loose, change `FIT`, `HATCH_FIT`, `KB_CLR` and `MOUSE_CLR` at the top of `pocket_section.py` and run it again.
 - **Unsupported floor.** The 1 mm floor is unsupported where the cavity is wider than the pad (galleries and plug bay). One of the keyboard's front-left feet can land on such a span. It will flex a few tenths of a millimetre, which is harmless here.
-- **Grams and hours.** These are volume-based estimates, as described above.
 
 ## What the script checks (`build/checks.json`)
 
-- **Meshes.** Every STL is watertight and consistently oriented, has a positive volume and fits 245 × 245 × 245.
+- **Meshes.** Every STL is watertight and consistently oriented, has a positive volume and fits the Form 4 (inside 190 × 115 × 195 mm in some orientation).
 - **Devices.** The keyboard, Magic Tag (plug, fold and pad) and mouse envelopes don't touch the tray. With the keyboard grown by 0.9 mm and the mouse by 1.4 mm in plan, they still don't touch the walls.
-- **Travel.** At all 9 corner and centre positions of the ±15 mm travel, the pad, plug and carrier don't intersect the tiles, blocks or hatch. The pad top *touches* the floor block: raised 0.05 mm, it would cut into it.
+- **Travel.** At all 9 corner and centre positions of the ±15 mm travel, the pad, plug and carrier don't intersect the tray, blocks or hatch. The pad top *touches* the floor block: raised 0.05 mm, it would cut into it.
 - **Floor stack.** The block is solid from z 20.2 to 21.2 (**1.000 mm**) at the pad centre and on a 5 × 5 grid over the whole pad sweep.
 - **Metal.** Every screw and nut keeps ≥ 10 mm in plan from the pad footprint at any carrier position.
 - **Keycaps.** They sit within ±3 mm of the rim (−2.8 at the front, +2.7 at the back).
