@@ -1,0 +1,9 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <!-- A speech bubble holding the four d-pad arrows. -->
+    <path android:fillColor="#FF5BE49B"
+        android:pathData="M36,32h36a10,10 0,0 1,10 10v20a10,10 0,0 1,-10 10H56l-12,10v-10h-8a10,10 0,0 1,-10 -10V42a10,10 0,0 1,10 -10z" />
+    <path android:fillColor="#FF0E1116"
+        android:pathData="M54,38l5,7h-10zM54,66l-5,-7h10zM40,52l7,-5v10zM68,52l-7,5v-10z" />
+</vector>
