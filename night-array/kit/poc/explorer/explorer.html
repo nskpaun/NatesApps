@@ -49,7 +49,7 @@ li button[aria-current="true"] { color: var(--sel); }
   <div class="view">
     <div id="c"></div>
     <div class="top">
-      <h1>Pocket section <span>· proof of concept</span></h1>
+      <h1>Pocket section <span>· Form 4 resin version</span></h1>
       <label class="ctl" for="ex">Explode <input id="ex" type="range" min="0" max="100" value="60"><b id="exv">60%</b></label>
       <button class="t" id="labels" aria-pressed="true">Labels</button>
       <button class="t" id="bought" aria-pressed="true">Bought parts</button>
@@ -92,7 +92,8 @@ function decodeSTL(b64) {
 }
 
 const items = []; let selected = null;
-const data = await (await fetch('parts.json')).json();
+const DATA_FILE = 'parts-v6.json';   // bumped on every republish so browsers never reuse an old model
+const data = await (await fetch(DATA_FILE, { cache: 'no-store' })).json();
 const [b0, b1] = data.bounds;
 const center = new THREE.Vector3((b0[0] + b1[0]) / 2, (b0[1] + b1[1]) / 2, (b0[2] + b1[2]) / 2 - 40);
 for (const p of data.parts) {
@@ -133,9 +134,9 @@ function select(it) {
   const info = document.getElementById('info');
   if (!it) { info.innerHTML = '<h2>Pick a part</h2><p>Click a part or a label to see what it is.</p>'; apply(); return; }
   const p = it.p, pr = p.print;
-  info.innerHTML = `<h2></h2><p></p>` + (pr ? `<dl class="kv"><dt>Print file</dt><dd>print/${pr.file}</dd><dt>Quantity</dt><dd>${pr.qty}</dd><dt>Size</dt><dd>${pr.size.map(v => Math.round(v)).join(' × ')} mm</dd><dt>Filament</dt><dd>≈ ${Math.round(pr.grams)} g each</dd><dt>Time</dt><dd>≈ ${pr.hours} h each</dd><dt>Orientation</dt><dd></dd></dl>` : `<dl class="kv"><dt>Type</dt><dd>Bought / existing part</dd></dl>`);
+  info.innerHTML = `<h2></h2><p></p>` + (pr ? `<dl class="kv"><dt>Print file</dt><dd>print/${pr.file}</dd><dt>Quantity</dt><dd>${pr.qty}</dd><dt>Size</dt><dd>${pr.size.map(v => Math.round(v)).join(' × ')} mm</dd><dt>Resin</dt><dd></dd><dt>Volume</dt><dd>≈ ${Math.round(pr.ml)} mL each</dd><dt>In PreForm</dt><dd></dd></dl>` : `<dl class="kv"><dt>Type</dt><dd>Bought / existing part</dd></dl>`);
   info.querySelector('h2').textContent = p.name; info.querySelector('p').textContent = p.desc;
-  if (pr) info.querySelector('dl dd:last-child').textContent = pr.orient;
+  if (pr) { const dds = info.querySelectorAll('dl dd'); dds[3].textContent = pr.material; dds[5].textContent = pr.orient; }
   apply();
 }
 
@@ -151,8 +152,8 @@ function listFor(group, ul) {
   }
 }
 listFor('print', document.getElementById('listP')); listFor('bought', document.getElementById('listB'));
-const prints = items.filter(x => x.p.print); const g = prints.reduce((a, x) => a + x.p.print.grams, 0) + 3 * 1.5, h = prints.reduce((a, x) => a + x.p.print.hours, 0) + .3;
-document.getElementById('tot').innerHTML = `Print total, including 3 small joint keys not shown: <b>≈ ${(g / 1000).toFixed(2)} kg</b> of PETG and <b>≈ ${Math.round(h)} h</b>. Estimates; your slicer's numbers win.`;
+const pins = (data.extra || []).find(e => /Dowel/.test(e.name));
+document.getElementById('tot').innerHTML = `Everything prints on a Form 4. Resin total <b>≈ ${(data.total_ml / 1000).toFixed(1)} L</b>${pins ? `, including ${pins.qty} small dowel pins (not shown)` : ''}. PreForm's numbers win. <span style="opacity:.6">Model ${data.version}</span>`;
 
 const ray = new THREE.Raycaster(), ptr = new THREE.Vector2(); let down = null;
 renderer.domElement.addEventListener('pointerdown', e => (down = [e.clientX, e.clientY]));

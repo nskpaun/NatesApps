@@ -1,8 +1,8 @@
 # Night Array pocket section: proof of concept
 
-This is a printable test piece of the Night Array desk base: one tray with the **keyboard pocket** and the **mouse pocket**. You drop the devices in and they charge wirelessly through a **solid 1.0 mm PETG floor** from two Anker 313 pads underneath.
+This is a printable test piece of the Night Array desk base: one tray with the **keyboard pocket** and the **mouse pocket**. You drop the devices in and they charge wirelessly through a **solid 1.0 mm resin floor** from two Anker 313 pads underneath.
 
-It is built for function, not looks: plain PETG (PLA is fine for a test), no paint, no lights. It answers one question before anyone prints the real base: **do your keyboard and mouse charge reliably through 1 mm of your filament, and where exactly do the coils need to sit?**
+It is built for function, not looks, and every part prints on a **Formlabs Form 4** in standard Formlabs resins. It answers one question before anyone prints the real base: **do your keyboard and mouse charge reliably through 1 mm of printed floor, and where exactly do the coils need to sit?**
 
 ![assembled](preview/assembled.png)
 
@@ -11,8 +11,8 @@ It is built for function, not looks: plain PETG (PLA is fine for a test), no pai
 | Tray | **487 × 205 × 44 mm** (W × D × H), plus about 1.8 mm of rubber feet |
 | Devices | Keychron K3 Ultra 8K with a NILLKIN Magic Tag Type-C Short; Lenovo Multi-Device Wireless Mouse X9 Edition |
 | Chargers | 2 × Anker 313 Wireless Charger (Pad) A2503, used intact |
-| Printer | Bambu Lab, 256 mm bed. Every part fits 245 × 245 × 245 mm as oriented. |
-| Filament | about **1.1 kg PETG** for everything, about **32 h** of printing (estimate, see below) |
+| Printer | **Formlabs Form 4** (200 × 125 × 210 mm). Every part fits inside 190 × 115 × 195 mm in some orientation, leaving room for supports and the raft (the script checks this). |
+| Resin | about **1.9 L** in total (the tray pieces are hollowed from underneath); see the table below |
 
 `pocket_section.py` generates everything. All dimensions are named, commented parameters at the top of the script. Run it with the CadQuery venv:
 
@@ -23,11 +23,45 @@ night-array/cad/.venv/bin/python night-array/kit/poc/pocket_section.py --no-rend
 
 It writes the STLs to `print/` (mm, Z-up, flat face down, centred on the origin) with `print/print-list.json`, and the preview renders to `preview/`. It also checks the assembly, writes the results to `build/checks.json`, and exits non-zero if any check fails.
 
+## Printing on the Form 4
+
+| File | Qty | Size (mm) | Resin | mL each | How to place it in PreForm |
+|---|---:|---|---|---:|---|
+| `tray_front_left.stl` | 1 | 190 × 102 × 44 | Grey V5 (or Rigid 4000 for extra stiffness) | 219 | top (pocket side) up, tilted ~15-20 deg; supports on the hollow underside only |
+| `tray_front_middle.stl` | 1 | 107 × 102 × 44 | Grey V5 (or Rigid 4000 for extra stiffness) | 143 | top (pocket side) up, tilted ~15-20 deg; supports on the hollow underside only |
+| `tray_front_right.stl` | 1 | 190 × 102 × 44 | Grey V5 (or Rigid 4000 for extra stiffness) | 209 | top (pocket side) up, tilted ~15-20 deg; supports on the hollow underside only |
+| `tray_back_left.stl` | 1 | 190 × 103 × 44 | Grey V5 (or Rigid 4000 for extra stiffness) | 278 | top (pocket side) up, tilted ~15-20 deg; supports on the hollow underside only |
+| `tray_back_middle.stl` | 1 | 107 × 103 × 44 | Grey V5 (or Rigid 4000 for extra stiffness) | 183 | top (pocket side) up, tilted ~15-20 deg; supports on the hollow underside only |
+| `tray_back_right.stl` | 1 | 190 × 103 × 44 | Grey V5 (or Rigid 4000 for extra stiffness) | 327 | top (pocket side) up, tilted ~15-20 deg; supports on the hollow underside only |
+| `kb_floor_block.stl` | 1 | 167 × 165 × 24 | Grey V5 | 109 | 1.0 mm floor top face UP, tilted ~20 deg; NO supports on the floor top or pocket faces |
+| `mouse_floor_block.stl` | 1 | 167 × 165 × 24 | Grey V5 | 180 | 1.0 mm floor top face UP, tilted ~20 deg; NO supports on the floor top or pocket faces |
+| `pad_carrier.stl` | 2 | 105 × 137 × 9 | Tough 2000 V2 | 40 | base underside toward the platform, tilted; supports on the underside |
+| `kb_hatch.stl` | 1 | 184 × 174 × 4 | Grey V5 (or Tough 1000) | 97 | standing on a long edge or tilted; supports on the inside face |
+| `mouse_hatch.stl` | 1 | 184 × 174 × 4 | Grey V5 (or Tough 1000) | 97 | standing on a long edge or tilted; supports on the inside face |
+| `dowel_pin.stl` | 11 | 3 × 3 × 13 | Tough 2000 V2 | 0 | standing or flat; print a few spares (count includes 4) |
+| `coupon.stl` | 1 | 110 × 110 × 4 | Grey V5 | 13 | 1.0 mm plate top face up, tilted; supports on the skirt side only |
+
+Total about **1936 mL** of resin. PreForm adds supports and shows the real volume and time; its numbers win.
+
+- **Print the coupon first** and run Test A below before anything else.
+- **The tray** is 6 pieces (front/back × left/middle/right) because the Form 4 can't print the 487 mm tray whole. Each piece is hollowed from underneath with a waffle of ribs, so no resin gets trapped. Place each one pocket-side up, tilted 15–20°, with supports only on the hollow underside, never on the pocket floors, coves or rim.
+- **Keep supports off the charging floors.** On the two floor blocks and the coupon, the 1.0 mm floor's top face must be support-free: a support nub there lifts the device off the charger.
+- **Wash and fully post-cure** every part (Form Wash, then Form Cure at the resin's recommended time and temperature). Full cure matters here: the pads run around 40 °C.
+- **Materials:** use the resins in the table, or any of your standard Formlabs resins. Avoid ESD or metal-filled resins anywhere near the pads; they can block charging.
+- **Fits** are set for resin (0.25 mm per side between printed parts, 3.4 mm screw holes, press-fit M3 nut traps).
+- Filament alternative: the same script can still make PETG parts for a filament printer (two tiles); ask if you switch.
+
+### Joining the tray pieces
+
+- Push printed **dowel pins** (`dowel_pin.stl`, 3 × 13 mm) into the holes on each seam face, dry-fit all six pieces upside down on a flat surface, then **glue the seams** (5-minute epoxy, CA glue, or a thin bead of resin cured with a UV torch).
+- The two **hatches** screw on across the front/back seam and the **floor blocks** sit across it too, so they hold the pieces in line from below and above.
+- Not every seam has a dowel (they only go where both sides are solid); the glue does the real work.
+
 ## How it works
 
 ![exploded](preview/exploded.png)
 
-- **Two tiles** form the tray, each 240 × 205 × 44 mm.
+- **Six pieces** form the tray (front/back × left/middle/right, up to 190 × 103 × 44 mm each), glued along the seams with printed dowel pins for alignment.
   - They join down the middle with **3 printed keys** and **4 × M3 screws into nuts in printed slots**, all driven from underneath.
   - The joint runs through the keyboard pocket's thick floor, about 50 mm from either charging area. It never crosses a 1 mm floor.
 - **Two floor blocks**, one over each pad (orange in the renders).
@@ -54,41 +88,11 @@ It writes the STLs to `print/` (mm, Z-up, flat face down, centred on the origin)
 | 4 – 7 | carrier base |
 | 7 – 9 | foam (3 mm, squeezed to 2) |
 | 9 – 20.2 | Anker 313 pad (11.2) |
-| **20.2 – 21.2** | **1.0 mm solid PETG floor**, the underside of the floor block |
+| **20.2 – 21.2** | **1.0 mm solid resin floor**, the underside of the floor block |
 | 21.2 | where the keyboard feet and the mouse rest |
 | 44 | rim. The K3 Ultra's keycaps sit 2.8 mm below it at the front and 2.7 mm above it at the back. The mouse stands 11 mm proud, so it's easy to grab. |
 
 ![section through the keyboard pad](preview/section.png)
-
-## What to print
-
-Print in PETG, 0.4 mm nozzle, 0.2 mm layers **including the first layer**, 3 walls and 15 % gyroid infill (10 % is fine for the tiles).
-
-> **Important for the floor blocks and the coupon:** set **bottom shell layers ≥ 6** (or bottom shell thickness ≥ 1.2 mm). The 1.0 mm floor must then be 100 % solid. Check it in the slicer preview: layers 1–5 must be solid lines with no infill pattern.
-
-None of the parts needs supports. The undersides are designed for it: every internal ceiling is a short bridge (≤ 12 mm) or a 45° slope.
-
-| File | Qty | Size as printed (mm) | Orientation | Supports | ≈ g each | ≈ h each |
-|---|---|---|---|---|---|---|
-| `print/coupon.stl` | 1 | 110 × 110 × 4 | as exported: the 1.0 mm plate on the bed, skirt up | none | 17 | 0.6 |
-| `print/tile_left.stl` | 1 | 240 × 205 × 44 | underside down | none | 309 | 8.8 |
-| `print/tile_right.stl` | 1 | 240 × 205 × 44 | underside down | none | 316 | 9.0 |
-| `print/kb_floor_block.stl` | 1 | 167 × 165 × 24 | **charging floor down** | none | 89 | 2.6 |
-| `print/mouse_floor_block.stl` | 1 | 167 × 165 × 24 | **charging floor down** | none | 115 | 3.3 |
-| `print/pad_carrier.stl` | **2** | 105 × 137 × 9 | base down | none | 41 | 1.3 |
-| `print/kb_hatch.stl` | 1 | 184 × 175 × 4 | tick scale down | none | 76 | 2.3 |
-| `print/mouse_hatch.stl` | 1 | 184 × 175 × 4 | tick scale down | none | 76 | 2.3 |
-| `print/joint_key.stl` | **3** | 20 × 10 × 6 | flat | none | 1.5 | 0.1 |
-| **Total** | | | | | **≈ 1,085 g** | **≈ 32 h** |
-
-How the grams and hours are worked out:
-
-- **Grams:** the CAD volume, counting about 1 mm of solid shell over every surface plus 15 % infill inside, at 1.27 g/cm³.
-- **Hours:** that volume printed at about 28 cm³ an hour, plus 6 minutes per plate.
-- They are rough, ±30 %. **Your slicer's numbers are the real ones.**
-- The coupon's ~35 minutes (estimate) is longer than a hoped-for 20. A 0.24–0.28 mm "draft" profile brings it to about 20–25 minutes, but keep the plate at 1.0 mm.
-
-Print the coupon first, and do **Test A** before you commit 30 hours to the rest.
 
 ## Hardware
 
@@ -96,8 +100,8 @@ Print the coupon first, and do **Test A** before you commit 30 hours to the rest
 |---|---|---|
 | M3 × 8 button head (ISO 7380) or socket head | 12 | 8 hatch screws (4 per hatch), 4 carrier lock screws |
 | M3 washer (7 mm OD) | 4 | under the lock-screw heads |
-| M3 × 20 socket or button head | 4 | tile joint |
-| M3 hex nut | 16 | 8 hatch nut traps, 4 carrier ears, 4 tile joint |
+| Glue for the tray seams | — | 5-minute epoxy or CA glue (or resin + a UV torch) |
+| M3 hex nut | 12 | 8 hatch nut traps, 4 carrier ears |
 | 3 mm EVA craft foam (plus a little double-sided tape or glue) or 3 mm foam tape | 8 squares, 20 × 20 mm | under the pads, 4 per carrier |
 | Self-adhesive rubber bumpers, about 10 mm Ø × 3 mm | 8 | feet |
 | Micro-USB cable | 2 | one comes with each Anker 313 (4 ft). A right-angle plug is optional; the plug bays fit a straight one. |
@@ -112,12 +116,11 @@ Steel and the pads: every screw and nut is at least **10 mm** in plan from where
 Do everything **with the tray upside down on a towel**. That way the nuts drop into place and the floor blocks stay in their seats.
 
 1. **Clean up the prints.**
-   - Remove any brim and elephant's foot from the floor blocks' bottom edges and from the tiles' seat openings.
+   - Remove the supports and sand any support nubs flat, especially on the floor blocks' tapered flanges and the tray pieces' seat openings.
    - A block must drop into its seat and sit with its top flush with the rim, without forcing. If it binds, file the 45° flange lightly.
-2. **Join the tiles.**
-   - Drop an M3 nut into each of the 4 nut slots in the right tile's underside, next to the joint. Push each one to the bottom of its slot.
-   - Push the 3 keys into the left tile's key holes and bring the tiles together.
-   - Working from the 4 access pockets in the left tile's underside, drive the 4 × M3 × 20 screws across the joint into the nuts. Snug them up. Don't crush the plastic.
+2. **Join the six tray pieces.**
+   - Push the printed dowel pins into the seam holes.
+   - Dry-fit all six pieces upside down on a flat table, then glue each seam and clamp or tape it until set. Check the rim is flat across the seams.
 3. **Fit the hatch nuts.** Press an M3 nut into each of the 8 hex traps around the two cavities, 4 per cavity. Seat them with a screw if needed.
 4. **Fit the floor blocks.** Drop the keyboard block and the mouse block into their seats. The keyboard block is the one with the Magic Tag notch.
 5. **Fit the pads.**
@@ -204,7 +207,7 @@ If a device will not charge through the coupon at all, don't print the tray yet.
   - the exact spot of the status LED on the pad.
 
   The carrier's open wall gaps and the sight slot are there because of that last point.
-- **Printed fits.** Fits are deliberately roomy for a prototype: 0.4 mm per side at the floor-block seats, joint keys and hatches, 0.5 mm round each pad in its carrier, 3.6 mm M3 clearance holes and slightly loose nut traps (a dab of glue holds a nut if it falls out). The keyboard has 2.5 mm per side in its pocket, the mouse 3 mm. Each pocket wall rises straight for 6 mm (so the devices land over the chargers), then a concave, bowl-shaped cove curves up to the rim, 12 mm wider per side at the top (`POCKET_STRAIGHT`, `POCKET_FLARE`), and the Magic Tag notch is 14 mm deep and 37 mm long. If your printer runs tight or loose, change `FIT`, `HATCH_FIT`, `KB_CLR` and `MOUSE_CLR` at the top of `pocket_section.py` and run it again.
+- **Printed fits.** Fits are set for resin: 0.25 mm per side at the floor-block seats and hatches, 0.5 mm round each pad in its carrier, 3.4 mm M3 clearance holes and press-fit nut traps. The keyboard has 2.5 mm per side in its pocket, the mouse 3 mm. Each pocket wall rises straight for 6 mm (so the devices land over the chargers), then a concave, bowl-shaped cove curves up to the rim, 12 mm wider per side at the top (`POCKET_STRAIGHT`, `POCKET_FLARE`), and the Magic Tag notch is 14 mm deep and 37 mm long. If parts come out tight or loose, change `FIT`, `HATCH_FIT`, `KB_CLR` and `MOUSE_CLR` at the top of `pocket_section.py` and run it again.
 - **Unsupported floor.** The 1 mm floor is unsupported where the cavity is wider than the pad (galleries and plug bay). One of the keyboard's front-left feet can land on such a span. It will flex a few tenths of a millimetre, which is harmless here.
 - **Grams and hours.** These are volume-based estimates, as described above.
 
@@ -234,4 +237,4 @@ Preview renders: `preview/assembled.png`, `preview/exploded.png`, `preview/under
 
 ## 3D explorer
 
-`explorer/explorer.html` is an explodable, labelled 3D view of every part (published as a claude.ai artifact page; it loads three.js from jsDelivr). It reads `explorer/parts.json`, which bundles the assembled meshes from `build/` (written by `pocket_section.py`) with each part's name, description and print-list numbers. That file is generated, not committed.
+`explorer/explorer.html` is an explodable, labelled 3D view of every part (published as a claude.ai artifact page; it loads three.js from jsDelivr). It reads `explorer/parts-<version>.json` (made by `explorer/make_data.py`), which bundles the assembled meshes from `build/` (written by `pocket_section.py`) with each part's name, description and print-list numbers. That file is generated, not committed.

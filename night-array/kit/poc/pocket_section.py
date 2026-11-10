@@ -84,8 +84,8 @@ PLUG_W = 12.0            # plug overmould width
 # --- Clearances / fits ----------------------------------------------------------------------------------------------
 KB_CLR = 2.5             # keyboard-to-pocket-wall clearance per side
 MOUSE_CLR = 3.0          # mouse-to-pocket-wall clearance per side
-FIT = 0.4                # sliding/drop-in fit per side (floor block in its seat, keys in their holes)
-HATCH_FIT = 0.4         # hatch-to-recess clearance per side
+FIT = 0.25                # sliding/drop-in fit per side (floor block in its seat, keys in their holes)
+HATCH_FIT = 0.25         # hatch-to-recess clearance per side
 
 # --- Vertical stack (z = 0 is the tray underside) -------------------------------------------------------------------
 HATCH_T = 4.0            # hatch plate, flush in a recess in the tile underside; carrier sits on it
@@ -116,8 +116,8 @@ CAR_WALL_GAP = 24.0      # gap in the middle of each wall: micro-USB plug, LED l
 EAR_Y = 63.5             # lock-screw line, +/- y from the pad centre: PAD_W/2 + 10 + washer radius 3.5 -> steel >= 10 mm off the pad
 EAR_HALF_X = 20.0        # ear half-width (slot 30 + 3.4 long)
 EAR_OUT = 5.0            # ear extends this far past the screw line
-SLOT_D = 3.6             # M3 clearance
-NUT_AF = 6.0             # M3 nut channel width (nut is 5.5 across flats -> cannot turn)
+SLOT_D = 3.4             # M3 clearance
+NUT_AF = 5.7             # M3 nut channel width (nut is 5.5 across flats -> cannot turn)
 NUT_WALL_H = 2.6         # nut channel walls (M3 nut 2.4 thick)
 
 # --- Cavity galleries for the carrier ears (cavity extension in y, roofed by the floor block) -----------------------
@@ -131,7 +131,7 @@ HATCH_SCREW_IN = 6.0     # hatch screws: this far outside the cavity corner, in 
 FINGER_WIN = 50.0        # square window under the carrier centre: push the carrier with a fingertip, read the ticks
 HEAD_CB_D, HEAD_CB_H = 6.4, 2.2   # counterbore for an M3 ISO 7380 button head (5.7 x 1.65)
 LOCK_CB_W, LOCK_CB_H = 7.6, 2.4   # counterbored slot for button head + M3 washer (7 OD)
-HEX_D = 6.7              # printed nut trap, across corners (M3 nut 6.35) -- press the nut in
+HEX_D = 6.5              # printed nut trap, across corners (M3 nut 6.35) -- press the nut in
 
 # --- Layout in the tray -----------------------------------------------------------------------------------------------
 WALL_MIN = 3.0           # minimum plastic between a hatch recess and the tile's outer edge
@@ -185,7 +185,14 @@ COUPON_SKIRT_T = 1.6
 COUPON_GAP = 22.0        # gaps in the skirt (micro-USB plug, LED)
 
 # --- Printer / material --------------------------------------------------------------------------------------------
-BED_MAX = 245.0          # KIT_SPEC: every part fits 245 x 245 x 245 in its print orientation
+BED_MAX = 245.0          # (FDM limit, kept for reference)
+FORM4_BOX = (115.0, 190.0, 195.0)   # Form 4 build volume 200 x 125 x 210 minus support/raft margin; a part fits if its
+                                    # sorted extents fit the sorted box (some axis-aligned orientation)
+SEAM_X = (190.0, 297.0)  # tray split for the Form 4: 3 columns (190 / 107 / 190 mm), clear of both hatch recesses
+SEAM_Y = 102.0           # and 2 rows (front 102 / back 103 mm); the hatches and floor blocks bridge this seam
+WALL = 2.5               # hollowing: skin thickness on every face except the open underside
+RIB_PITCH, RIB_T = 16.0, 1.8   # hollowing: rib grid left standing inside the hollow
+DOWEL_D, DOWEL_HOLE, DOWEL_L = 3.0, 3.3, 13.0   # printed alignment pins across every seam (glue the seams)
 PETG_DENSITY = 1.27      # g/cm3
 EST_SHELL = 1.0          # estimate: walls/top/bottom ~1.0 mm of solid over the whole surface ...
 EST_INFILL = 0.15        # ... plus 15 % gyroid inside
@@ -394,19 +401,99 @@ def tile_full(mono):
         cuts.append(gable_y((b[0] + b[1]) / 2 + 2 * sx, cy, TRAY_D + 1, CABLE_W, CABLE_H))
     for x, y in feet_positions():
         cuts.append(cyl(x, y, -1, FOOT_DEPTH, FOOT_D))
-    # joint: key holes (both sides), screw access pockets (left), clearance holes, nut slots (right)
-    J = JOINT_X
-    for (y, z) in KEY_POS:
-        kx, ky, kz = KEY
-        cuts.append(box(J - kx / 2 - 0.5, J + kx / 2 + 0.5, y - ky / 2 - FIT, y + ky / 2 + FIT, z - kz / 2 - FIT, z + kz / 2 + FIT))
-    px, pw, ph = JOINT_POCKET
-    for y in JOINT_SCREW_Y:
-        cuts.append(box(J - JOINT_WALL - px, J - JOINT_WALL, y - pw / 2, y + pw / 2, -1, ph))
-        cuts.append(xcyl(J - JOINT_WALL - 1, J + JOINT_NUT_AT + NUT_T_SLOT + 7, y, JOINT_SCREW_Z, SLOT_D))
-        cuts.append(box(J + JOINT_NUT_AT, J + JOINT_NUT_AT + NUT_T_SLOT, y - NUT_AF / 2, y + NUT_AF / 2, -1, JOINT_SCREW_Z + 3.3))
     for c in cuts:
         t = t.cut(c)
     return t
+
+
+
+# =====================================================================================================================
+# Form 4 (resin) version: hollow the tray, split it into 6 pieces, align the seams with printed dowels
+# =====================================================================================================================
+
+def hollow_tray(t):
+    """Hollow the tray from underneath with a grid of box pockets (one per rib cell, ribs RIB_T thick).  Each pocket
+    is as tall as it can be while keeping at least WALL of resin on every side and on top (checked against the real
+    solid); cells near seams, cavities, nut traps, feet and grooves fail the check and simply stay solid.  Every pocket
+    is open underneath, so no resin is trapped."""
+    xs = [0.0, SEAM_X[0], SEAM_X[1], float(TRAY_W)]
+    ys = [0.0, SEAM_Y, float(TRAY_D)]
+    pockets = []
+    levels = [TRAY_H - WALL - 0.2, 36.0, 30.0, 24.0, 18.5, 14.0, 10.0, 6.0]
+    for i in range(3):
+        for j in range(2):
+            x0, x1 = xs[i] + (6.0 if i else WALL), xs[i + 1] - (6.0 if i < 2 else WALL)
+            y0, y1 = ys[j] + (6.0 if j else WALL), ys[j + 1] - (6.0 if j < 1 else WALL)
+            nx = max(1, round((x1 - x0) / RIB_PITCH)); ny = max(1, round((y1 - y0) / RIB_PITCH))
+            cw, ch = (x1 - x0) / nx, (y1 - y0) / ny
+            for a in range(nx):
+                for b in range(ny):
+                    cx0 = x0 + a * cw + (RIB_T / 2 if a else 0); cx1 = x0 + (a + 1) * cw - (RIB_T / 2 if a < nx - 1 else 0)
+                    cy0 = y0 + b * ch + (RIB_T / 2 if b else 0); cy1 = y0 + (b + 1) * ch - (RIB_T / 2 if b < ny - 1 else 0)
+                    if cx1 - cx0 < 8 or cy1 - cy0 < 8:
+                        continue
+                    for h in levels:
+                        probe = box(cx0 - WALL, cx1 + WALL, cy0 - WALL, cy1 + WALL, 0.0, h + WALL)
+                        want = probe.val().Volume()
+                        got = t.intersect(probe)
+                        v = got.val().Volume() if got.solids().vals() else 0.0
+                        if v > want - 1.0:
+                            pockets.append(box(cx0, cx1, cy0, cy1, -1.0, h))
+                            break
+    print("  hollowing: %d underside pockets" % len(pockets))
+    return t.cut(union(pockets)) if pockets else t
+
+
+def seam_dowels(t):
+    """Dowel holes (DOWEL_HOLE x DOWEL_L, half each side) across every seam, wherever both sides are solid."""
+    holes, kept = [], []
+    r = DOWEL_HOLE / 2
+    half = DOWEL_L / 2 + 0.5
+    cand = []
+    for sx in SEAM_X:
+        for y in range(8, int(TRAY_D) - 7, 6):
+            for z in (6.0, 12.0, 18.0, 30.0, 38.0):
+                cand.append(("x", sx, float(y), z))
+    for y0 in [SEAM_Y]:
+        for x in range(8, int(TRAY_W) - 7, 6):
+            for z in (6.0, 12.0, 18.0, 30.0, 38.0):
+                cand.append(("y", float(x), y0, z))
+    for ax, a, b, z in cand:
+        if ax == "x":
+            c = cq.Workplane("YZ", origin=(a - half, b, z)).circle(r + 0.8).extrude(2 * half)
+        else:
+            c = cq.Workplane("XZ", origin=(a, b + half, z)).circle(r + 0.8).extrude(2 * half)
+        full = c.val().Volume()
+        inter = t.intersect(c)
+        v = inter.val().Volume() if inter.solids().vals() else 0.0
+        if v > 0.995 * full:
+            kept.append((ax, a, b, z))
+    # thin out: keep holes at least 22 mm apart along each seam
+    chosen = []
+    for k in kept:
+        if all(not (k[0] == q[0] and abs(k[1] - q[1]) + abs(k[2] - q[2]) < 22) for q in chosen):
+            chosen.append(k)
+    for ax, a, b, z in chosen:
+        if ax == "x":
+            holes.append(cq.Workplane("YZ", origin=(a - half, b, z)).circle(r).extrude(2 * half))
+        else:
+            holes.append(cq.Workplane("XZ", origin=(a, b + half, z)).circle(r).extrude(2 * half))
+    return t.cut(union(holes)), chosen
+
+
+def tray_pieces(t):
+    xs = [-1.0, SEAM_X[0], SEAM_X[1], TRAY_W + 1.0]
+    ys = [-1.0, SEAM_Y, TRAY_D + 1.0]
+    names = {(0, 0): "tray_front_left", (1, 0): "tray_front_middle", (2, 0): "tray_front_right",
+             (0, 1): "tray_back_left", (1, 1): "tray_back_middle", (2, 1): "tray_back_right"}
+    out = {}
+    for (i, j), n in names.items():
+        out[n] = t.intersect(box(xs[i], xs[i + 1], ys[j], ys[j + 1], -1, TRAY_H + 1))
+    return out
+
+
+def dowel_pin():
+    return cq.Workplane("XY").circle(DOWEL_D / 2).extrude(DOWEL_L).edges().chamfer(0.3)
 
 
 def floor_block(mono, p):
@@ -599,7 +686,7 @@ def mesh_check(path):
     ext = pts.max(0) - pts.min(0)
     return {"triangles": int(len(tri)), "watertight": watertight, "consistently_oriented": oriented,
             "volume_mm3": round(volume, 1), "size_mm": [round(float(x), 2) for x in ext],
-            "fits_bed": bool(np.all(ext <= BED_MAX + 1e-6)), "z_min": round(float(pts[:, 2].min()), 3),
+            "fits_bed": bool(np.all(np.sort(ext) <= np.array(FORM4_BOX) + 1e-6)), "z_min": round(float(pts[:, 2].min()), 3),
             "positive_volume": volume > 0}
 
 
@@ -616,6 +703,10 @@ def estimate(shape, infill_override=None):
 # build
 # =====================================================================================================================
 
+MATERIAL = {"tray": "Grey V5 (or Rigid 4000 for extra stiffness)", "kb_floor_block.stl": "Grey V5",
+            "mouse_floor_block.stl": "Grey V5", "pad_carrier.stl": "Tough 2000 V2", "kb_hatch.stl": "Grey V5 (or Tough 1000)",
+            "mouse_hatch.stl": "Grey V5 (or Tough 1000)", "dowel_pin.stl": "Tough 2000 V2", "coupon.stl": "Grey V5"}
+
 def build(render=True):
     OUT.mkdir(parents=True, exist_ok=True)
     BUILD.mkdir(parents=True, exist_ok=True)
@@ -623,8 +714,12 @@ def build(render=True):
           % (TRAY_W, TRAY_D, TRAY_H, JOINT_X, tuple(round(v, 1) for v in KB_PAD), tuple(round(v, 1) for v in MOUSE_PAD)))
     mono = monolith()
     tile = tile_full(mono)
-    tiles = {"tile_left": tile.intersect(box(-1, JOINT_X, -1, TRAY_D + 1, -1, TRAY_H + 1)),
-             "tile_right": tile.intersect(box(JOINT_X, TRAY_W + 1, -1, TRAY_D + 1, -1, TRAY_H + 1))}
+    solid_vol = tile.val().Volume()
+    tile = hollow_tray(tile)
+    print("  hollowed tray: %.0f -> %.0f cm3" % (solid_vol / 1000, tile.val().Volume() / 1000))
+    tile, dowels = seam_dowels(tile)
+    print("  %d dowel pins across the seams" % len(dowels))
+    tiles = tray_pieces(tile)
     blocks = {p: floor_block(mono, p) for p in POCKETS}
     hatches = {p: hatch(p) for p in POCKETS}
     car = carrier()
@@ -633,15 +728,15 @@ def build(render=True):
 
     # ---------------------------------------------------------------- print parts
     parts = [  # (file, workplane, qty, flip, infill, supports, orientation note, material)
-        ("tile_left.stl", tiles["tile_left"], 1, False, None, "none", "underside down (as assembled)"),
-        ("tile_right.stl", tiles["tile_right"], 1, False, None, "none", "underside down (as assembled)"),
-        ("kb_floor_block.stl", blocks["kb"], 1, False, None, "none", "1.0 mm charging floor DOWN on the bed (as assembled)"),
-        ("mouse_floor_block.stl", blocks["mouse"], 1, False, None, "none", "1.0 mm charging floor DOWN on the bed (as assembled)"),
-        ("pad_carrier.stl", car, 2, False, None, "none", "base down (as assembled)"),
-        ("kb_hatch.stl", hatches["kb"], 1, False, None, "none", "outside face (tick scale) down"),
-        ("mouse_hatch.stl", hatches["mouse"], 1, False, None, "none", "outside face (tick scale) down"),
-        ("joint_key.stl", k, 3, False, 1.0, "none", "flat"),
-        ("coupon.stl", cp, 1, True, 1.0, "none", "flipped: the 1.0 mm plate on the bed, skirt up"),
+        *[(n + ".stl", tiles[n], 1, False, None, "auto", "top (pocket side) up, tilted ~15-20 deg; supports on the hollow underside only")
+          for n in tiles],
+        ("kb_floor_block.stl", blocks["kb"], 1, False, None, "auto", "1.0 mm floor top face UP, tilted ~20 deg; NO supports on the floor top or pocket faces"),
+        ("mouse_floor_block.stl", blocks["mouse"], 1, False, None, "auto", "1.0 mm floor top face UP, tilted ~20 deg; NO supports on the floor top or pocket faces"),
+        ("pad_carrier.stl", car, 2, False, None, "auto", "base underside toward the platform, tilted; supports on the underside"),
+        ("kb_hatch.stl", hatches["kb"], 1, False, None, "auto", "standing on a long edge or tilted; supports on the inside face"),
+        ("mouse_hatch.stl", hatches["mouse"], 1, False, None, "auto", "standing on a long edge or tilted; supports on the inside face"),
+        ("dowel_pin.stl", dowel_pin(), len(dowels) + 4, False, 1.0, "auto", "standing or flat; print a few spares (count includes 4)"),
+        ("coupon.stl", cp, 1, True, 1.0, "auto", "1.0 mm plate top face up, tilted; supports on the skirt side only"),
     ]
     plist, checks = [], {}
     for fname, wp, qty, flip, infill, sup, orient in parts:
@@ -650,15 +745,18 @@ def build(render=True):
         mc = mesh_check(OUT / fname)
         g, h = estimate(s, infill)
         checks[fname] = mc
-        plist.append({"file": "print/" + fname, "qty": qty, "material": "PETG (PLA works for a test)",
+        plist.append({"file": "print/" + fname, "qty": qty,
+                      "material": MATERIAL["tray"] if fname.startswith("tray_") else MATERIAL[fname],
                       "orientation": orient, "supports": sup, "size_mm": mc["size_mm"],
-                      "grams_each_est": g, "hours_each_est": h, "solid_volume_cm3": round(s.Volume() / 1000, 1)})
-        print("  %-22s x%d  %-24s watertight=%s oriented=%s fits_bed=%s  ~%5.0f g  ~%.1f h"
+                      "resin_ml_each": round(s.Volume() / 1000, 1), "fits_form4": mc["fits_bed"]})
+        print("  %-24s x%d  %-24s watertight=%s oriented=%s fits_form4=%s  %6.1f mL resin"
               % (fname, qty, " x ".join("%.1f" % v for v in mc["size_mm"]), mc["watertight"], mc["consistently_oriented"],
-                 mc["fits_bed"], g, h))
-    (OUT / "print-list.json").write_text(json.dumps({"parts": plist, "estimate_model": {
-        "shell_mm": EST_SHELL, "infill": EST_INFILL, "rate_cm3_per_h": EST_RATE, "density": PETG_DENSITY,
-        "note": "rough volume-based estimate; the slicer's number wins"}}, indent=2) + "\n")
+                 mc["fits_bed"], s.Volume() / 1000))
+    total_ml = round(sum(p_["resin_ml_each"] * p_["qty"] for p_ in plist), 0)
+    (OUT / "print-list.json").write_text(json.dumps({"printer": "Formlabs Form 4", "parts": plist,
+        "total_resin_ml": total_ml, "dowels": len(dowels),
+        "note": "resin volume = part volume (SLA prints solid; the tray pieces are already hollowed). PreForm adds supports; its numbers win."}, indent=2) + "\n")
+    print("  total resin ~%.0f mL" % total_ml)
 
     # ---------------------------------------------------------------- assembly checks
     rep = {"tray_mm": [TRAY_W, TRAY_D, TRAY_H], "joint_x": JOINT_X}
@@ -722,9 +820,6 @@ def build(render=True):
     for p in POCKETS:
         for (x, y) in hatch_screws(p):
             metal.append(("hatch screw+nut " + p, x, y, HEX_D / 2))
-    for y in JOINT_SCREW_Y:
-        for x in (JOINT_X - JOINT_WALL - 3, JOINT_X + JOINT_NUT_AT + NUT_T_SLOT + 6):
-            metal.append(("joint screw/nut", x, y, HEX_D / 2))
     md = [(n, round(min(dist_rect(x, y, r) for r in sweeps.values()) - rad, 1)) for n, x, y, rad in metal]
     rep["metal_min_plan_distance_to_any_pad_position_mm"] = min(d for _, d in md)
     rep["metal_detail"] = md
@@ -750,8 +845,11 @@ def build(render=True):
         export_stl(s, BUILD / (name + ".stl"), tol=0.08)
         scene.append({"file": name + ".stl", "color": color, "explode": explode, "opacity": opacity, "group": group})
 
-    add("tile_left", tiles["tile_left"], "#b9b2a4", [-25, 0, 0])
-    add("tile_right", tiles["tile_right"], "#c4bdaf", [25, 0, 0])
+    shades = ["#b9b2a4", "#c4bdaf", "#b0a99b"]
+    for n in tiles:
+        col = 0 if "left" in n else 1 if "middle" in n else 2
+        add(n, tiles[n], shades[col] if "front" in n else shades[(col + 1) % 3],
+            [(-35, 0, 35)[col], -30 if "front" in n else 30, 0])
     add("kb_block", blocks["kb"], "#e0a458", [-25, 0, -70])
     add("mouse_block", blocks["mouse"], "#e0a458", [25, 0, -70])
     for p in POCKETS:

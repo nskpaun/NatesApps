@@ -1,146 +1,190 @@
 {
+  "printer": "Formlabs Form 4",
   "parts": [
     {
-      "file": "print/tile_left.stl",
+      "file": "print/tray_front_left.stl",
       "qty": 1,
-      "material": "PETG (PLA works for a test)",
-      "orientation": "underside down (as assembled)",
-      "supports": "none",
+      "material": "Grey V5 (or Rigid 4000 for extra stiffness)",
+      "orientation": "top (pocket side) up, tilted ~15-20 deg; supports on the hollow underside only",
+      "supports": "auto",
       "size_mm": [
-        243.0,
-        205.0,
+        190.0,
+        102.0,
         44.0
       ],
-      "grams_each_est": 299.7,
-      "hours_each_est": 8.53,
-      "solid_volume_cm3": 842.3
+      "resin_ml_each": 219.3,
+      "fits_form4": true
     },
     {
-      "file": "print/tile_right.stl",
+      "file": "print/tray_front_middle.stl",
       "qty": 1,
-      "material": "PETG (PLA works for a test)",
-      "orientation": "underside down (as assembled)",
-      "supports": "none",
+      "material": "Grey V5 (or Rigid 4000 for extra stiffness)",
+      "orientation": "top (pocket side) up, tilted ~15-20 deg; supports on the hollow underside only",
+      "supports": "auto",
       "size_mm": [
-        244.0,
-        205.0,
+        107.0,
+        102.0,
         44.0
       ],
-      "grams_each_est": 313.2,
-      "hours_each_est": 8.91,
-      "solid_volume_cm3": 920.4
+      "resin_ml_each": 143.3,
+      "fits_form4": true
+    },
+    {
+      "file": "print/tray_front_right.stl",
+      "qty": 1,
+      "material": "Grey V5 (or Rigid 4000 for extra stiffness)",
+      "orientation": "top (pocket side) up, tilted ~15-20 deg; supports on the hollow underside only",
+      "supports": "auto",
+      "size_mm": [
+        190.0,
+        102.0,
+        44.0
+      ],
+      "resin_ml_each": 208.9,
+      "fits_form4": true
+    },
+    {
+      "file": "print/tray_back_left.stl",
+      "qty": 1,
+      "material": "Grey V5 (or Rigid 4000 for extra stiffness)",
+      "orientation": "top (pocket side) up, tilted ~15-20 deg; supports on the hollow underside only",
+      "supports": "auto",
+      "size_mm": [
+        190.0,
+        103.0,
+        44.0
+      ],
+      "resin_ml_each": 277.9,
+      "fits_form4": true
+    },
+    {
+      "file": "print/tray_back_middle.stl",
+      "qty": 1,
+      "material": "Grey V5 (or Rigid 4000 for extra stiffness)",
+      "orientation": "top (pocket side) up, tilted ~15-20 deg; supports on the hollow underside only",
+      "supports": "auto",
+      "size_mm": [
+        107.0,
+        103.0,
+        44.0
+      ],
+      "resin_ml_each": 183.4,
+      "fits_form4": true
+    },
+    {
+      "file": "print/tray_back_right.stl",
+      "qty": 1,
+      "material": "Grey V5 (or Rigid 4000 for extra stiffness)",
+      "orientation": "top (pocket side) up, tilted ~15-20 deg; supports on the hollow underside only",
+      "supports": "auto",
+      "size_mm": [
+        190.0,
+        103.0,
+        44.0
+      ],
+      "resin_ml_each": 326.7,
+      "fits_form4": true
     },
     {
       "file": "print/kb_floor_block.stl",
       "qty": 1,
-      "material": "PETG (PLA works for a test)",
-      "orientation": "1.0 mm charging floor DOWN on the bed (as assembled)",
-      "supports": "none",
+      "material": "Grey V5",
+      "orientation": "1.0 mm floor top face UP, tilted ~20 deg; NO supports on the floor top or pocket faces",
+      "supports": "auto",
       "size_mm": [
         167.4,
         165.4,
         23.8
       ],
-      "grams_each_est": 79.7,
-      "hours_each_est": 2.34,
-      "solid_volume_cm3": 109.1
+      "resin_ml_each": 109.1,
+      "fits_form4": true
     },
     {
       "file": "print/mouse_floor_block.stl",
       "qty": 1,
-      "material": "PETG (PLA works for a test)",
-      "orientation": "1.0 mm charging floor DOWN on the bed (as assembled)",
-      "supports": "none",
+      "material": "Grey V5",
+      "orientation": "1.0 mm floor top face UP, tilted ~20 deg; NO supports on the floor top or pocket faces",
+      "supports": "auto",
       "size_mm": [
         167.4,
         165.4,
         23.8
       ],
-      "grams_each_est": 98.1,
-      "hours_each_est": 2.86,
-      "solid_volume_cm3": 180.5
+      "resin_ml_each": 180.5,
+      "fits_form4": true
     },
     {
       "file": "print/pad_carrier.stl",
       "qty": 2,
-      "material": "PETG (PLA works for a test)",
-      "orientation": "base down (as assembled)",
-      "supports": "none",
+      "material": "Tough 2000 V2",
+      "orientation": "base underside toward the platform, tilted; supports on the underside",
+      "supports": "auto",
       "size_mm": [
         105.2,
         137.0,
         9.0
       ],
-      "grams_each_est": 40.9,
-      "hours_each_est": 1.25,
-      "solid_volume_cm3": 39.7
+      "resin_ml_each": 39.7,
+      "fits_form4": true
     },
     {
       "file": "print/kb_hatch.stl",
       "qty": 1,
-      "material": "PETG (PLA works for a test)",
-      "orientation": "outside face (tick scale) down",
-      "supports": "none",
+      "material": "Grey V5 (or Tough 1000)",
+      "orientation": "standing on a long edge or tilted; supports on the inside face",
+      "supports": "auto",
       "size_mm": [
-        183.2,
-        174.2,
+        183.5,
+        174.5,
         4.0
       ],
-      "grams_each_est": 76.0,
-      "hours_each_est": 2.24,
-      "solid_volume_cm3": 96.3
+      "resin_ml_each": 96.8,
+      "fits_form4": true
     },
     {
       "file": "print/mouse_hatch.stl",
       "qty": 1,
-      "material": "PETG (PLA works for a test)",
-      "orientation": "outside face (tick scale) down",
-      "supports": "none",
+      "material": "Grey V5 (or Tough 1000)",
+      "orientation": "standing on a long edge or tilted; supports on the inside face",
+      "supports": "auto",
       "size_mm": [
-        183.2,
-        174.2,
+        183.5,
+        174.5,
         4.0
       ],
-      "grams_each_est": 76.0,
-      "hours_each_est": 2.24,
-      "solid_volume_cm3": 96.3
+      "resin_ml_each": 96.8,
+      "fits_form4": true
     },
     {
-      "file": "print/joint_key.stl",
-      "qty": 3,
-      "material": "PETG (PLA works for a test)",
-      "orientation": "flat",
-      "supports": "none",
+      "file": "print/dowel_pin.stl",
+      "qty": 11,
+      "material": "Tough 2000 V2",
+      "orientation": "standing or flat; print a few spares (count includes 4)",
+      "supports": "auto",
       "size_mm": [
-        20.0,
-        10.0,
-        6.0
+        3.0,
+        3.0,
+        13.0
       ],
-      "grams_each_est": 1.5,
-      "hours_each_est": 0.14,
-      "solid_volume_cm3": 1.2
+      "resin_ml_each": 0.1,
+      "fits_form4": true
     },
     {
       "file": "print/coupon.stl",
       "qty": 1,
-      "material": "PETG (PLA works for a test)",
-      "orientation": "flipped: the 1.0 mm plate on the bed, skirt up",
-      "supports": "none",
+      "material": "Grey V5",
+      "orientation": "1.0 mm plate top face up, tilted; supports on the skirt side only",
+      "supports": "auto",
       "size_mm": [
         110.0,
         110.0,
         4.0
       ],
-      "grams_each_est": 16.8,
-      "hours_each_est": 0.57,
-      "solid_volume_cm3": 13.2
+      "resin_ml_each": 13.2,
+      "fits_form4": true
     }
   ],
-  "estimate_model": {
-    "shell_mm": 1.0,
-    "infill": 0.15,
-    "rate_cm3_per_h": 28.0,
-    "density": 1.27,
-    "note": "rough volume-based estimate; the slicer's number wins"
-  }
+  "total_resin_ml": 1936.0,
+  "dowels": 7,
+  "note": "resin volume = part volume (SLA prints solid; the tray pieces are already hollowed). PreForm adds supports; its numbers win."
 }
