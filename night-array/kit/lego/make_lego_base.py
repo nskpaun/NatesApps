@@ -57,7 +57,8 @@ KB_PORT_FROM_REAR = 23.0            # USB-C centre (left side face) from the rea
 TAG_STICKOUT = 10.0                 # NILLKIN Magic Tag plug + fold beyond the keyboard's left face
 TAG_PAD = (48.0, 82.0, 1.0)         # receiver pad as it lies under the keyboard
 TAG_COIL_FROM_LEFT, TAG_COIL_FROM_REAR = 48.0, 38.0   # ESTIMATED receiver coil centre
-MOUSE_W, MOUSE_L, MOUSE_H = 59.0, 101.0, 34.0         # Lenovo X9; coil assumed at the mouse's plan centre
+MOUSE_W, MOUSE_L, MOUSE_H = 59.0, 101.0, 34.0         # Lenovo X9
+MOUSE_COIL_DX, MOUSE_COIL_DY = 0.0, 0.0            # coil offset from the mouse's plan centre: UNKNOWN, assumed 0
 PAD_W, PAD_H = 100.0, 11.2          # Anker 313 pad (square)
 PAD_CLR = 1.0                       # min. clearance round the pad in its cavity, per side
 MIN_CLR = 1.5                       # min. device-to-pocket-wall clearance per side
@@ -147,7 +148,7 @@ MS_CLR_X, MS_CLR_Y = (MS_NX * STUD - MOUSE_W) / 2, (MS_NY * STUD - MOUSE_L) / 2
 KB_DEV = (KB_X0 * STUD + KB_CLR_X, KB_Y0 * STUD + KB_CLR_Y)          # keyboard back-left corner
 MS_DEV = (MS_X0 * STUD + MS_CLR_X, MS_Y0 * STUD + MS_CLR_Y)
 KB_COIL = (KB_DEV[0] + TAG_COIL_FROM_LEFT, KB_DEV[1] + TAG_COIL_FROM_REAR)
-MS_COIL = (MS_DEV[0] + MOUSE_W / 2, MS_DEV[1] + MOUSE_L / 2)
+MS_COIL = (MS_DEV[0] + MOUSE_W / 2 + MOUSE_COIL_DX, MS_DEV[1] + MOUSE_L / 2 + MOUSE_COIL_DY)
 
 CAV_N = math.ceil((PAD_W + 2 * PAD_CLR) / STUD)                     # 13 studs = 104 mm
 
