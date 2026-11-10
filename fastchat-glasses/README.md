@@ -4,8 +4,8 @@ An AAC (augmentative and alternative communication) app for people who cannot sp
 
 1. The person you are talking with holds your phone and speaks to it.
 2. The phone transcribes what they said and a local language model writes four possible replies.
-3. The replies appear on your glasses, one per d-pad direction, each with an emoji so it can be read at a glance.
-4. You swipe up, right, down or left on the Neural Band, and the phone says that reply aloud.
+3. The replies appear on your glasses, laid out up, right, down and left, each with an emoji so it can be read at a glance.
+4. You swipe towards one on the Neural Band to highlight it and tap to confirm, and the phone says it aloud.
 
 Everything in a conversation happens on the phone: speech recognition, the language model and the voice. Nothing that is said or written leaves it. The internet is used only to download the models once and to register with the Meta AI app.
 
@@ -18,13 +18,20 @@ Everything in a conversation happens on the phone: speech recognition, the langu
 
 ## Gestures
 
+The four replies sit where their swipe points: up, right, down and left. Nothing is said until you tap.
+
 | Gesture | While listening | While choosing | While speaking |
 |---|---|---|---|
-| Swipe up / right / down / left | | Say that reply (as soon as it is on screen) | |
-| Pinch | Quick phrases: Yes, No, Thank you, Please give me a moment | Four different replies | |
-| Back | | Drop the replies and listen again | Stop talking |
+| Swipe up / right / down / left | | Highlight that reply | |
+| Pinch and turn | | Move the highlight round to the next reply | |
+| Tap | Quick phrases: Yes, No, Thank you, Please give me a moment | Say the highlighted reply. With nothing highlighted: four different replies | |
+| Back | | Clear the highlight. With nothing highlighted: drop the replies and listen again | Stop talking |
 
 The temple touchpad on the glasses does the same things as the band.
+
+**How the pinch-and-turn works.** The toolkit has no "turn" event. It reports a pinch-and-drag stream, and the dial is built on that. Measured on a real band, the position starts at 0 when the pinch goes down and x tops out at about 0.2 however far the wrist turns one way, so the dial steps every 0.047: one full turn is four steps, enough to reach any reply without letting go. After a step the wrist has to come a whole step back before the highlight moves back, so it cannot flicker between two replies. Debug builds log every drag sample (`adb logcat -s FastChatGlasses`) for further tuning.
+
+**Feedback when the highlight moves.** The toolkit gives apps no way to vibrate the band or the glasses, so each move of the highlight plays a soft click in the glasses' own speakers instead, heard only by the wearer. It follows the glasses' media volume and can be switched off in Settings. If the glasses are not connected as a Bluetooth speaker, nothing is played.
 
 ## Status
 
@@ -90,7 +97,8 @@ Debug builds accept commands from a computer:
 A="adb shell am start -n com.natesapps.fastchat/.MainActivity"
 $A --ez start true                              # press Start
 $A --es heard "Do you want to get lunch?"       # as if the partner had said this
-$A --es gesture down                            # up | right | down | left | pinch | back
+$A --es gesture down                            # up | right | down | left | cw | ccw | tap | back
+$A --ez simulated true                          # switch the simulated glasses on or off
 $A --ez reset true                              # forget the conversation so far
 $A --es name Sam --es about "I have a dog."      # set the wearer's details
 adb logcat -s FastChat                          # timings for hearing, replies and voice

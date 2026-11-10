@@ -6,10 +6,12 @@ import android.util.Log
 import com.natesapps.fastchat.core.Effect
 import com.natesapps.fastchat.core.Event
 import com.natesapps.fastchat.core.GlassesInput
+import com.natesapps.fastchat.core.Phase
 import com.natesapps.fastchat.core.State
 import com.natesapps.fastchat.core.reduce
 import com.natesapps.fastchat.core.screenFor
 import com.natesapps.fastchat.glasses.GlassesLink
+import com.natesapps.fastchat.glasses.Tick
 import com.natesapps.fastchat.llm.LlamaEngine
 import com.natesapps.fastchat.llm.ReplyWriter
 import com.natesapps.fastchat.models.ModelStore
@@ -58,6 +60,7 @@ class FastChat(private val app: Application) {
     val settings = SettingsStore(app)
     val models = ModelStore(File(app.getExternalFilesDir(null) ?: app.filesDir, "models"))
     val glasses = GlassesLink(app, scope)
+    private val tick = Tick(app)
 
     private val _setup = MutableStateFlow<Setup>(Setup.NeedsDownload(0))
     val setup: StateFlow<Setup> = _setup.asStateFlow()
@@ -193,8 +196,15 @@ class FastChat(private val app: Application) {
     }
 
     private fun dispatch(event: Event) {
-        val step = reduce(_conversation.value, event)
+        val before = _conversation.value
+        val step = reduce(before, event)
         _conversation.value = step.state
+        // Feedback the wearer can feel without looking: a click each time the highlight lands
+        // on another reply.
+        val focus = (step.state.phase as? Phase.Choosing)?.focus
+        if (focus != null && focus != (before.phase as? Phase.Choosing)?.focus && settings.settings.value.tick) {
+            tick.play()
+        }
         glasses.show(screenFor(step.state))
         step.effects.forEach(::perform)
     }

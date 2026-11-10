@@ -74,23 +74,29 @@ class MainActivity : ComponentActivity() {
     /**
      * Debug builds only: drive the app from a computer, e.g.
      * `adb shell am start -n com.natesapps.fastchat/.MainActivity --es heard "Want some lunch?"`
-     * `--es gesture up|right|down|left|pinch|back`, `--ez reset true` to forget the conversation,
-     * and `--es name ...` / `--es about ...` to set the wearer's details.
+     * `--es gesture up|right|down|left|cw|ccw|tap|back`, `--ez reset true` to forget the conversation,
+     * `--es name ...` / `--es about ...` to set the wearer's details, and `--ez simulated true|false`.
      * See the README.
      */
     private fun handleDebugExtras(intent: Intent?) {
         if (intent == null || applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE == 0) return
         if (intent.getBooleanExtra("start", false)) startConversation()
         if (intent.getBooleanExtra("reset", false)) fastChat.debugReset()
+        if (intent.hasExtra("simulated")) {
+            val on = intent.getBooleanExtra("simulated", false)
+            fastChat.settings.update { it.copy(simulatedGlasses = on) }
+        }
         intent.getStringExtra("name")?.let { name -> fastChat.settings.update { it.copy(name = name) } }
         intent.getStringExtra("about")?.let { about -> fastChat.settings.update { it.copy(about = about) } }
         intent.getStringExtra("heard")?.let(fastChat::debugHeard)
         val gesture = when (intent.getStringExtra("gesture")) {
-            "up" -> GlassesInput.Pick(Dpad.UP)
-            "right" -> GlassesInput.Pick(Dpad.RIGHT)
-            "down" -> GlassesInput.Pick(Dpad.DOWN)
-            "left" -> GlassesInput.Pick(Dpad.LEFT)
-            "pinch" -> GlassesInput.More
+            "up" -> GlassesInput.Highlight(Dpad.UP)
+            "right" -> GlassesInput.Highlight(Dpad.RIGHT)
+            "down" -> GlassesInput.Highlight(Dpad.DOWN)
+            "left" -> GlassesInput.Highlight(Dpad.LEFT)
+            "cw" -> GlassesInput.Turn(clockwise = true)
+            "ccw" -> GlassesInput.Turn(clockwise = false)
+            "tap" -> GlassesInput.Confirm
             "back" -> GlassesInput.Back
             else -> null
         }

@@ -5,22 +5,36 @@ package com.natesapps.fastchat.core
  * returns the next state plus the [Effect]s to run. Nothing here touches Android, audio, the model
  * or the glasses, so the whole flow is unit-tested on the JVM.
  *
- * One turn: Listening → (partner speaks) → Choosing (replies arrive one by one) → (d-pad pick)
- * → Speaking → Listening.
+ * One turn: Listening → (partner speaks) → Choosing (replies arrive one by one) → (highlight a
+ * reply, then tap) → Speaking → Listening.
  */
 
-/** The four d-pad directions, in the order replies are assigned to them. */
-enum class Dpad { UP, RIGHT, DOWN, LEFT }
+/**
+ * The four positions replies are shown in, in clockwise order starting at the top. Replies are
+ * assigned to them in this order.
+ */
+enum class Dpad {
+    UP, RIGHT, DOWN, LEFT;
 
-/** What the wearer can do from the glasses. */
+    /** The next position going round: clockwise, or the other way. */
+    fun turned(clockwise: Boolean): Dpad = entries[(ordinal + (if (clockwise) 1 else entries.size - 1)) % entries.size]
+}
+
+/** What the wearer can do from the glasses. Nothing is said until a highlighted reply is tapped. */
 sealed interface GlassesInput {
-    /** A d-pad swipe: say the reply in that slot. */
-    data class Pick(val direction: Dpad) : GlassesInput
+    /** A swipe: highlight the reply in that direction. */
+    data class Highlight(val direction: Dpad) : GlassesInput
 
-    /** A pinch: other replies while choosing, quick phrases while listening. */
-    data object More : GlassesInput
+    /** One step of the pinch-and-turn dial: move the highlight round to the next reply. */
+    data class Turn(val clockwise: Boolean) : GlassesInput
 
-    /** Back: drop the current replies (or stop speaking) and listen again. */
+    /**
+     * A finger tap: say the highlighted reply. With nothing highlighted it asks for other replies
+     * while choosing, and opens the quick phrases while listening.
+     */
+    data object Confirm : GlassesInput
+
+    /** Back: clear the highlight; with none, drop the replies (or stop speaking) and listen again. */
     data object Back : GlassesInput
 }
 
@@ -44,14 +58,18 @@ sealed interface Phase {
     /**
      * Replies on the glasses. [heard] is what the partner said, or null for quick phrases.
      * [replies] fills up while the model writes; [done] turns true when it has finished.
+     * [focus] is the highlighted reply, the one a tap would say; null when none is.
      */
     data class Choosing(
         val heard: String?,
         val replies: List<Reply>,
         val done: Boolean,
         val round: Int = 0,
+        val focus: Dpad? = null,
     ) : Phase {
         val isQuickPhrases: Boolean get() = heard == null
+
+        fun reply(position: Dpad): Reply? = replies.getOrNull(position.ordinal)
     }
 
     /** The picked reply is being spoken from the phone. */
@@ -166,7 +184,7 @@ private fun onInput(state: State, input: GlassesInput): Step {
         Phase.Off -> Step(state)
 
         Phase.Listening -> when (input) {
-            GlassesInput.More ->
+            GlassesInput.Confirm ->
                 Step(
                     state.copy(phase = Phase.Choosing(heard = null, replies = QUICK_PHRASES, done = true)),
                     listOf(Effect.StopListening),
@@ -175,37 +193,56 @@ private fun onInput(state: State, input: GlassesInput): Step {
         }
 
         is Phase.Choosing -> when (input) {
-            is GlassesInput.Pick -> {
-                // A reply can be picked as soon as it is on screen, without waiting for the rest.
-                val text = phase.replies.getOrNull(input.direction.ordinal)?.text ?: return Step(state)
-                Step(
-                    state.copy(
-                        phase = Phase.Speaking(text),
-                        history = (state.history + Turn(Speaker.ME, text)).takeLast(HISTORY_TURNS),
-                        offered = emptyList(),
-                    ),
-                    listOf(Effect.CancelGeneration, Effect.Speak(text)),
-                )
+            // A reply can be highlighted as soon as it is on screen, without waiting for the rest.
+            is GlassesInput.Highlight ->
+                if (phase.reply(input.direction) == null) Step(state)
+                else Step(state.copy(phase = phase.copy(focus = input.direction)))
+
+            is GlassesInput.Turn -> {
+                // Round to the next reply that exists; the first turn starts at the top (or, going
+                // the other way, at the left).
+                var next = phase.focus?.turned(input.clockwise) ?: if (input.clockwise) Dpad.UP else Dpad.LEFT
+                repeat(Dpad.entries.size) { if (phase.reply(next) == null) next = next.turned(input.clockwise) }
+                if (phase.reply(next) == null) Step(state) else Step(state.copy(phase = phase.copy(focus = next)))
             }
 
-            GlassesInput.More -> {
-                if (phase.isQuickPhrases) return listen(state)
-                val offered = (state.offered + phase.replies.map { it.text }).distinct()
-                val generation = state.generation + 1
-                Step(
-                    state.copy(
-                        phase = phase.copy(replies = emptyList(), done = false, round = phase.round + 1),
-                        generation = generation,
-                        offered = offered,
-                    ),
-                    listOf(Effect.CancelGeneration, Effect.Generate(generation, state.history, avoid = offered)),
-                )
+            GlassesInput.Confirm -> {
+                val text = phase.focus?.let(phase::reply)?.text
+                when {
+                    text != null -> Step(
+                        state.copy(
+                            phase = Phase.Speaking(text),
+                            history = (state.history + Turn(Speaker.ME, text)).takeLast(HISTORY_TURNS),
+                            offered = emptyList(),
+                        ),
+                        listOf(Effect.CancelGeneration, Effect.Speak(text)),
+                    )
+
+                    // Nothing highlighted: a tap asks for something else.
+                    phase.isQuickPhrases -> listen(state)
+
+                    else -> {
+                        val offered = (state.offered + phase.replies.map { it.text }).distinct()
+                        val generation = state.generation + 1
+                        Step(
+                            state.copy(
+                                phase = phase.copy(replies = emptyList(), done = false, round = phase.round + 1),
+                                generation = generation,
+                                offered = offered,
+                            ),
+                            listOf(Effect.CancelGeneration, Effect.Generate(generation, state.history, avoid = offered)),
+                        )
+                    }
+                }
             }
 
-            GlassesInput.Back -> {
-                val step = listen(state)
-                step.copy(effects = listOf(Effect.CancelGeneration) + step.effects)
-            }
+            GlassesInput.Back ->
+                if (phase.focus != null) {
+                    Step(state.copy(phase = phase.copy(focus = null)))
+                } else {
+                    val step = listen(state)
+                    step.copy(effects = listOf(Effect.CancelGeneration) + step.effects)
+                }
         }
 
         is Phase.Speaking -> when (input) {

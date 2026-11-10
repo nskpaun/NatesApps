@@ -352,7 +352,7 @@ private fun SimulatedGlasses(fastChat: FastChat, modifier: Modifier = Modifier) 
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            val swipe = { direction: Dpad -> fastChat.glasses.simulate(GlassesInput.Pick(direction)) }
+            val swipe = { direction: Dpad -> fastChat.glasses.simulate(GlassesInput.Highlight(direction)) }
             PadKey("▲", "Swipe up") { swipe(Dpad.UP) }
             Row(horizontalArrangement = Arrangement.spacedBy(40.dp)) {
                 PadKey("◀", "Swipe left") { swipe(Dpad.LEFT) }
@@ -360,7 +360,11 @@ private fun SimulatedGlasses(fastChat: FastChat, modifier: Modifier = Modifier) 
             }
             PadKey("▼", "Swipe down") { swipe(Dpad.DOWN) }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                TextButton(onClick = { fastChat.glasses.simulate(GlassesInput.More) }) { Text("Pinch") }
+                TextButton(onClick = { fastChat.glasses.simulate(GlassesInput.Turn(clockwise = false)) }) { Text("⟲") }
+                TextButton(onClick = { fastChat.glasses.simulate(GlassesInput.Confirm) }) { Text("Tap") }
+                TextButton(onClick = { fastChat.glasses.simulate(GlassesInput.Turn(clockwise = true)) }) { Text("⟳") }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 TextButton(onClick = { fastChat.glasses.simulate(GlassesInput.Back) }) { Text("Back") }
             }
         }
@@ -453,6 +457,17 @@ private fun SettingsScreen(
                     Button(onClick = onConnectGlasses) { Text("Connect through Meta AI") }
                 }
             }
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("Tick when the highlight moves", style = MaterialTheme.typography.bodyLarge)
+                Text(
+                    "A soft click in the glasses' speakers, heard only by you. Apps cannot make the band vibrate.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Muted,
+                )
+            }
+            Switch(checked = settings.tick, onCheckedChange = { on -> update { it.copy(tick = on) } })
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {

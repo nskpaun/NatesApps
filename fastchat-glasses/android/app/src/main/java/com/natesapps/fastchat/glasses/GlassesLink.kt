@@ -2,6 +2,8 @@ package com.natesapps.fastchat.glasses
 
 import android.app.Activity
 import android.content.Context
+import android.content.pm.ApplicationInfo
+import android.os.SystemClock
 import android.util.Log
 import com.meta.wearable.dat.core.Wearables
 import com.meta.wearable.dat.core.selectors.AutoDeviceSelector
@@ -22,11 +24,13 @@ import com.meta.wearable.dat.display.views.Alignment
 import com.meta.wearable.dat.display.views.ContentScope
 import com.meta.wearable.dat.display.views.Direction
 import com.meta.wearable.dat.display.views.FlexBoxBackground
+import com.meta.wearable.dat.display.views.FlexBoxScope
 import com.meta.wearable.dat.display.views.IconName
 import com.meta.wearable.dat.display.views.TextColor
 import com.meta.wearable.dat.display.views.TextStyle
 import com.meta.wearable.dat.inputs.addInputs
 import com.meta.wearable.dat.inputs.removeInputs
+import com.meta.wearable.dat.inputs.types.DragAction
 import com.meta.wearable.dat.inputs.types.InputEvent
 import com.meta.wearable.dat.inputs.types.InputSource
 import com.meta.wearable.dat.inputs.types.InputsConfiguration
@@ -36,10 +40,12 @@ import com.meta.wearable.dat.inputs.types.NavDirection
 import com.meta.wearable.dat.mockdevice.MockDeviceKit
 import com.meta.wearable.dat.mockdevice.api.GlassesModel
 import com.meta.wearable.dat.mockdevice.api.MockGlasses
+import com.natesapps.fastchat.core.Dial
 import com.natesapps.fastchat.core.Dpad
 import com.natesapps.fastchat.core.GlassesInput
 import com.natesapps.fastchat.core.GlassesScreen
 import com.natesapps.fastchat.core.Reply
+import kotlin.math.abs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -57,6 +63,15 @@ import kotlinx.coroutines.launch
 
 private const val TAG = "FastChatGlasses"
 
+/** A tap this soon after letting go of the dial is the release itself, not a decision. */
+private const val TAP_AFTER_DIAL_MS = 500L
+
+/** How far the simulated pinch-and-drag travels: a little over one dial step. */
+private const val SIMULATED_TURN = Dial.DEFAULT_STEP * 1.2f
+
+/** How far the top and bottom replies are inset from the sides, so they sit in the middle. */
+private const val SIDE_INSET = 90
+
 /** How often to try again while registered glasses exist but no session is open. */
 private const val RETRY_MS = 5_000L
 
@@ -69,8 +84,9 @@ private const val RETRY_MS = 5_000L
  * Call everything from the main thread; [scope] must dispatch on it.
  *
  * Two input modes, picked automatically:
- * - **D-pad** (Inputs capability active): a swipe up/right/down/left says that reply, a pinch asks
- *   for more, back cancels. One gesture per reply.
+ * - **D-pad** (Inputs capability active): a swipe up/right/down/left highlights that reply, a
+ *   pinch-and-turn moves the highlight round, a tap says the highlighted reply (or asks for
+ *   more when none is), and back clears the highlight or cancels.
  * - **Tap** (Inputs not granted to this app, see the README): replies are drawn as focusable
  *   cards; the wearer moves focus and taps, which the Display capability reports on its own.
  */
@@ -109,6 +125,14 @@ class GlassesLink(private val appContext: Context, private val scope: CoroutineS
     /** The simulated glasses, when on: the phone UI previews their display and drives their d-pad. */
     private val _mockGlasses = MutableStateFlow<MockGlasses?>(null)
     val mockGlasses: StateFlow<MockGlasses?> = _mockGlasses.asStateFlow()
+
+    private val debuggable = appContext.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0
+
+    /** The pinch-and-turn dial, fed from the band's drag stream. */
+    private val dial = Dial()
+
+    /** When a drag that turned the dial was let go, to tell its release from a deliberate tap. */
+    private var dialReleasedAt = 0L
 
     private val screen = MutableStateFlow<GlassesScreen>(GlassesScreen.Status("FastChat"))
     private val display = MutableStateFlow<Display?>(null)
@@ -314,10 +338,11 @@ class GlassesLink(private val appContext: Context, private val scope: CoroutineS
         )
 
         session.addInputs(
-            // The band's swipes and pinches, plus the temple touchpad as a fallback surface.
-            // Back is consumed so a stray back gesture cannot end the session mid-conversation.
+            // The band's swipes and taps, its pinch-and-drag stream (the dial), and the temple
+            // touchpad as a fallback surface. Back is consumed so a stray back gesture cannot end
+            // the session mid-conversation.
             InputsConfiguration(
-                sources = setOf(InputSource.NEURAL_BAND, InputSource.CAPTOUCH),
+                sources = setOf(InputSource.NEURAL_BAND, InputSource.NEURAL_BAND_DRAG, InputSource.CAPTOUCH),
                 consumeBack = true,
             ),
         ).fold(
@@ -337,14 +362,7 @@ class GlassesLink(private val appContext: Context, private val scope: CoroutineS
                     }
                 }
                 launch {
-                    inputs.events.collect { event ->
-                        when (event) {
-                            is InputEvent.Nav -> _inputs.tryEmit(GlassesInput.Pick(event.direction.toDpad()))
-                            is InputEvent.Select -> _inputs.tryEmit(GlassesInput.More)
-                            is InputEvent.Back -> _inputs.tryEmit(GlassesInput.Back)
-                            else -> Unit
-                        }
-                    }
+                    inputs.events.collect(::onInput)
                 }
             },
             onFailure = { error, _ ->
@@ -416,18 +434,59 @@ class GlassesLink(private val appContext: Context, private val scope: CoroutineS
         }
     }
 
+    /** Turns what the glasses report into what the wearer meant. */
+    private fun onInput(event: InputEvent) {
+        when (event) {
+            is InputEvent.Nav -> _inputs.tryEmit(GlassesInput.Highlight(event.direction.toDpad()))
+
+            is InputEvent.Select -> {
+                // Letting go of a pinch-and-turn can also register as a tap: that one is not a
+                // decision to speak, so it is dropped.
+                val justTurned = SystemClock.elapsedRealtime() - dialReleasedAt < TAP_AFTER_DIAL_MS
+                if (!justTurned) _inputs.tryEmit(GlassesInput.Confirm)
+            }
+
+            is InputEvent.Back -> _inputs.tryEmit(GlassesInput.Back)
+
+            is InputEvent.Drag -> {
+                // Debug builds log every sample: the toolkit does not document what a
+                // pinch-and-turn looks like in this stream, so this is how the dial was tuned.
+                if (debuggable) {
+                    Log.d(TAG, "drag ${event.action} x=${event.x} y=${event.y} dx=${event.dx} dy=${event.dy} from ${event.source}")
+                }
+                when (event.action) {
+                    DragAction.DOWN -> dial.start()
+                    DragAction.MOVE -> {
+                        val steps = dial.move(event.dx)
+                        repeat(abs(steps)) { _inputs.tryEmit(GlassesInput.Turn(clockwise = steps > 0)) }
+                    }
+                    DragAction.UP -> if (dial.turned) dialReleasedAt = SystemClock.elapsedRealtime()
+                }
+            }
+
+            else -> Unit
+        }
+    }
+
     /** Performs [input] on the simulated glasses, as if the wearer had made the gesture. */
     fun simulate(input: GlassesInput) {
         val kit = _mockGlasses.value?.services?.input ?: return
         val band = InputSource.NEURAL_BAND
         when (input) {
-            is GlassesInput.Pick -> when (input.direction) {
+            is GlassesInput.Highlight -> when (input.direction) {
                 Dpad.UP -> kit.navUp(band)
                 Dpad.RIGHT -> kit.navRight(band)
                 Dpad.DOWN -> kit.navDown(band)
                 Dpad.LEFT -> kit.navLeft(band)
             }
-            GlassesInput.More -> kit.select(band)
+            is GlassesInput.Turn -> {
+                // A short pinch-and-drag: far enough for exactly one step of the dial.
+                val travel = if (input.clockwise) SIMULATED_TURN else -SIMULATED_TURN
+                kit.drag(DragAction.DOWN, 0f, 0f, 0f, 0f)
+                kit.drag(DragAction.MOVE, travel, 0f, travel, 0f)
+                kit.drag(DragAction.UP, travel, 0f, 0f, 0f)
+            }
+            GlassesInput.Confirm -> kit.select(band)
             GlassesInput.Back -> kit.back(band)
         }
     }
@@ -447,60 +506,85 @@ class GlassesLink(private val appContext: Context, private val scope: CoroutineS
                 screen.detail?.let { text(it, style = TextStyle.BODY) }
                 if (screen.offersQuickPhrases) {
                     if (dpad) {
-                        text("Pinch for quick phrases", style = TextStyle.META, color = TextColor.SECONDARY)
+                        text("Tap for quick phrases", style = TextStyle.META, color = TextColor.SECONDARY)
                     } else {
-                        button("Quick phrases", onClick = { _inputs.tryEmit(GlassesInput.More) })
+                        button("Quick phrases", onClick = { _inputs.tryEmit(GlassesInput.Confirm) })
                     }
                 }
             }
 
-            is GlassesScreen.Choices -> flexBox(direction = Direction.COLUMN, gap = 8, padding = 12) {
-                screen.heard?.let { text("“$it”", style = TextStyle.META, color = TextColor.SECONDARY) }
-                screen.replies.forEachIndexed { slot, reply ->
-                    val direction = Dpad.entries[slot]
-                    if (dpad) {
-                        flexBox(
-                            direction = Direction.ROW,
-                            gap = 12,
-                            crossAlignment = Alignment.CENTER,
-                            padding = 10,
-                            background = FlexBoxBackground.CARD,
-                        ) {
-                            icon(direction.caret())
-                            text(reply?.label() ?: "…", style = TextStyle.BODY, flexGrow = 1f, flexShrink = 1f)
-                        }
-                    } else if (reply != null) {
-                        flexBox(
-                            padding = 10,
-                            background = FlexBoxBackground.CARD,
-                            onClick = { _inputs.tryEmit(GlassesInput.Pick(direction)) },
-                        ) {
-                            text(reply.label(), style = TextStyle.BODY)
-                        }
-                    }
+            // The four replies sit where their swipe points: up, right, down and left, around a
+            // small centre that says what a tap will do.
+            is GlassesScreen.Choices -> flexBox(direction = Direction.COLUMN, gap = 6, padding = 8) {
+                flexBox(direction = Direction.ROW, alignment = Alignment.CENTER, paddingStart = SIDE_INSET, paddingEnd = SIDE_INSET) {
+                    slot(screen, Dpad.UP, dpad)
                 }
-                val hint = when {
-                    !screen.done -> "Writing replies…"
-                    !dpad -> null
-                    screen.quick -> "Swipe to say · Pinch to go back"
-                    else -> "Swipe to say · Pinch for more"
+                flexBox(direction = Direction.ROW, gap = 6, crossAlignment = Alignment.CENTER) {
+                    slot(screen, Dpad.LEFT, dpad)
+                    centre(screen, dpad)
+                    slot(screen, Dpad.RIGHT, dpad)
                 }
-                hint?.let { text(it, style = TextStyle.META, color = TextColor.SECONDARY) }
-                if (!dpad && screen.done) {
-                    button(if (screen.quick) "Back" else "More replies", onClick = { _inputs.tryEmit(GlassesInput.More) })
+                flexBox(direction = Direction.ROW, alignment = Alignment.CENTER, paddingStart = SIDE_INSET, paddingEnd = SIDE_INSET) {
+                    slot(screen, Dpad.DOWN, dpad)
                 }
             }
         }
     }
 
-    /** The emoji first, so the eye can find a reply without reading it. */
-    private fun Reply.label(): String = if (emoji.isEmpty()) text else "$emoji  $text"
+    /**
+     * One reply: its emoji large, its words below. The highlighted one gets a card behind it and
+     * the others dim. In tap mode (no d-pad) touching a reply says it straight away.
+     */
+    private fun FlexBoxScope.slot(screen: GlassesScreen.Choices, position: Dpad, dpad: Boolean) {
+        val reply = screen.replies[position.ordinal]
+        val focused = screen.focus == position
+        val say: (() -> Unit)? = if (dpad || reply == null) null else {
+            {
+                _inputs.tryEmit(GlassesInput.Highlight(position))
+                _inputs.tryEmit(GlassesInput.Confirm)
+            }
+        }
+        flexBox(
+            direction = Direction.COLUMN,
+            gap = 2,
+            alignment = Alignment.CENTER,
+            crossAlignment = Alignment.CENTER,
+            padding = 10,
+            background = if (focused) FlexBoxBackground.CARD else FlexBoxBackground.NONE,
+            onClick = say,
+            flexGrow = 1f,
+            flexShrink = 1f,
+        ) {
+            text(reply?.emoji?.ifEmpty { "•" } ?: "…", style = TextStyle.HEADING, alignSelf = Alignment.CENTER)
+            if (reply != null) {
+                text(
+                    reply.text,
+                    style = TextStyle.BODY,
+                    color = if (screen.focus == null || focused) TextColor.PRIMARY else TextColor.SECONDARY,
+                    alignSelf = Alignment.CENTER,
+                )
+            }
+        }
+    }
 
-    private fun Dpad.caret(): IconName = when (this) {
-        Dpad.UP -> IconName.CARET_UP
-        Dpad.RIGHT -> IconName.CARET_RIGHT
-        Dpad.DOWN -> IconName.CARET_DOWN
-        Dpad.LEFT -> IconName.CARET_LEFT
+    /** The middle of the cross: what a tap does right now. */
+    private fun FlexBoxScope.centre(screen: GlassesScreen.Choices, dpad: Boolean) {
+        val other = if (screen.quick) "back" else "more"
+        flexBox(direction = Direction.COLUMN, alignment = Alignment.CENTER, crossAlignment = Alignment.CENTER, padding = 4) {
+            when {
+                !dpad && screen.done -> button(other.replaceFirstChar(Char::uppercase), onClick = { _inputs.tryEmit(GlassesInput.Confirm) })
+                !dpad -> text("…", style = TextStyle.META, color = TextColor.SECONDARY)
+                screen.focus != null -> {
+                    text("Tap", style = TextStyle.META, color = TextColor.SECONDARY)
+                    text("to say", style = TextStyle.META, color = TextColor.SECONDARY)
+                }
+                !screen.done -> text("…", style = TextStyle.META, color = TextColor.SECONDARY)
+                else -> {
+                    text("Tap:", style = TextStyle.META, color = TextColor.SECONDARY)
+                    text(other, style = TextStyle.META, color = TextColor.SECONDARY)
+                }
+            }
+        }
     }
 
     private fun NavDirection.toDpad(): Dpad = when (this) {
