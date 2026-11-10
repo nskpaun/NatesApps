@@ -841,7 +841,7 @@ def run_checks(courses, rows, doc):
         f"{Z_FACE:.2f}; floor tiles {Z_FLOOR:.2f} + felt {FELT} = landing {Z_LAND:.2f}; depth {OVERMOLD_DEPTH:.2f} mm "
         f"(16.0 mm of LEGO between seat and floor top minus the {HEAD_Z} mm head; the felt cancels)")
     # 7 plug held down: boot under the roof tiles, saddle under it
-    roof = [p for p in allp if p["part"] == "2431" and p["z"] == FLOOR_L]
+    roof = [p for p in allp if p["part"] == "2431" and p["z"] == FLOOR_L and p["x"] == h(6)]
     boot_top, roof_z = Z_CABLE + BOOT_D / 2, FLOOR_L * PLATE
     boot_bot, sad_z = Z_CABLE - BOOT_D / 2, 3 * PLATE
     chk("plug held down for lift-out (boot clamped between saddle and roof)", boot_top < roof_z and boot_bot > sad_z
