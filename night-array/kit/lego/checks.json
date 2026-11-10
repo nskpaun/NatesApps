@@ -1,0 +1,106 @@
+{
+ "size_studs": [
+  61,
+  26,
+  14
+ ],
+ "size_mm": [
+  488.0,
+  208.0,
+  44.800000000000004
+ ],
+ "keyboard_pocket_studs": [
+  41,
+  17
+ ],
+ "mouse_pocket_studs": [
+  8,
+  13
+ ],
+ "walls_studs": {
+  "left": 3,
+  "middle": 4,
+  "right": 5,
+  "back": 6,
+  "front": 3
+ },
+ "pad_cavities": {
+  "keyboard": [
+   3,
+   5,
+   13,
+   13
+  ],
+  "mouse": [
+   46,
+   8,
+   13,
+   13
+  ]
+ },
+ "channels_x": {
+  "keyboard": [
+   8,
+   3
+  ],
+  "mouse": [
+   51,
+   3
+  ]
+ },
+ "parts_total": 535,
+ "parts_by_kind": {
+  "brick": 258,
+  "plate": 129,
+  "tile": 148
+ },
+ "distinct_lines": 55,
+ "est_cost_usd": 199.75,
+ "checks": [
+  {
+   "check": "every layer packed exactly (no holes, no overlaps)",
+   "ok": true,
+   "detail": "14 plate layers OK"
+  },
+  {
+   "check": "every part is in the part table / colour table",
+   "ok": true,
+   "detail": "55 distinct part/colour lines"
+  },
+  {
+   "check": "pocket clearance >= 1.5 mm per side",
+   "ok": true,
+   "detail": "keyboard x 3.69, keyboard y 5.00, mouse x 2.50, mouse y 1.50 (nominal; real +0.1 from the LEGO inset)"
+  },
+  {
+   "check": "one 3.2 mm tile layer between each pad and its device; pad top touches it",
+   "ok": true,
+   "detail": "keyboard: 156 pad cells under the device all tile=True, cavity clear=True, pad top 19.2 vs tile underside 19.2 (gap +0.0), 8x16 tiles gripped by >=8 studs each=True, pad centre off the coil estimate (+0.3, +1.0) mm, pad-to-cavity clearance 2.0 mm/side; mouse: 104 pad cells under the device all tile=True, cavity clear=True, pad top 19.2 vs tile underside 19.2 (gap +0.0), 8x16 tiles gripped by >=8 studs each=True, pad centre off the coil estimate (+4.0, +0.0) mm, pad-to-cavity clearance 2.0 mm/side"
+  },
+  {
+   "check": "all parts connected by studs (one rigid assembly)",
+   "ok": true,
+   "detail": "535/535 parts reachable from the base"
+  },
+  {
+   "check": "parts not gripped from below (held from above only)",
+   "ok": true,
+   "detail": "1 parts (plates bridging the cable channels / mouse cavity edges; held by the bricks above)"
+  },
+  {
+   "check": "seams staggered (% of seam edges continuing the course below)",
+   "ok": true,
+   "detail": "overall 7.4%; L1 on L0: 0%, L2-L4 on L1: 5%, L5 on L2-L4: 21%, L6 on L5: 7%, L7-L9 on L6: 6%, L10-L12 on L7-L9: 9%, L13 on L10-L12: 7%"
+  },
+  {
+   "check": "overall height close to 44 mm",
+   "ok": true,
+   "detail": "44.8 mm (14 plates); pocket floor at 22.4 mm, pocket depth 22.4 mm; keyboard top -2.4 mm vs rim at the front, +3.1 at the back; mouse +11.6 mm proud"
+  },
+  {
+   "check": "Magic Tag relief",
+   "ok": true,
+   "detail": "11.7 mm of room left of the keyboard over 5 studs (needs 10.0)"
+  }
+ ]
+}
