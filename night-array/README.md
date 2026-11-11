@@ -70,6 +70,8 @@ See [`cad/README.md`](cad/README.md) for how to open them in FreeCAD, Fusion and
 
 [`web/studio.html`](web/studio.html) is the app's live 3D Studio and the parts list as one browser page, with the same renderer and model as the Android app. `python3 web/build.py` assembles the files it loads into `web/dist/`.
 
+[`web/deck-etch.html`](web/deck-etch.html) is a concept study on the same model: a design etched into the deck liner and lit by the screens. It compares a matte white etch with an etch of tiny mirror facets aimed at the seat, with and without an angle-sorting film on the screen, from the seat and from other viewpoints. The etch is drawn with the real mirror geometry, and its brightness is to scale with the screen. The brightness figures on the page are estimates from a ray trace of the station's geometry. `npm run build:etch` in `viewer/` (after `npm ci`) writes the page, its script and the model into `web/dist/`.
+
 ## Install
 
 Download [`NightArray.apk`](NightArray.apk) on an Android phone or tablet (Android 8.0+), open it, and allow installs from that source when prompted. It's signed with a debug key, so Play Protect may warn that the developer is unknown. The live Studio needs WebGL2, which current Android System WebView has on almost all devices; without it, the app shows the rendered stills instead.
