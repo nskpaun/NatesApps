@@ -1,0 +1,78 @@
+{
+ "note": "Non-LEGO parts of the LEGO station. Electronics are NOT repeated here: they are the items with these ids in night-array/kit/parts.json. The two monitors are the owner's own.",
+ "items": [
+  {
+   "id": "vesa_mount",
+   "qty": 2,
+   "unit_usd": 34.99,
+   "product": "VIVO Single Monitor Desk Mount STAND-V001C (black) / STAND-V001CW (white)",
+   "mpn": "STAND-V001C",
+   "url": "https://vivo-us.com/products/stand-v001c",
+   "role": "carries one monitor each: steel pole, tilt bracket, C-clamp (or grommet bolt)",
+   "dims": "pole 17.7 in (450 mm) x ~35 mm dia; 17.6 lb (8 kg); VESA 75 + 100; desk 10-88 mm (clamp)"
+  },
+  {
+   "id": "frame_bar",
+   "qty": 2,
+   "unit_usd": 9.0,
+   "product": "Aluminium flat bar 1/8 in x 3/4 in x 48 in (3.2 x 19 x 1219 mm), e.g. Everbilt / Hillman, 6063",
+   "mpn": "generic 1/8 x 3/4 x 48",
+   "url": "any hardware store (Home Depot / Lowe's / Ace metal rack)",
+   "role": "stiffener inside the frame's bottom and top beam (slot 8 mm wide x 19.2 mm high); no cutting",
+   "dims": "3.2 x 19.05 x 1219 mm, ~0.2 kg each"
+  },
+  {
+   "id": "vesa_standoffs",
+   "qty": 1,
+   "unit_usd": 9.0,
+   "product": "4 x M4 male-female hex stand-off 22 mm (steel or brass) + 4 x M4 x 10 screws",
+   "mpn": "generic",
+   "url": "any fastener kit",
+   "role": "brings the thinner monitor's glass forward into the same plane (stand-offs: left 0 mm, right 22 mm)",
+   "dims": "M4, 22 mm"
+  },
+  {
+   "id": "felt",
+   "qty": 1,
+   "unit_usd": 8.0,
+   "product": "self-adhesive felt sheet 1 mm, A4, x2 (shared with the dock)",
+   "mpn": "generic",
+   "url": "craft store",
+   "role": "dock liners (see ../dock/README.md); dots inside the bezel corners; side liners in an opening when the stud grid leaves more than 4 mm (left 2 mm, right 0 mm per side)",
+   "dims": "1 mm"
+  },
+  {
+   "id": "eva",
+   "qty": 1,
+   "unit_usd": 7.0,
+   "product": "EVA craft foam 3 mm sheet + 1 mm foam tape (shared with the dock)",
+   "mpn": "generic",
+   "url": "craft store",
+   "role": "plug pocket pads (dock); pads on the retaining lips (left 6 mm, right 0 mm thick); foam collars between pole and neck cheeks; 2 mm foam under each Qi pad",
+   "dims": "3 mm / 1 mm"
+  },
+  {
+   "id": "feet",
+   "qty": 1,
+   "unit_usd": 6.0,
+   "product": "3M Bumpon SJ5023 (in kit/parts.json: feet) or thin felt dots",
+   "mpn": "SJ5023",
+   "url": "see ../../parts.json",
+   "role": "optional: under the floor plates on a slippery desk",
+   "dims": ""
+  }
+ ],
+ "electronics_in_kit_parts_json": [
+  "dock (Plugable UD-6950PDH)",
+  "cradle_cable (Newnex U4T1C01CR5P010)",
+  "keyboard",
+  "keyboard_qi",
+  "mouse",
+  "qi_pad (x2)",
+  "power_strip (outside, behind/under the desk: it does not fit inside)",
+  "monitor_cords (only for a monitor with an internal PSU)",
+  "gan_charger",
+  "ties"
+ ],
+ "total_usd": 117.98
+}
