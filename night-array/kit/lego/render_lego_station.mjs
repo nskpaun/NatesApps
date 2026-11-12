@@ -154,7 +154,7 @@ function desk(yFront = SY + 420) {
 const REF_STYLE = {
   monitor: { rough: 0.6 }, screen: { rough: 0.25, edges: false }, stand: { rough: 0.45, metal: 0.4 },
   bar: { rough: 0.35, metal: 0.6 }, hardware: { metal: 0.5 }, electronics: {}, pad: {}, foam: {}, felt: { opacity: 0.9 },
-  cable: {}, tag: {}, plug: {}, device: { rough: 0.4 },
+  cable: {}, tag: {}, plug: {}, device: { rough: 0.4 }, core: { rough: 0.7, edgeOpacity: 0.3 },
 };
 // refs: which = function(ref) -> null (skip) | {off, opacity, hi}
 function refs(which) {
@@ -250,10 +250,10 @@ await page.waitForFunction(() => window.ready === true, null, { timeout: 180000 
 const save = (file, url) => { fs.writeFileSync(file, Buffer.from(url.split(',')[1], 'base64')); console.log('wrote', path.relative(process.cwd(), file)); };
 const VIEWS = { overview: 'overview.png', back: 'back.png', exploded: 'exploded-sections.png', section: 'section-neck.png' };
 for (const [v, f] of Object.entries(VIEWS)) {
-  if (only && only !== v) continue;
+  if (only && !only.split(',').includes(v)) continue;
   save(path.join(dir, f), await page.evaluate(v => window.render(v, 0), v));
 }
-if (!only || only === 'steps') {
+if (!only || only.split(',').includes('steps')) {
   const n = await page.evaluate(() => window.maxStep);
   for (let s = 1; s <= n; s++) save(path.join(stepsDir, `step-${String(s).padStart(2, '0')}.png`), await page.evaluate(s => window.render('step', s), s));
 }

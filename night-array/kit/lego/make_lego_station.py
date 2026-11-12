@@ -7,6 +7,8 @@ Plain python3, no external dependencies.  Run from anywhere:
     python3 night-array/kit/lego/make_lego_station.py                  # model + lists + checks + renders
     python3 night-array/kit/lego/make_lego_station.py --no-render      # skip the PNGs (needs node + playwright)
     python3 night-array/kit/lego/make_lego_station.py --lite           # cheaper variant, written to station/lite/
+    python3 night-array/kit/lego/make_lego_station.py --budget         # low-cost variant on a bought shelf board +
+                                                                       # baseplates (~1,400 parts), station/budget/
     python3 night-array/kit/lego/make_lego_station.py --left acer_kb272_ebi --right sceptre_e275w_fpt
     python3 night-array/kit/lego/make_lego_station.py --model 14       # passed on to the dock generator (MacBook 14")
 
@@ -59,7 +61,8 @@ import make_lego_base as base   # noqa: E402
 import make_lego_dock as dock   # noqa: E402  (also parses --model / --port)
 
 LITE = "--lite" in sys.argv
-OUT = HERE / "station" / ("lite" if LITE else "")
+BUDGET = "--budget" in sys.argv                    # low-cost variant: bought core + far fewer bricks (see budget/README.md)
+OUT = HERE / "station" / ("budget" if BUDGET else "lite" if LITE else "")
 DATA = HERE / "station"
 STUD, PLATE, HALF = base.STUD, base.PLATE, 4.0
 
@@ -159,6 +162,13 @@ STAND = {"product": "VIVO Single Monitor Desk Mount STAND-V001C (black) / STAND-
 BAR = {"product": "Aluminium flat bar 1/8 in x 3/4 in (3.2 x 19 mm), 6063: one 48 in (1219 mm) for the bottom beam, "
                   "one 36 in (914 mm) for the top beam, e.g. Everbilt / Hillman",
        "t": 3.2, "h": 19.05, "len": 1219.0, "len_top": 914.0, "usd": 9.0, "usd_top": 7.0, "E": 69000.0}
+# Budget core (not LEGO, bought at size, nothing to cut): one shelf board on the desk in front of the clamps, four
+# 32 x 32 baseplates taped on it.  Verified 2026-11-12: IKEA BERGSHULT shelf, white, 120 x 30 cm, 2.5 cm thick,
+# article 304.212.35; LEGO White Baseplate 11026 (32 x 32 studs, 25.5 cm), US$7.99.
+BOARD = {"product": "IKEA BERGSHULT shelf, white, 120x30 cm (47 1/4 x 11 3/4 in), 2.5 cm thick", "mpn": "304.212.35",
+         "url": "https://www.ikea.com/us/en/p/bergshult-shelf-white-30421235/", "w": 1200.0, "d": 300.0, "t": 25.0,
+         "usd": 25.0, "kg": 5.5}
+BASEPLATE_T = 1.6                                    # LEGO baseplate sheet thickness (LDraw 3811: 4 LDU)
 PLUGABLE = (225.0, 85.0, 24.5)                       # UD-6950PDH dock box
 SCREEN_GAP = (1.5, 4.0)                              # allowed clearance monitor housing -> LEGO opening, per side
 FACE_GAP = (1.5, 8.0)                                # allowed air gap front glass -> back of the bezel bricks
@@ -166,11 +176,12 @@ FACE_GAP = (1.5, 8.0)                                # allowed air gap front gla
 # =====================================================================================================================
 # COLOURS  LDraw id -> (BrickLink id, hex, name, price multiplier)
 # =====================================================================================================================
-SB, TAN, LBG, BLK, BLO, LN, LAV, GOLD = 379, 19, 71, 0, 191, 78, 31, 297
+SB, TAN, LBG, BLK, BLO, LN, LAV, GOLD, DBG, WHITE = 379, 19, 71, 0, 191, 78, 31, 297, 72, 15
 COLOURS = {SB: (55, "#70819a", "Sand Blue", 2.2), TAN: (2, "#d7ba8c", "Tan", 1.1),
            LBG: (86, "#a0a5a9", "Light Bluish Gray", 1.0), BLK: (11, "#1b2a34", "Black", 1.0),
            BLO: (110, "#fcac00", "Bright Light Orange", 1.5), LN: (90, "#ffc995", "Light Nougat", 2.0),
-           LAV: (154, "#cda4de", "Lavender", 1.6), GOLD: (115, "#aa7f2e", "Pearl Gold", 1.5)}
+           LAV: (154, "#cda4de", "Lavender", 1.6), GOLD: (115, "#aa7f2e", "Pearl Gold", 1.5),
+           DBG: (85, "#6c6e68", "Dark Bluish Gray", 1.0), WHITE: (1, "#f4f4f4", "White", 1.0)}
 MIN_SETS = 5      # a part/colour counts as "exists and is findable" if >= this many sets contain it (Rebrickable)
 AVAIL = json.loads((DATA / "part-colour-availability.json").read_text())["sets"]
 
@@ -189,10 +200,11 @@ PARTS.update({
     "3040b": ("slope", 1, 2, "Slope 45 2 x 1", 0.08),
     "11477": ("cslope", 1, 2, "Slope, Curved 2 x 1 x 2/3", 0.06), "15068": ("cslope", 2, 2, "Slope, Curved 2 x 2 x 2/3", 0.08),
     "3665": ("islope", 1, 2, "Slope, Inverted 45 2 x 1", 0.08),
+    "3811": ("baseplate", 32, 32, "Baseplate 32 x 32", 7.99),
 })
 HEIGHT = dock.HEIGHT
-HEIGHT.update({"cslope": 2, "islope": 3})
-dock.MASS_PER_CELL.update({"cslope": 0.12, "islope": 0.2})
+HEIGHT.update({"cslope": 2, "islope": 3, "baseplate": 1})
+dock.MASS_PER_CELL.update({"cslope": 0.12, "islope": 0.2, "baseplate": 0.06})
 BRICKS = [p for p, v in PARTS.items() if v[0] == "brick"]
 PLATES = [p for p, v in PARTS.items() if v[0] == "plate" and p != dock.JUMPER]
 TILES = [p for p, v in PARTS.items() if v[0] == "tile" and p != "90498"]
@@ -202,8 +214,8 @@ def pset(ids, col):
     return [p for p in ids if avail(p, col) >= MIN_SETS]
 
 
-S_BRICK = {c: pset(BRICKS, c) for c in (SB, TAN, LBG)}
-S_PLATE = {c: pset(PLATES, c) for c in (SB, TAN, LBG, BLO, LN, LAV)}
+S_BRICK = {c: pset(BRICKS, c) for c in (SB, TAN, LBG, DBG, BLK)}
+S_PLATE = {c: pset(PLATES, c) for c in (SB, TAN, LBG, BLO, LN, LAV, DBG, BLK)}
 S_TILE = {c: pset(TILES, c) for c in (SB, TAN, LBG, BLK)}
 
 # =====================================================================================================================
@@ -226,7 +238,7 @@ def opening(m):
 
 
 OPEN = [opening(m) for m in MON]
-COL_W, WEB_W = 2, 1                                # frame side columns, web between the two housings
+COL_W, WEB_W = (1 if BUDGET else 2), 1                                # frame side columns, web between the two housings
 FRAME_W = COL_W + OPEN[0]["n"] + WEB_W + OPEN[1]["n"] + COL_W
 OPEN_X = [COL_W, COL_W + OPEN[0]["n"] + WEB_W]     # left stud of each opening
 WEB_X = COL_W + OPEN[0]["n"]
@@ -236,7 +248,7 @@ BASE_W, BASE_D = FRAME_W, 40                       # base = frame width; 14 stud
 REAR = BASE_D - base.TRAY_D                        # 14
 PB0 = round(FRAME_W / 2 - (base.KB_X0 + (base.MS_X0 + base.MS_NX - base.KB_X0) / 2))   # pockets centred on the seam
 PY0 = REAR
-DOCK_X0, DOCK_Y0 = BASE_W, BASE_D - dock.BASE_D    # dock: right end, flush with the front (5 studs filler behind)
+DOCK_X0, DOCK_Y0 = BASE_W, (14 if BUDGET else BASE_D - dock.BASE_D)    # dock: right end, flush with the front (5 studs filler behind)
 TOTAL_W = BASE_W + dock.BASE_W
 N_BASE = base.N_LAYERS                             # 14 plates = 44.8 mm
 
@@ -244,9 +256,9 @@ N_BASE = base.N_LAYERS                             # 14 plates = 44.8 mm
 Y_FACE = STAND["pole_y"] + STAND["bracket"] + max(m["vesa_to_front"] for m in MON)       # mm
 SPACER = [round(max(m["vesa_to_front"] for m in MON) - m["vesa_to_front"]) for m in MON]  # VESA stand-offs (mm)
 FYB = math.ceil((Y_FACE + FACE_GAP[0]) / STUD - 1e-9)       # stud row of the bezel bricks (in front of the glass)
-FRAME_D = 5
+FRAME_D = 3 if BUDGET else 5
 FY0 = FYB - (FRAME_D - 1)                          # frame occupies rows FY0 .. FYB
-SLOT_Y = FY0 + 2                                   # row of the aluminium bar slot in both beams
+SLOT_Y = FY0 + FRAME_D // 2                                   # row of the aluminium bar slot in both beams
 FACE_AIR = FYB * STUD - Y_FACE
 
 # necks
@@ -258,7 +270,8 @@ for i in (0, 1):
     NECK.append({"c0": c0, "c1": c0 + cw, "x0": c0 - 2, "x1": c0 + cw + 2,
                  "hole": R(c0, int(round(POLE_C[i][1])) - 3, cw, 7)})
 NECK_Z0, NECK_COURSES = 13, 7                      # base plate at L13, then 7 courses (21 plates)
-ZB = NECK_Z0 + 1 + 3 * NECK_COURSES                # 35: frame bottom beam starts
+Z_OFF = (BOARD["t"] + BASEPLATE_T) if BUDGET else 0.0   # budget: LEGO layer 0 starts on the baseplates, this high
+ZB = 27 if BUDGET else NECK_Z0 + 1 + 3 * NECK_COURSES                # 35: frame bottom beam starts
 ZO = ZB + 8                                        # 43: bottom of the openings
 HMAX = max(o["nz"] for o in OPEN)
 ZT = ZO + HMAX                                     # top beam starts
@@ -274,7 +287,7 @@ def lips(i):
 
 
 LIP = [lips(i) for i in (0, 1)]
-MON_Z0 = [(ZO + SILL[i]) * PLATE + OPEN[i]["clr_z"] for i in (0, 1)]      # housing bottom (mm)
+MON_Z0 = [Z_OFF + (ZO + SILL[i]) * PLATE + OPEN[i]["clr_z"] for i in (0, 1)]      # housing bottom (mm)
 MON_X0 = [OPEN_X[i] * STUD + (OPEN[i]["n"] * STUD - MON[i]["W"]) / 2 for i in (0, 1)]
 VESA_Z = [MON_Z0[i] + MON[i]["H"] / 2 for i in (0, 1)]
 # retaining lip behind the monitors' top edge
@@ -896,6 +909,18 @@ def receptors(p):
     return pts
 
 
+ZSEC = {s_: Z_OFF for s_ in ("base", "pockets", "necks", "frame")} if BUDGET else {}
+
+
+def box(p):
+    """mm box of a part in the station frame (budget: sections on the baseplates are lifted by Z_OFF)."""
+    x, y, z, sx, sy, sz = dock.mm_box(p)
+    off = ZSEC.get(p["section"], 0.0)
+    if p["kind"] == "baseplate":
+        return x, y, off - BASEPLATE_T, sx, sy, BASEPLATE_T
+    return x, y, z + off, sx, sy, sz
+
+
 def ldraw_line(p):
     if p["kind"] == "cslope":           # LDraw origin = centre of the footprint, at the BOTTOM; high end at +Z
         x, y, z, sx, sy, sz = dock.mm_box(p)
@@ -917,13 +942,12 @@ def write_ldr(path):
     name = "night-array-station.ldr"
     L = [f"0 FILE {name}", "0 Night Array station (LEGO)", f"0 Name: {name}",
          "0 Author: make_lego_station.py (Night Array)", "0 !LDRAW_ORG Unofficial_Model",
-         f"0 // {TOTAL_W} x {BASE_D} studs footprint ({TOTAL_W * STUD:.0f} x {BASE_D * STUD:.0f} mm), "
-         f"{Z_TOP * PLATE:.1f} mm tall.  Front faces -Z.",
+         f"0 // {SIZE_MM[0]:.0f} x {SIZE_MM[1]:.0f} x {SIZE_MM[2]:.0f} mm.  Front faces -Z.",
          f"0 // Monitors: left {MON[0]['name']}; right {MON[1]['name']}",
          "0 // Not LEGO, not in the file: VESA pole mounts, monitors, aluminium bars, pads, foam, felt, cables."]
     for s in SECTIONS:
         L.append(f"0 // Section: {s} -- {SECTION_NOTE[s]}")
-        L.append(f"1 16 0 0 0 1 0 0 0 1 0 0 0 1 station-{s}.ldr")
+        L.append(f"1 16 0 {-ZSEC.get(s, 0.0) * 2.5 + 0.0:g} 0 1 0 0 0 1 0 0 0 1 station-{s}.ldr")
         L.append("0 STEP")
     L.append("0 NOFILE")
     for s in SECTIONS:
@@ -988,58 +1012,66 @@ def reference_boxes():
         r.update(kw)
         refs.append(r)
 
+    T = RST
     for i in (0, 1):
         m = MON[i]
         side = "left" if i == 0 else "right"
         t = min(m["top_edge_depth"], m["D"])
         add(f"{m['name']} ({side} monitor, housing)", "monitor", "#17181b", MON_X0[i], Y_FACE - t, MON_Z0[i], m["W"], t,
-            m["H"], 12)
+            m["H"], T["mon"])
         bw, bh = m["W"] * 0.62, m["H"] * 0.62
         add(f"{side} monitor rear bulge (ports face down, vents)", "monitor", "#1d1e22", MON_CX[i] - bw / 2,
-            Y_FACE - m["vesa_to_front"], VESA_Z[i] - bh / 2, bw, m["vesa_to_front"] - t, bh, 12)
+            Y_FACE - m["vesa_to_front"], VESA_Z[i] - bh / 2, bw, m["vesa_to_front"] - t, bh, T["mon"])
         add(f"{side} screen (active area {ACTIVE_W} x {ACTIVE_H})", "screen", "#07080c", MON_CX[i] - ACTIVE_W / 2,
-            Y_FACE - 0.2, MON_Z0[i] + m["bezel"]["bottom"], ACTIVE_W, 0.6, ACTIVE_H, 12)
+            Y_FACE - 0.2, MON_Z0[i] + m["bezel"]["bottom"], ACTIVE_W, 0.6, ACTIVE_H, T["mon"])
         px, py = MON_CX[i], STAND["pole_y"]
         add(f"VIVO STAND-V001C pole dia {STAND['pole_d']:.0f} x {STAND['pole_len']:.0f} ({side})", "stand", "#3a3d42",
             px - STAND["pole_d"] / 2, py - STAND["pole_d"] / 2, STAND["clamp_h"], STAND["pole_d"], STAND["pole_d"],
-            STAND["pole_len"], 4, shape="cyl")
+            STAND["pole_len"], T["stand"], shape="cyl")
         add(f"C-clamp top plate on the desk ({side}; steel)", "stand", "#2b2d31", px - STAND["clamp_w"] / 2, 0,
-            0, STAND["clamp_w"], STAND["clamp_d"], STAND["clamp_h"], 4)
+            0, STAND["clamp_w"], STAND["clamp_d"], STAND["clamp_h"], T["stand"])
         add(f"C-clamp body under the desk edge ({side})", "stand", "#2b2d31", px - 30, -22, -70, 60, 22,
-            70 + STAND["clamp_h"], 4)
+            70 + STAND["clamp_h"], T["stand"])
         y_plate = Y_FACE - m["vesa_to_front"] - SPACER[i]
-        add(f"tilt bracket ({side})", "stand", "#3a3d42", px - 30, py, VESA_Z[i] - 35, 60, y_plate - 4 - py, 70, 4)
-        add(f"VESA plate 120 x 120 ({side})", "stand", "#3a3d42", px - 60, y_plate - 4, VESA_Z[i] - 60, 120, 4, 120, 12)
+        add(f"tilt bracket ({side})", "stand", "#3a3d42", px - 30, py, VESA_Z[i] - 35, 60, y_plate - 4 - py, 70, T["stand"])
+        add(f"VESA plate 120 x 120 ({side})", "stand", "#3a3d42", px - 60, y_plate - 4, VESA_Z[i] - 60, 120, 4, 120, T["mon"])
         if SPACER[i]:
             for dx in (-50, 50):
                 for dz in (-50, 50):
                     add(f"M4 stand-off {SPACER[i]} mm ({side})", "hardware", "#b8a05a", px + dx - 4, y_plate,
-                        VESA_Z[i] + dz - 4, 8, SPACER[i], 8, 12)
-    for (z, st, nm, x0, n, ln) in ((ZB + 1, 13, "bottom beam", BAR_X0, BAR_STUDS, BAR["len"]),
-                                   (ZT, 15, "top beam", TBAR_X0, TBAR_STUDS, BAR["len_top"])):
+                        VESA_Z[i] + dz - 4, 8, SPACER[i], 8, T["mon"])
+    for (z, st, nm, x0, n, ln) in ((ZB + 1, T["bar1"], "bottom beam", BAR_X0, BAR_STUDS, BAR["len"]),
+                                   (ZT + (1 if BUDGET else 0), T["bar2"], "top beam", TBAR_X0, TBAR_STUDS, BAR["len_top"])):
         add(f"aluminium flat bar 3.2 x 19 x {ln:.0f} in the {nm}", "bar", "#c9ccd1", x0 * STUD + (n * STUD - ln) / 2,
-            SLOT_Y * STUD + (STUD - BAR["t"]) / 2, z * PLATE, ln, BAR["t"], BAR["h"], st)
+            SLOT_Y * STUD + (STUD - BAR["t"]) / 2, Z_OFF + z * PLATE, ln, BAR["t"], BAR["h"], st)
     for r in base.reference_boxes():                         # keyboard, mouse, pads, foam, Magic Tag
-        r = dict(r, x=r["x"] + PB0 * STUD, y=r["y"] + PY0 * STUD)
-        r["step"] = 4 if r.get("step") == 5 else 16
+        if BUDGET and r["kind"] == "foam":
+            continue                                         # budget: the pad stands on the baseplate studs
+        r = dict(r, x=r["x"] + PB0 * STUD, y=r["y"] + TRAY_Y0 * STUD, z=round(r["z"] + TRAY_DZ, 2))
+        r["step"] = T["pad"] if r.get("step") == 5 else T["dev"]
         refs.append(r)
     for r in dock.reference_boxes():                         # laptop, plug, foam, felt
         r = dict(r, x=r["x"] + DOCK_X0 * STUD, y=r["y"] + DOCK_Y0 * STUD)
-        r["step"] = 9 if r.get("step") == 5 else 16
+        r["step"] = T["plug"] if r.get("step") == 5 else T["dev"]
         if r["name"].startswith("USB4 cable"):               # stop it at the back edge of the station
             end = r["y"] + r["sy"]
             r["y"], r["sy"] = -20.0, end + 20.0
         refs.append(r)
-    bx = (DOCKBAY[0] + 1) * STUD
-    add("Plugable UD-6950PDH dock box 225 x 85 x 24.5", "electronics", "#2f3136", bx, (REAR + 2) * STUD + 2, PLATE,
-        PLUGABLE[0], PLUGABLE[1], PLUGABLE[2], 4)
+    if BUDGET:
+        add(BOARD["product"], "core", "#f1efe9", BOARD_X0, BOARD_Y0, 0, BOARD["w"], BOARD["d"], BOARD["t"], 1)
+        add("Plugable UD-6950PDH dock box 225 x 85 x 24.5 (on the desk behind the board)", "electronics", "#2f3136",
+            (MON_CX[0] + MON_CX[1]) / 2 - PLUGABLE[0] / 2, 4, 0, PLUGABLE[0], PLUGABLE[1], PLUGABLE[2], 1)
+    else:
+        bx = (DOCKBAY[0] + 1) * STUD
+        add("Plugable UD-6950PDH dock box 225 x 85 x 24.5", "electronics", "#2f3136", bx, (REAR + 2) * STUD + 2, PLATE,
+            PLUGABLE[0], PLUGABLE[1], PLUGABLE[2], 4)
     return refs
 
 
 def brick_json(p):
     kind, w, l, name, _ = PARTS[p["part"]]
-    x, y, z, sx, sy, sz = dock.mm_box(p)
-    b = {"part": p["part"], "name": name, "kind": {"cslope": "slope", "islope": "slope"}.get(kind, kind),
+    x, y, z, sx, sy, sz = box(p)
+    b = {"part": p["part"], "name": name, "kind": {"cslope": "slope", "islope": "slope", "baseplate": "plate"}.get(kind, kind),
          "color": COLOURS[p["color"]][2], "color_hex": COLOURS[p["color"]][1], "x": x, "y": y, "z": round(z, 2),
          "sx": sx, "sy": sy, "sz": round(sz, 2), "step": p["step"], "section": p["section"]}
     if kind == "slope":
@@ -1051,6 +1083,9 @@ def brick_json(p):
     return b
 
 
+SIZE_MM = [TOTAL_W * STUD, BASE_D * STUD, round(Z_TOP * PLATE, 2)]
+
+
 def write_json(refs):
     doc = {"units": "mm",
            "frame": "x right (as you sit), y depth toward the user (0 = back edge of the base / desk), z up (0 = "
@@ -1059,7 +1094,7 @@ def write_json(refs):
                     "jumper 15573: one centre stud; curved slopes: none); 'slope' {down, high_mm, lip_mm} as in "
                     "dock/bricks.json, plus curved:true (2/3-high bow, no studs) or inverted:true (the overhang "
                     "points toward 'down', studs on the whole top); 'section' = base | pockets | dock | necks | frame",
-           "size_mm": [TOTAL_W * STUD, BASE_D * STUD, round(Z_TOP * PLATE, 2)], "size_studs": [TOTAL_W, BASE_D],
+           "size_mm": SIZE_MM, "size_studs": [TOTAL_W, round(SIZE_MM[1] / STUD)],
            "sections": SECTION_NOTE, "steps": {str(k): v[1] for k, v in STEPS.items()},
            "step_section": {str(k): v[0] for k, v in STEPS.items()},
            "bricks": [brick_json(p) for p in ALL], "reference": refs}
@@ -1470,27 +1505,484 @@ def run_checks(rows, refs):
     return res, extra
 
 
+# =====================================================================================================================
+# BUDGET VARIANT (--budget): a bought shelf board + four baseplates carry a much smaller LEGO build
+# =====================================================================================================================
+# Plan (y from the desk's back edge): clamps and poles y 0-90 on the bare desk; the board from y 95; four 32 x 32
+# baseplates in a row taped on the board; on them the pocket tray, two pedestals and the slim frame.  The dock is
+# the dock generator's own build standing on the desk right of the board.  Colours: whatever is cheapest and most
+# common for each part (Dark Bluish Gray body, Black frame and floors, Light Bluish Gray dock liner, White
+# baseplates); the only accents are three stripe plates per pedestal and four gold tiles.
+BP_Y0 = math.ceil((STAND["clamp_d"] + 5 + 8) / STUD)            # baseplate back edge (stud row); board starts 9 mm before
+BP_N = 4
+BOARD_X0 = FRAME_W * STUD / 2 - BOARD["w"] / 2                  # board centred under the frame
+BOARD_Y0 = float(STAND["clamp_d"] + 5)
+
+
+def _baseplate_x0():
+    """Shift the row of baseplates so the tray and the pedestals straddle the joints (that ties all four together)."""
+    spans = [(PB0, PB0 + base.TRAY_W)] + [(n["x0"], n["x1"]) for n in NECK]
+    for k in sorted(range(-12, 13), key=abs):
+        x0 = WEB_X - 16 * BP_N + k
+        if x0 * STUD < BOARD_X0 or (x0 + 32 * BP_N) * STUD > BOARD_X0 + BOARD["w"]:
+            continue
+        if any(a < x0 or b > x0 + 32 * BP_N for a, b in spans):
+            continue
+        link = set()
+        for a, b in spans:
+            link |= set(range((a - x0) // 32, (b - 1 - x0) // 32))      # joints j|j+1 this span bridges
+        if link == set(range(BP_N - 1)):
+            return x0
+    raise RuntimeError("no baseplate position ties the four baseplates together")
+
+
+BP_X0 = _baseplate_x0() if BUDGET else 0
+TY0 = BP_Y0 + 32 - base.TRAY_D                                  # tray flush with the front of the baseplates
+TRAY_Y0 = TY0 if BUDGET else PY0
+B_FLOOR_L = 4                                                   # budget tray: tile layer (cavity = layers 0-3 = 12.8 mm)
+TRAY_DZ = (Z_OFF + (B_FLOOR_L + 1) * PLATE - (base.FLOOR_L + 1) * PLATE) if BUDGET else 0.0
+RST = ({"mon": 5, "stand": 1, "bar1": 6, "bar2": 7, "pad": 2, "dev": 9, "plug": 8} if BUDGET else
+       {"mon": 12, "stand": 4, "bar1": 13, "bar2": 15, "pad": 4, "dev": 16, "plug": 9})
+HOOK_END = [int((Y_FACE - MON[i]["top_edge_depth"] - 1.5) // STUD) for i in (0, 1)]     # exclusive end row of the hooks
+HOOK_GAP = [Y_FACE - MON[i]["top_edge_depth"] - HOOK_END[i] * STUD for i in (0, 1)]
+BSTEPS = {
+    1: ("base", "Not LEGO first: clamp the two VIVO poles to the desk edge, lay the shelf board on the desk 5 mm in "
+                "front of the clamp plates, stick the four 32 x 32 baseplates on it in a row with double-sided tape "
+                "(edges touching, studs in line). Plugable box on the desk behind the board."),
+    2: ("pockets", "Pocket tray, lower part: brick ribs on the baseplates round the two 13 x 13 pad spaces and their "
+                   "cable channels, then one layer of plates. Drop each Anker pad in (it stands on the baseplate "
+                   "studs), cable out through the channel."),
+    3: ("pockets", "Charging floor and walls: three black 8 x 16 tiles over the pads, black tiles on the rest of "
+                   "the pocket floors, plates under the walls, two brick courses of wall, four gold tiles."),
+    4: ("necks", "Two pedestals in front of the poles (three pastel stripe plates each)."),
+    5: ("non-lego", "Not LEGO: VESA plates onto the monitors (stand-offs on the thinner one), hang them on the "
+                    "brackets, set height and level."),
+    6: ("frame", "Frame, lower part: cross plates, two rails with the 48 in aluminium bar between them, the end "
+                 "posts, the post between the screens and the bottom bezel strips."),
+    7: ("frame", "Frame, top: cross plates (three long ones per screen carry the hooks that hang behind the "
+                 "monitor's top edge), two rails with the 36 in bar, top bezel strip."),
+    8: ("dock", "Laptop dock on the desk right of the board: the dock build unchanged (see ../../dock/README.md), "
+                "including fitting the Newnex plug."),
+    9: ("non-lego", "Liners and devices: felt in the dock, foam on the hooks, laptop, keyboard, mouse."),
+}
+if BUDGET:
+    STEPS, N_STEPS = BSTEPS, max(BSTEPS)
+    SECTION_NOTE = {"base": "four 32 x 32 baseplates (taped on the shelf board)",
+                    "pockets": "keyboard + mouse pocket tray (pads underneath)", "dock": "laptop dock (on the desk, right)",
+                    "necks": "two pedestals under the frame", "frame": "slim screen border on two aluminium bars"}
+    TOTAL_W = DOCK_X0 + dock.BASE_W
+    SIZE_MM = [TOTAL_W * STUD, max(BOARD_Y0 + BOARD["d"], (DOCK_Y0 + dock.BASE_D) * STUD), round(Z_OFF + Z_TOP * PLATE, 1)]
+COMMON = 50                                                      # budget: only part/colours in >= 50 sets (cheap, easy to find)
+CB = {c: [p for p in BRICKS if avail(p, c) >= COMMON] for c in (DBG, BLK, LBG)}
+CP = {c: [p for p in PLATES if avail(p, c) >= COMMON] for c in (DBG, BLK, LBG)}
+WALL_BRICKS = ["3007", "2456", "3001", "3002", "3003", "3008", "3009", "3010", "3622", "3004", "3005"]   # best $/stud
+RAIL_BRICKS = ["2465", "6112", "3008", "3009", "3010", "3622", "3004", "3005"]
+
+
+def tsh(cells):
+    return {(x + PB0, y + TY0) for (x, y) in cells}
+
+
+T_FULL, T_HOLES, T_POCKETS, T_WALLS = tsh(base.FULL), tsh(base.HOLES), tsh(base.POCKETS), tsh(base.WALLS)
+T_RIB = band(T_FULL, 1)
+T_RIB |= {(x, y) for (x, y) in T_FULL if any((x + dx, y + dy) in T_HOLES for dx in (-1, 0, 1) for dy in range(-2, 3))}
+for _r in (7, 8, 15, 16):                                        # cross ribs: the plate layer spans between these rows
+    T_RIB |= R(PB0, TY0 + _r, base.TRAY_W, 1)
+T_RIB -= T_HOLES
+B_SECT = ["base", "pockets", "necks", "frame", "dock"]
+
+
+def build_budget():
+    for k in range(BP_N):
+        mk("3811", BP_X0 + 32 * k, BP_Y0, 32, 32, -1, WHITE, "base", 1)
+    # ---- pocket tray ----
+    fill(T_RIB, CB[DBG], 0, DBG, "x", "pockets", 2)
+    deck_tile(T_FULL - T_HOLES, T_RIB, CP[DBG], 3, DBG, "pockets", 2, breaks=set())
+    big = set()
+    for (x, y, w, h) in base.BIG_TILES:
+        mk("90498", x + PB0, y + TY0, w, h, B_FLOOR_L, BLK, "pockets", 3, rot=h > w)
+        big |= R(x + PB0, y + TY0, w, h)
+    fill(T_POCKETS - big, S_TILE[BLK], B_FLOOR_L, BLK, "x", "pockets", 3)
+    fill(T_FULL - T_POCKETS - big, CP[DBG], B_FLOOR_L, DBG, "x", "pockets", 3)
+    fill(T_WALLS, WALL_BRICKS, B_FLOOR_L + 1, DBG, "y", "pockets", 3)
+    fill(T_WALLS, WALL_BRICKS, B_FLOOR_L + 4, DBG, "x", "pockets", 3)
+    ztop = B_FLOOR_L + 7
+    for (cx, cy) in ((PB0 + base.KB_X0 + base.KB_NX // 2, TY0 + base.KB_Y0 - 1),
+                     (PB0 + base.MS_X0 + base.MS_NX // 2, TY0 + base.MS_Y0 - 1)):
+        for x in (cx - 3, cx + 1):
+            mk("3069b", x, cy, 2, 1, ztop, GOLD, "pockets", 3)
+    # ---- pedestals ----
+    for n in NECK:
+        reg = R(n["x0"], FYB - 3, n["x1"] - n["x0"], 4)
+        z = 0
+        for c in range(8):
+            if c == 4:
+                for col in (BLO, LN, LAV):
+                    fill(reg, S_PLATE[col], z, col, "x", "necks", 4); z += 1
+            fill(reg, CB[DBG], z, DBG, "x" if c % 2 else "y", "necks", 4); z += 3
+        assert z == ZB
+    # ---- slim frame ----
+    S, W = "frame", FRAME_W
+    r0, r2 = FY0, FYB
+
+    def ties(z, forced, start, step, long_at=()):
+        used = set()
+        xs = list(forced) + [x for x in range(start, W - 2, 2) if any(n["x0"] <= x < n["x1"] - 1 for n in NECK) and z == ZB]
+        xs += list(range(start, W - 3, step))
+        for x in long_at:                                    # 2 x 6 plates reaching back over the monitor's top edge
+            mk("3795", x, r2 - 5, 2, 6, z, BLK, S, 7); used |= {x, x + 1}
+        for x in xs:
+            if x in used or x + 1 in used or x < 0 or x + 2 > W:
+                continue
+            mk("3021", x, r0, 2, 3, z, BLK, S, 6 if z < ZT else 7); used |= {x, x + 1}
+        if z in (ZB + 7, ZT):                                # front row closed between the cross plates (bezel face)
+            row = {(x, r2) for x in range(W) if x not in used}
+            fill(row, CP[BLK], z, BLK, "x", S, 6 if z < ZT else 7)
+
+    forced = [0, WEB_X - 1, WEB_X + 1, W - 2]
+    ties(ZB, forced, 4, 8)
+    for z in (ZB + 1, ZB + 4):
+        for r in (r0, r2):
+            fill(R(0, r, W, 1), RAIL_BRICKS, z, BLK, "x", S, 6)
+    ties(ZB + 7, forced, 8, 8)
+    posts = R(0, r0, 1, 3) | R(W - 1, r0, 1, 3)
+    web = R(WEB_X, r0, 1, 3) | R(WEB_X - 1, r2, 3, 1)
+    n_c = HMAX // 3
+    for c in range(n_c):
+        fill(posts, CB[BLK], ZO + 3 * c, BLK, "y", S, 6)
+        fill(web, CB[BLK], ZO + 3 * c, BLK, "x" if c % 2 else "y", S, 6)
+    for L in range(ZO + 3 * n_c, ZT):
+        fill(posts | web, CP[BLK], L, BLK, "y", S, 6)
+    hooks = []
+    for i in (0, 1):
+        ox0, n = OPEN_X[i], OPEN[i]["n"]
+        inner0, inner1 = ox0 + (1 if i == 1 else 0), ox0 + n - (1 if i == 0 else 0)
+        nb, nt = LIP[i]
+        row = R(inner0, r2, inner1 - inner0, 1)
+        L = ZO
+        while L + 3 <= ZO + nb:
+            fill(row, RAIL_BRICKS, L, BLK, "x", S, 6); L += 3
+        while L < ZO + nb:
+            fill(row, CP[BLK], L, BLK, "x", S, 6); L += 1
+        L = ZT - nt
+        while L + 3 <= ZT:
+            fill(row, RAIL_BRICKS, L, BLK, "x", S, 7); L += 3
+        while L < ZT:
+            fill(row, CP[BLK], L, BLK, "x", S, 7); L += 1
+        for f in (1 / 6, 1 / 2, 5 / 6):
+            xs = ox0 + int(n * f) - 1
+            hooks.append(xs)
+            mk("3003", xs, HOOK_END[i] - 2, 2, 2, ZT - 3, BLK, S, 7)
+    ties(ZT, forced, 4, 8, long_at=hooks)
+    for z in (ZT + 1, ZT + 4):
+        for r in (r0, r2):
+            fill(R(0, r, W, 1), RAIL_BRICKS, z, BLK, "x", S, 7)
+    ties(ZT + 7, forced, 8, 8)
+    # ---- dock: the dock generator's build as it is (its own floor plates, all brick sizes), cheapest colours ----
+    dock.BRICK_SET = [p for p in dock.BRICK_SET if p != "3006"]      # 2 x 10 costs twice as much per stud as 2 x 8
+    for c in dock.build():
+        for p in c["parts"]:
+            DOCK_LOCAL.append(dict(p))
+            col = {dock.PANEL: BLK, dock.BODY: DBG}.get(p["color"], p["color"])
+            if avail(p["part"], col) < COMMON:               # cheapest common colour for that part
+                col = max((LBG, DBG, BLK), key=lambda c: avail(p["part"], c))
+            _reg(dict(p, x=p["x"] + 2 * DOCK_X0, y=p["y"] + 2 * DOCK_Y0, color=col), "dock", 8)
+
+
+def non_lego_budget():
+    foam = [round(max(0.0, g - 2.0)) for g in HOOK_GAP]
+    items = [
+        {"id": "core_board", "qty": 1, "unit_usd": BOARD["usd"], "product": BOARD["product"], "mpn": "IKEA " + BOARD["mpn"],
+         "url": BOARD["url"], "role": "the base: lies on the desk in front of the clamps, used at its stock size",
+         "dims": f"{BOARD['w']:.0f} x {BOARD['d']:.0f} x {BOARD['t']:.0f} mm, particleboard with white foil; brackets not needed"},
+        {"id": "tape", "qty": 1, "unit_usd": 6.0, "product": "double-sided mounting tape, 19-25 mm wide, 1.5 m or more "
+         "(thin: 1 mm or less), e.g. Scotch / Gorilla / tesa", "mpn": "generic", "url": "any hardware store",
+         "role": "sticks the four baseplates to the board (a strip along every edge and a cross in the middle)", "dims": ""},
+        {"id": "vesa_mount", "qty": 2, "unit_usd": STAND["usd"], "product": STAND["product"], "mpn": STAND["mpn"],
+         "url": STAND["url"], "role": "carries one monitor each: steel pole, tilt bracket, C-clamp (or grommet bolt)",
+         "dims": "pole 17.7 in (450 mm) x ~35 mm dia; 17.6 lb (8 kg); VESA 75 + 100; desk 10-88 mm (clamp)"},
+        {"id": "frame_bar_bottom", "qty": 1, "unit_usd": BAR["usd"], "product": "Aluminium flat bar 1/8 in x 3/4 in x 48 in (6063), e.g. Everbilt / Hillman",
+         "mpn": "generic 1/8 x 3/4 x 48", "url": "any hardware store (Home Depot / Lowe's / Ace metal rack)",
+         "role": "the frame's bottom beam is built round it; stock length", "dims": "3.2 x 19.05 x 1219 mm"},
+        {"id": "frame_bar_top", "qty": 1, "unit_usd": BAR["usd_top"], "product": "Aluminium flat bar 1/8 in x 3/4 in x 36 in (6063)",
+         "mpn": "generic 1/8 x 3/4 x 36", "url": "same rack", "role": "in the frame's top beam; stock length",
+         "dims": "3.2 x 19.05 x 914 mm"},
+        {"id": "vesa_standoffs", "qty": 1 if any(SPACER) else 0, "unit_usd": 9.0,
+         "product": f"4 x M4 male-female hex stand-off {max(SPACER)} mm + 4 x M4 x 10 screws", "mpn": "generic",
+         "url": "any fastener kit", "role": f"brings the thinner monitor's glass into the same plane (left {SPACER[0]} mm, right {SPACER[1]} mm)",
+         "dims": f"M4, {max(SPACER)} mm"},
+        {"id": "felt", "qty": 1, "unit_usd": 8.0, "product": "self-adhesive felt sheet 1 mm, A4, x2", "mpn": "generic",
+         "url": "craft store", "role": "dock liners (see ../../dock/README.md)", "dims": "1 mm"},
+        {"id": "eva", "qty": 1, "unit_usd": 7.0, "product": "EVA craft foam 3 mm sheet + 1 mm foam tape", "mpn": "generic",
+         "url": "craft store", "role": f"plug pocket pads (dock); pads on the frame hooks (left {foam[0]} mm, right {foam[1]} mm thick)",
+         "dims": "3 mm / 1 mm"},
+    ]
+    pointers = ["dock (Plugable UD-6950PDH)", "cradle_cable (Newnex U4T1C01CR5P010)", "keyboard", "keyboard_qi", "mouse",
+                "qi_pad (x2)", "power_strip (behind / under the desk)", "gan_charger", "ties"]
+    total = sum(i["qty"] * i["unit_usd"] for i in items)
+    doc = {"note": "Non-LEGO parts of the BUDGET LEGO station. Nothing here needs cutting, sawing or drilling: every "
+                   "item is used at the size it is sold in. The four baseplates are LEGO (set 11026) and are in "
+                   "parts.csv. Electronics are the items with these ids in night-array/kit/parts.json.",
+           "items": items, "electronics_in_kit_parts_json": pointers, "total_usd": round(total, 2)}
+    (OUT / "non-lego-parts.json").write_text(json.dumps(doc, indent=1))
+    md = ["# Night Array LEGO station, budget variant: parts that are not LEGO", "",
+          "Generated by `make_lego_station.py --budget`. **Nothing needs cutting**: every item is used at its stock size.", "",
+          "| Qty | Part | Part no. | Each | Role | Size |", "|---|---|---|---|---|---|"]
+    for i in items:
+        if i["qty"]:
+            md.append(f"| {i['qty']} | {i['product']} | {i['mpn']} | ${i['unit_usd']:.2f} | {i['role']} | {i['dims']} |")
+    md += ["", f"Total: about **${total:.0f}**.", "",
+           f"Board: <{BOARD['url']}>. Mounts: <{STAND['url']}>. The four baseplates are LEGO White Baseplate 11026 "
+           "(<https://www.lego.com/en-us/product/white-baseplate-11026>, $7.99 each); they are counted with the LEGO parts.", "",
+           "Electronics (in [`../../../parts.json`](../../../parts.json), not counted above): " + "; ".join(pointers) + "."]
+    (OUT / "non-lego-parts.md").write_text("\n".join(md) + "\n")
+    return doc
+
+
+def run_checks_budget(rows, refs):
+    res = []
+
+    def chk(name, ok, detail):
+        res.append({"check": name, "ok": bool(ok), "detail": detail})
+
+    H = lambda cells: {(2 * x + a, 2 * y + b) for (x, y) in cells for a in (0, 1) for b in (0, 1)}
+    occ = defaultdict(Counter)                      # (layer, on the baseplates?) kept apart: the dock stands on the desk
+    for p in ALL:
+        for L in range(p["z"], p["z"] + p["nz"]):
+            for c in dock.cells_h(p):
+                occ[(L, p["section"] == "dock")][c] += 1
+    over = sum(1 for k in occ for c, n in occ[k].items() if n > 1)
+    bad = []
+    tray = H(T_FULL)
+    want = {0: T_RIB, 1: T_RIB, 2: T_RIB, 3: T_FULL - T_HOLES, 4: T_FULL}
+    for L in range(5, 11):
+        want[L] = T_WALLS
+    for L, w in want.items():
+        got = set(occ[(L, False)]) & tray
+        if got != H(w):
+            bad.append(f"tray L{L}: missing {len(H(w) - got)}, extra {len(got - H(w))}")
+    dwant = dock.expected_layers()
+    docc = defaultdict(set)
+    for p in DOCK_LOCAL:
+        for L in range(p["z"], p["z"] + p["nz"]):
+            docc[L] |= dock.cells_h(p)
+    for L in sorted(set(dwant) | set(docc)):
+        if docc[L] != dwant.get(L, set()):
+            bad.append(f"dock L{L} differs from make_lego_dock.expected_layers()")
+    chk("layers packed exactly (no overlaps; tray = plan; dock = dock generator's layers)", not bad and not over,
+        "; ".join(bad) or f"0 overlapping half-cells; tray 11 layers and dock {len(dwant)} layers exact")
+    unknown = sorted({p["part"] for p in ALL if p["part"] not in PARTS or p["color"] not in COLOURS})
+    rare = sorted({(r["part"], r["colour"], r["sets_with_this_colour"]) for r in rows if r["sets_with_this_colour"] < MIN_SETS})
+    chk(f"every part is in the part table and exists in its colour (>= {MIN_SETS} sets)", not unknown and not rare,
+        f"unknown {unknown}; rare {rare}" if unknown or rare else f"{len(rows)} part/colour lines; least common: "
+        + ", ".join(f"{r['part']} {r['colour']} ({r['sets_with_this_colour']} sets)" for r in sorted(rows, key=lambda r: r["sets_with_this_colour"])[:5]))
+    # studs + connectivity
+    by_bottom = defaultdict(dict)
+    for i, p in enumerate(ALL):
+        m = by_bottom[(p["z"], p["section"] == "dock")]
+        for X in range(p["x"] + 1, p["x"] + p["w"]):
+            for Y in range(p["y"] + 1, p["y"] + p["h"]):
+                m[(X, Y)] = i
+    adj, collisions = defaultdict(set), []
+    for i, p in enumerate(ALL):
+        for s_ in stud_points(p):
+            j = by_bottom.get((p["z"] + p["nz"], p["section"] == "dock"), {}).get(s_)
+            if j is None:
+                continue
+            if s_ in receptors(ALL[j]):
+                adj[i].add(j); adj[j].add(i)
+            else:
+                collisions.append((p["part"], ALL[j]["part"]))
+    chk("every stud under a part lands in a stud socket", not collisions, f"{len(collisions)} collisions {collisions[:4]}" if collisions else "all studs aligned")
+    comp = {}
+    for i in range(len(ALL)):
+        if i in comp:
+            continue
+        comp[i] = i; stack = [i]
+        while stack:
+            for j in adj[stack.pop()]:
+                if j not in comp:
+                    comp[j] = i; stack.append(j)
+    groups = defaultdict(set)
+    for i, p in enumerate(ALL):
+        groups[comp[i]].add(p["section"])
+    sizes = Counter(comp.values())
+    big = [g for g in groups if sizes[g] > 6]
+    on_board = [g for g in big if groups[g] != {"dock"}]
+    chk("connectivity: baseplates + tray + pedestals + frame are one assembly; the dock is its own", len(on_board) == 1
+        and len(big) == 2 and groups[on_board[0]] >= {"base", "pockets", "necks", "frame"},
+        f"{len(big)} assemblies: " + "; ".join(f"{sorted(groups[g])} {sizes[g]} parts" for g in big)
+        + f"; {len(groups) - len(big)} small loose group(s)" + (" (none)" if len(groups) == len(big) else
+        ": " + str(Counter(ALL[g]['section'] + ':' + ALL[g]['part'] for g in groups if sizes[g] <= 6).most_common(5))))
+    hang = [p for i, p in enumerate(ALL) if p["z"] > (-1 if p["section"] != "dock" else 0) and not any(ALL[j]["z"] < p["z"] for j in adj[i])]
+    chk("parts held from above only (not gripped from below)", True, f"{len(hang)} ({dict(Counter(p['section'] for p in hang))}): "
+        "plates over the cable channels, the frame's lower cross plates between the pedestals, top bezel strips, hooks")
+    # pockets / pads
+    cl = {"keyboard x": base.KB_CLR_X, "keyboard y": base.KB_CLR_Y, "mouse x": base.MS_CLR_X, "mouse y": base.MS_CLR_Y}
+    chk(f"pocket clearance >= {base.MIN_CLR} mm per side", min(cl.values()) >= base.MIN_CLR - 1e-9, ", ".join(f"{k} {v:.2f}" for k, v in cl.items()))
+    floor = {}
+    for p in ALL:
+        if p["section"] == "pockets" and p["z"] == B_FLOOR_L:
+            for c in dock.cells_h(p):
+                floor[c] = p
+    det, ok4 = [], True
+    stud_h = 1.7
+    for nm, pi, pocket in (("keyboard", base.KB_PADI, base.KB_POCKET | base.TAG_NOTCH), ("mouse", base.MS_PADI, base.MS_POCKET)):
+        pc = tsh(base.pad_cells(pi))
+        under = pc & tsh(pocket)
+        tiles_ok = all(floor[(2 * x, 2 * y)]["kind"] == "tile" for (x, y) in under)
+        cav_clear = all((2 * x, 2 * y) not in occ[(L, False)] for L in range(0, B_FLOOR_L) for (x, y) in pc)
+        on_bp = all((2 * x, 2 * y) in occ[(-1, False)] for (x, y) in pc)
+        gap = B_FLOOR_L * PLATE - (stud_h + base.PAD_H)
+        sup = [p for p in ALL if p["part"] == "90498" and {(x // 2, y // 2) for (x, y) in dock.cells_h(p)} & pc]
+        sup_ok = all(len({c for c in dock.cells_h(s_) if c in occ[(B_FLOOR_L - 1, False)]}) >= 8 * 4 for s_ in sup)
+        ok = tiles_ok and cav_clear and on_bp and abs(gap) <= 0.5 and sup_ok
+        ok4 &= ok
+        det.append(f"{nm}: {len(under)} pad cells under the device all tile={tiles_ok}, space clear={cav_clear}, on a "
+                   f"baseplate={on_bp}, pad on the baseplate studs: top {stud_h + base.PAD_H:.1f} vs tile underside "
+                   f"{B_FLOOR_L * PLATE:.1f} (gap {gap:+.1f} mm, taken up by the pad's rubber foot), 8x16 tiles gripped={sup_ok}")
+    chk("one 3.2 mm tile layer between each pad and its device; pad top touches it", ok4, "; ".join(det))
+    pads = [r for r in refs if r["kind"] == "pad"]
+    dmin = min(math.sqrt(sum(max(b[k] - (a[k] + a["s" + k]), a[k] - (b[k] + b["s" + k]), 0) ** 2 for k in "xyz"))
+               for a in pads for b in refs if b["kind"] in ("stand", "bar", "hardware"))
+    chk("Qi keep-out: steel >= 20 mm and all metal >= 10 mm from each pad", dmin >= 20, f"nearest metal {dmin:.0f} mm from a pad; "
+        "under the pads there is only the baseplate and the particleboard shelf")
+    zf = Z_OFF + (B_FLOOR_L + 1) * PLATE
+    rim = Z_OFF + (B_FLOOR_L + 7) * PLATE
+    chk("keyboard roughly level with the rim (within 7 mm)", abs(zf + base.KB_H_FRONT - rim) <= 7 and abs(zf + base.KB_H_REAR - rim) <= 7,
+        f"pocket floor {zf:.1f} mm above the desk, rim {rim:.1f} (pocket {rim - zf:.1f} mm deep): keys {zf + base.KB_H_FRONT - rim:+.1f} mm "
+        f"at the front, {zf + base.KB_H_REAR - rim:+.1f} at the back; mouse {zf + base.MOUSE_H - rim:+.1f} mm proud")
+    # monitors
+    det, ok5 = [], True
+    for i in (0, 1):
+        m, o = MON[i], OPEN[i]
+        nb, nt = LIP[i]
+        cov_b, cov_t = (nb - SILL[i]) * PLATE - o["clr_z"], nt * PLATE - o["clr_z"]
+        side = o["clr_x"] + o["liner_x"]
+        okm = side >= SCREEN_GAP[0] - 1e-6 and o["clr_z"] >= SCREEN_GAP[0] - 1e-6 and cov_b <= m["bezel"]["bottom"] and cov_t <= m["bezel"]["top"]
+        ok5 &= okm
+        det.append(f"{'left' if i == 0 else 'right'} {m['key']}: {side:.2f} mm to the post / web each side, {o['clr_z']:.2f} mm "
+                   f"under the top beam, {o['clr_z'] + SILL[i] * PLATE:.1f} mm over the bottom beam; bezel strips cover "
+                   f"{cov_t:.1f} / {cov_b:.1f} mm of the {m['bezel']['top']} / {m['bezel']['bottom']} mm top / bottom border; sides open")
+    chk("monitor openings: >= 1.5 mm clear all round, bezel strips stay off the picture", ok5, "; ".join(det))
+    touch = [p for p in ALL if p["section"] == "frame" and any(
+        box(p)[0] < MON_X0[i] + MON[i]["W"] and box(p)[0] + box(p)[3] > MON_X0[i] and box(p)[2] < MON_Z0[i] + MON[i]["H"]
+        and box(p)[2] + box(p)[5] > MON_Z0[i] and box(p)[1] < Y_FACE and box(p)[1] + box(p)[4] > Y_FACE - MON[i]["top_edge_depth"]
+        for i in (0, 1))]
+    chk("nothing LEGO touches a monitor (no load on the panels)", not touch and FACE_GAP[0] <= FACE_AIR <= FACE_GAP[1],
+        f"{len(touch)} frame parts intersect a housing; {FACE_AIR:.1f} mm of air between the glass and the bezel strips; "
+        f"stand-offs {SPACER[0]} / {SPACER[1]} mm")
+    chk("frame cannot fall forward: hooks behind the monitors' top edge", all(1.0 <= g <= 9.5 for g in HOOK_GAP),
+        "; ".join(f"{'left' if i == 0 else 'right'}: three 2 x 2 bricks under 2 x 6 plates, {HOOK_GAP[i]:.1f} mm behind the top "
+                  f"edge (pad with {max(0.0, HOOK_GAP[i] - 2):.0f} mm foam), overlap {9.6 - OPEN[i]['clr_z']:.1f} mm" for i in (0, 1)))
+    # poles, board, plugable
+    det, ok6 = [], True
+    for i in (0, 1):
+        m = MON[i]
+        top = STAND["clamp_h"] + STAND["pole_len"]
+        ped_y = (FYB - 3) * STUD
+        okm = VESA_Z[i] + 40 <= top and m["kg"] <= STAND["max_kg"] and m["vesa"] in (75, 100) and ped_y - (STAND["pole_y"] + STAND["pole_d"] / 2) >= 5
+        ok6 &= okm
+        det.append(f"{'left' if i == 0 else 'right'}: VESA centre {VESA_Z[i]:.0f} mm up, pole top {top:.0f}; {m['kg']} kg on "
+                   f"an {STAND['max_kg']:.0f} kg mount (x{STAND['max_kg'] / m['kg']:.1f}); pole {ped_y - STAND['pole_y'] - STAND['pole_d'] / 2:.0f} mm behind the pedestal")
+    board_ok = BOARD_Y0 >= STAND["clamp_d"] + 3 and BP_Y0 * STUD >= BOARD_Y0 and (BP_Y0 + 32) * STUD <= BOARD_Y0 + BOARD["d"] \
+        and BP_X0 * STUD >= BOARD_X0 and (BP_X0 + 32 * BP_N) * STUD <= BOARD_X0 + BOARD["w"]
+    on_bp = all(BP_X0 <= n["x0"] and n["x1"] <= BP_X0 + 32 * BP_N for n in NECK) and BP_X0 <= PB0 and PB0 + base.TRAY_W <= BP_X0 + 32 * BP_N \
+        and FYB - 3 >= BP_Y0
+    chk("poles, board and baseplates fit as bought (no cutting)", ok6 and board_ok and on_bp,
+        "; ".join(det) + f"; board {BOARD['w']:.0f} x {BOARD['d']:.0f} x {BOARD['t']:.0f} at x {BOARD_X0:.0f}, y {BOARD_Y0:.0f}-{BOARD_Y0 + BOARD['d']:.0f} "
+        f"({BOARD_Y0 - STAND['clamp_d']:.0f} mm in front of the clamp plates); four baseplates {32 * BP_N * STUD:.0f} x {32 * STUD:.0f} mm "
+        f"inside it ({BP_X0 * STUD - BOARD_X0:.0f} mm from its left end, {BOARD_X0 + BOARD['w'] - (BP_X0 + 32 * BP_N) * STUD:.0f} from its right, {BP_Y0 * STUD - BOARD_Y0:.0f} mm behind, "
+        f"{BOARD_Y0 + BOARD['d'] - (BP_Y0 + 32) * STUD:.0f} mm in front); tray and both pedestals stand entirely on baseplates")
+    run = MON_CX[1] - MON_CX[0] - STAND["clamp_w"]
+    chk("Plugable dock box behind the board", run >= PLUGABLE[0] + 20 and BOARD_Y0 >= PLUGABLE[1] + 8 and PLUGABLE[2] <= BOARD["t"],
+        f"on the desk between the two clamp plates: {run:.0f} mm free for the 225 mm box, {BOARD_Y0:.0f} mm between the desk "
+        f"edge and the board for its 85 mm, and at 24.5 mm it is lower than the {BOARD['t']:.0f} mm board in front of it; "
+        "cables and power bricks hang behind the desk edge")
+    # stability
+    mass, mom = defaultdict(float), defaultdict(lambda: [0.0, 0.0, 0.0])
+    for p in ALL:
+        g = part_mass(p)
+        x, y, z, sx, sy, sz = box(p)
+        mass[p["section"]] += g
+        for k, v in enumerate((x + sx / 2, y + sy / 2, z + sz / 2)):
+            mom[p["section"]][k] += g * v
+    fm = mass["frame"] / 1000 + 0.35
+    fc = [mom["frame"][k] / mass["frame"] for k in range(3)]
+    zped = Z_OFF + ZB * PLATE
+    arm = (FYB + 1) * STUD - fc[1]
+    need = fm * 9.81 * ((fc[2] - zped) / 1000 * math.sin(math.radians(10)) - arm / 1000 * math.cos(math.radians(10)))
+    chk("frame stands on the pedestals when level; hooks and bars hold it in a knock", (FYB - 3) * STUD < fc[1] < (FYB + 1) * STUD,
+        f"frame ~{fm:.2f} kg with the bars, centre of mass y {fc[1]:.0f} over pedestals y {(FYB - 3) * STUD}-{(FYB + 1) * STUD}, "
+        f"{fc[2] - zped:.0f} mm above them: balanced to {math.degrees(math.atan2(arm, fc[2] - zped)):.1f} deg by itself; a 10 deg "
+        f"tilt needs {need:.2f} N m from the stud clutch and the six hooks")
+    I = BAR["t"] * BAR["h"] ** 3 / 12
+    cant = MON_CX[0] - (NECK[0]["x1"] - NECK[0]["x0"]) * STUD / 2
+    d_cant = 0.2 * 9.81 * cant ** 3 / (3 * BAR["E"] * I)
+    span = MON_CX[1] - MON_CX[0]
+    d_mid = 0.35 * 9.81 * span ** 3 / (48 * BAR["E"] * I)
+    chk("frame beams: aluminium bar deflection < 1.5 mm", d_cant < 1.5 and d_mid < 1.5,
+        f"bottom beam overhangs each pedestal by {cant:.0f} mm carrying ~0.2 kg -> {d_cant:.2f} mm; the post between the "
+        f"screens (~0.35 kg) mid-way between the pedestals ({span:.0f} mm) -> {d_mid:.2f} mm")
+    det, ok7 = [], True
+    for i in (0, 1):
+        m = MON[i]
+        w = m["kg"] * 9.81
+        ecc = (STAND["bracket"] + SPACER[i] + m["vesa_to_front"] / 2) / 1000
+        top = (MON_Z0[i] + m["H"]) / 1000
+        M_push = 50.0 * top + w * ecc
+        T = M_push / (STAND["clamp_lever"] / 1000)
+        z_mod = math.pi / 32 * (STAND["pole_d"] ** 4 - (STAND["pole_d"] - 3.0) ** 4) / STAND["pole_d"]
+        sig = M_push * 1000 / z_mod
+        ok7 &= STAND["clamp_screw_n"] / T >= 2 and sig < 235 / 2
+        det.append(f"{'left' if i == 0 else 'right'}: {M_push:.1f} N m at the clamp -> screw {T:.0f} N of ~{STAND['clamp_screw_n']:.0f} "
+                   f"(x{STAND['clamp_screw_n'] / T:.1f}); pole {sig:.0f} MPa of 235 (x{235 / sig:.1f})")
+    chk("monitors on the clamped poles: 50 N push at the top of the screen (10 deg tilt is far less)", ok7,
+        "; ".join(det) + "; LEGO carries no monitor load; the clamps (or grommet bolts) are mandatory")
+    # dock on its own
+    lap = next(r for r in refs if r["kind"] == "device" and "MacBook" in r["name"])
+    dm = mass["dock"]
+    dc = [mom["dock"][k] / dm for k in range(3)]
+    lm = dock.LAP["kg"] * 1000
+    lc = [lap["x"] + lap["sx"] / 2, lap["y"] + lap["sy"] / 2, lap["z"] + lap["sz"] / 2]
+    cc = [(dc[k] * dm + lc[k] * lm) / (dm + lm) for k in range(3)]
+    x0, x1 = DOCK_X0 * STUD, (DOCK_X0 + dock.BASE_W) * STUD
+    tipd = min(math.degrees(math.atan2(cc[0] - x0, cc[2])), math.degrees(math.atan2(x1 - cc[0], cc[2])))
+    chk("dock (free-standing): tips sideways at >= 15 deg with the laptop in; plug arrangement unchanged",
+        tipd >= 15 and abs(dock.OVERMOLD_DEPTH - 0.39) < 0.02,
+        f"dock ~{dm / 1000:.2f} kg + laptop {dock.LAP['kg']} kg: tips at {tipd:.1f} deg; overmold face {dock.OVERMOLD_DEPTH:.2f} mm "
+        f"below the landing plane; walls unchanged (the tall back section is what holds the laptop)")
+    lego_g = sum(mass.values())
+    chk("overall size", True, f"{SIZE_MM[0]:.0f} x {SIZE_MM[1]:.0f} x {SIZE_MM[2]:.0f} mm (frame {FRAME_W * STUD:.0f} wide + dock "
+        f"{dock.BASE_W * STUD:.0f}; board {BOARD['w']:.0f} x {BOARD['d']:.0f}); tray rim {rim:.0f} mm, frame from {zped:.0f} mm, "
+        f"monitors from {min(MON_Z0):.0f} mm; LEGO ~{lego_g / 1000:.1f} kg")
+    return res, {"mass_kg": {k: round(v / 1000, 2) for k, v in mass.items()}, "lego_kg": round(lego_g / 1000, 2)}
+
+
+
+
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
-    build()
+    secs = B_SECT if BUDGET else SECTIONS
+    build_budget() if BUDGET else build()
     rows = bom(ALL)
     write_ldr(OUT / "night-array-station.ldr")
     write_lists(rows)
     refs = reference_boxes()
     doc = write_json(refs)
-    nl = non_lego()
-    checks, extra = run_checks(rows, refs)
+    nl = non_lego_budget() if BUDGET else non_lego()
+    checks, extra = (run_checks_budget if BUDGET else run_checks)(rows, refs)
     by_sec = {}
-    for s in SECTIONS:
+    for s in secs:
         ps = [p for p in ALL if p["section"] == s]
         by_sec[s] = {"parts": len(ps), "est_usd": round(sum(price(p) for p in ps), 2),
                      "colours": dict(Counter(COLOURS[p["color"]][2] for p in ps))}
     n = len(ALL)
     cost = sum(r["total_usd"] for r in rows)
     summary = {
-        "variant": "lite" if LITE else "full", "monitors": {"left": MON[0], "right": MON[1]},
+        "variant": "budget" if BUDGET else "lite" if LITE else "full", "monitors": {"left": MON[0], "right": MON[1]},
         "openings": OPEN, "bezel_lips_plates_bottom_top": LIP, "sill_plates": SILL, "vesa_standoffs_mm": SPACER,
-        "size_studs": [TOTAL_W, BASE_D, Z_TOP], "size_mm": doc["size_mm"],
+        "size_studs": [TOTAL_W, BASE_D, Z_TOP], "size_mm": doc["size_mm"], "core": BOARD if BUDGET else None,
         "base_studs": [BASE_W, BASE_D, N_BASE], "frame_studs": {"x": [0, FRAME_W], "y": [FY0, FYB + 1], "z": [ZB, Z_TOP]},
         "pocket_block_origin_studs": [PB0, PY0], "necks": [{k: v for k, v in nk.items() if k != "hole"} for nk in NECK],
         "glass_plane_y_mm": Y_FACE, "monitor_bottom_z_mm": MON_Z0, "vesa_centre_z_mm": VESA_Z,
@@ -1499,15 +1991,15 @@ def main():
         "est_non_lego_usd": nl["total_usd"], "by_section": by_sec,
         "parts_by_colour": dict(Counter(COLOURS[p["color"]][2] for p in ALL)), **extra, "checks": checks}
     (OUT / "checks.json").write_text(json.dumps(summary, indent=1))
-    print(f"Night Array LEGO station ({'LITE' if LITE else 'full'}): {TOTAL_W} x {BASE_D} studs = "
-          f"{TOTAL_W * STUD:.0f} x {BASE_D * STUD:.0f} x {Z_TOP * PLATE:.0f} mm")
+    print(f"Night Array LEGO station ({'BUDGET' if BUDGET else 'LITE' if LITE else 'full'}): "
+          f"{SIZE_MM[0]:.0f} x {SIZE_MM[1]:.0f} x {SIZE_MM[2]:.0f} mm")
     print(f"  {n} parts, {len(rows)} lines, LEGO est. ${cost:.0f}, non-LEGO ${nl['total_usd']:.0f}")
-    for s in SECTIONS:
+    for s in secs:
         print(f"    {s:8s} {by_sec[s]['parts']:5d} parts  ${by_sec[s]['est_usd']:.0f}")
     for c in checks:
         print(f"  [{'OK ' if c['ok'] else 'FAIL'}] {c['check']}: {c['detail']}")
     if "--no-render" not in sys.argv:
-        subprocess.run(["node", str(HERE / "render_lego_station.mjs"), str(OUT)] + (["overview"] if LITE else []),
+        subprocess.run(["node", str(HERE / "render_lego_station.mjs"), str(OUT)] + (["overview,back,steps"] if BUDGET else ["overview"] if LITE else []),
                        check=True)
     return 0 if all(c["ok"] for c in checks) else 1
 

@@ -1,0 +1,94 @@
+part,bricklink_id,name,colour,ldraw_colour,bricklink_colour,qty,est_unit_usd,est_total_usd,sets_containing_part_in_colour
+3811,3811,Baseplate 32 x 32,White,15,1,4,7.99,31.96,5
+2465,2465,Brick 1 x 16,Black,0,11,96,0.45,43.20,201
+3001,3001,Brick 2 x 4,Black,0,11,19,0.12,2.28,1234
+3002,3002,Brick 2 x 3,Black,0,11,4,0.10,0.40,777
+3003,3003,Brick 2 x 2,Black,0,11,8,0.08,0.64,1202
+3004,3004,Brick 1 x 2,Black,0,11,29,0.06,1.74,2016
+3005,3005,Brick 1 x 1,Black,0,11,46,0.06,2.76,1395
+3008,3008,Brick 1 x 8,Black,0,11,11,0.20,2.20,515
+3009,3009,Brick 1 x 6,Black,0,11,1,0.14,0.14,834
+3010,3010,Brick 1 x 4,Black,0,11,1,0.09,0.09,1337
+3622,3622,Brick 1 x 3,Black,0,11,114,0.08,9.12,784
+6112,6112,Brick 1 x 12,Black,0,11,14,0.35,4.90,198
+2456,2456,Brick 2 x 6,Dark Bluish Gray,72,85,34,0.22,7.48,313
+2465,2465,Brick 1 x 16,Dark Bluish Gray,72,85,9,0.45,4.05,109
+3001,3001,Brick 2 x 4,Dark Bluish Gray,72,85,70,0.12,8.40,565
+3002,3002,Brick 2 x 3,Dark Bluish Gray,72,85,25,0.10,2.50,378
+3003,3003,Brick 2 x 2,Dark Bluish Gray,72,85,7,0.08,0.56,553
+3004,3004,Brick 1 x 2,Dark Bluish Gray,72,85,38,0.06,2.28,777
+3005,3005,Brick 1 x 1,Dark Bluish Gray,72,85,40,0.06,2.40,630
+3007,3007,Brick 2 x 8,Dark Bluish Gray,72,85,164,0.30,49.20,56
+3008,3008,Brick 1 x 8,Dark Bluish Gray,72,85,60,0.20,12.00,281
+3009,3009,Brick 1 x 6,Dark Bluish Gray,72,85,10,0.14,1.40,445
+3010,3010,Brick 1 x 4,Dark Bluish Gray,72,85,13,0.09,1.17,585
+3622,3622,Brick 1 x 3,Dark Bluish Gray,72,85,13,0.08,1.04,477
+6112,6112,Brick 1 x 12,Dark Bluish Gray,72,85,3,0.35,1.05,128
+3021,3021,Plate 2 x 3,Black,0,11,94,0.06,5.64,2121
+3023,3023,Plate 1 x 2,Black,0,11,6,0.04,0.24,3262
+3024,3024,Plate 1 x 1,Black,0,11,12,0.03,0.36,1620
+3623,3623,Plate 1 x 3,Black,0,11,9,0.05,0.45,1526
+3666,3666,Plate 1 x 6,Black,0,11,30,0.08,2.40,1803
+3710,3710,Plate 1 x 4,Black,0,11,5,0.06,0.30,2434
+3795,3795,Plate 2 x 6,Black,0,11,6,0.12,0.72,1815
+60479,60479,Plate 1 x 12,Black,0,11,12,0.20,2.40,404
+3020,3020,Plate 2 x 4,Lavender,31,154,2,0.13,0.26,42
+3024,3024,Plate 1 x 1,Lavender,31,154,1,0.05,0.05,19
+3035,3035,Plate 4 x 8,Lavender,31,154,2,0.64,1.28,13
+3623,3623,Plate 1 x 3,Lavender,31,154,1,0.08,0.08,7
+15573,15573,Plate 1 x 2 with 1 Stud (Jumper),Dark Bluish Gray,72,85,76,0.05,3.80,648
+2445,2445,Plate 2 x 12,Dark Bluish Gray,72,85,3,0.30,0.90,369
+3020,3020,Plate 2 x 4,Dark Bluish Gray,72,85,5,0.08,0.40,1504
+3021,3021,Plate 2 x 3,Dark Bluish Gray,72,85,1,0.06,0.06,1249
+3022,3022,Plate 2 x 2,Dark Bluish Gray,72,85,1,0.05,0.05,1366
+3023,3023,Plate 1 x 2,Dark Bluish Gray,72,85,8,0.04,0.32,1592
+3024,3024,Plate 1 x 1,Dark Bluish Gray,72,85,22,0.03,0.66,780
+3027,3027,Plate 6 x 16,Dark Bluish Gray,72,85,7,1.30,9.10,96
+3029,3029,Plate 4 x 12,Dark Bluish Gray,72,85,12,0.65,7.80,211
+3030,3030,Plate 4 x 10,Dark Bluish Gray,72,85,1,0.55,0.55,310
+3031,3031,Plate 4 x 4,Dark Bluish Gray,72,85,3,0.20,0.60,641
+3032,3032,Plate 4 x 6,Dark Bluish Gray,72,85,1,0.30,0.30,601
+3033,3033,Plate 6 x 10,Dark Bluish Gray,72,85,6,0.70,4.20,234
+3034,3034,Plate 2 x 8,Dark Bluish Gray,72,85,2,0.18,0.36,776
+3035,3035,Plate 4 x 8,Dark Bluish Gray,72,85,5,0.40,2.00,438
+3460,3460,Plate 1 x 8,Dark Bluish Gray,72,85,22,0.12,2.64,684
+3623,3623,Plate 1 x 3,Dark Bluish Gray,72,85,4,0.05,0.20,842
+3666,3666,Plate 1 x 6,Dark Bluish Gray,72,85,3,0.08,0.24,956
+3710,3710,Plate 1 x 4,Dark Bluish Gray,72,85,7,0.06,0.42,1344
+3795,3795,Plate 2 x 6,Dark Bluish Gray,72,85,6,0.12,0.72,1214
+3832,3832,Plate 2 x 10,Dark Bluish Gray,72,85,3,0.25,0.75,487
+41539,41539,Plate 8 x 8,Dark Bluish Gray,72,85,1,1.10,1.10,166
+4282,4282,Plate 2 x 16,Dark Bluish Gray,72,85,3,0.45,1.35,282
+4477,4477,Plate 1 x 10,Dark Bluish Gray,72,85,2,0.15,0.30,437
+60479,60479,Plate 1 x 12,Dark Bluish Gray,72,85,7,0.20,1.40,209
+91405,91405,Plate 16 x 16,Dark Bluish Gray,72,85,4,4.00,16.00,66
+92438,92438,Plate 8 x 16,Dark Bluish Gray,72,85,2,2.20,4.40,106
+3020,3020,Plate 2 x 4,Light Nougat,78,90,9,0.16,1.44,14
+3021,3021,Plate 2 x 3,Light Nougat,78,90,2,0.12,0.24,21
+3030,3030,Plate 4 x 10,Bright Light Orange,191,110,2,0.83,1.66,6
+3710,3710,Plate 1 x 4,Bright Light Orange,191,110,1,0.09,0.09,164
+3298,3298,Slope 33 3 x 2,Black,0,11,10,0.25,2.50,377
+3037,3037,Slope 45 2 x 4,Light Bluish Gray,71,86,4,0.30,1.20,163
+3038,3038,Slope 45 2 x 3,Light Bluish Gray,71,86,18,0.25,4.50,68
+3039,3039,Slope 45 2 x 2,Light Bluish Gray,71,86,3,0.12,0.36,423
+3298,3298,Slope 33 3 x 2,Dark Bluish Gray,72,85,10,0.25,2.50,205
+26603,26603,Tile 2 x 3,Black,0,11,1,0.15,0.15,407
+3069b,3069b,Tile 1 x 2 with Groove,Black,0,11,13,0.05,0.65,1592
+3070b,3070b,Tile 1 x 1 with Groove,Black,0,11,3,0.04,0.12,976
+4162,4162,Tile 1 x 8,Black,0,11,4,0.25,1.00,773
+6636,6636,Tile 1 x 6,Black,0,11,1,0.15,0.15,896
+69729,69729,Tile 2 x 6,Black,0,11,36,0.30,10.80,242
+87079,87079,Tile 2 x 4,Black,0,11,3,0.15,0.45,881
+90498,90498,Tile 8 x 16 with Bottom Tubes,Black,0,11,3,7.00,21.00,42
+2431,2431,Tile 1 x 4 with Groove,Light Bluish Gray,71,86,4,0.10,0.40,937
+3069b,3069b,Tile 1 x 2 with Groove,Light Bluish Gray,71,86,3,0.05,0.15,1024
+63864,63864,Tile 1 x 3,Light Bluish Gray,71,86,18,0.08,1.44,555
+2431,2431,Tile 1 x 4 with Groove,Dark Bluish Gray,72,85,5,0.10,0.50,734
+26603,26603,Tile 2 x 3,Dark Bluish Gray,72,85,14,0.15,2.10,186
+3068b,3068b,Tile 2 x 2 with Groove,Dark Bluish Gray,72,85,1,0.07,0.07,628
+3069b,3069b,Tile 1 x 2 with Groove,Dark Bluish Gray,72,85,16,0.05,0.80,834
+4162,4162,Tile 1 x 8,Dark Bluish Gray,72,85,3,0.25,0.75,460
+63864,63864,Tile 1 x 3,Dark Bluish Gray,72,85,2,0.08,0.16,399
+69729,69729,Tile 2 x 6,Dark Bluish Gray,72,85,10,0.30,3.00,88
+87079,87079,Tile 2 x 4,Dark Bluish Gray,72,85,2,0.15,0.30,464
+3069b,3069b,Tile 1 x 2 with Groove,Pearl Gold,297,115,4,0.08,0.32,126

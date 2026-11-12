@@ -1,0 +1,354 @@
+{
+ "variant": "budget",
+ "monitors": {
+  "left": {
+   "name": "Acer KB272 EBI 27\" FHD IPS 100 Hz (UM.HK2AA.E02)",
+   "W": 614.7,
+   "H": 367.1,
+   "D": 66.7,
+   "vesa_to_front": 66.7,
+   "top_edge_depth": 12.0,
+   "kg": 4.73,
+   "vesa": 100,
+   "bezel": {
+    "side": 8.4,
+    "top": 8.4,
+    "bottom": 22.4
+   },
+   "psu": "internal (AC cord in the box) -- CONFIRM",
+   "ports": "1 x HDMI 1.4 + 1 x VGA + audio out, in the rear bulge, plugs point down",
+   "buttons": "rear",
+   "confidence": "medium: W/D from Acer US (24.2 x 14.5 x 2.7 in) + reseller sheet (61.47 x 6.67 cm); H from the same chassis KA272 H (367.1); another database says 612.4 x 366.5; weight 10.43 lb is Acer's figure (may include the stand: then the panel is ~3.4 kg). displayninja says VESA 75, Acer says 100 -- the stand takes both. Bezels and top_edge_depth are ESTIMATES.",
+   "sources": [
+    "https://www.acer.com/us-en/monitors/essential/kb2/pdp/UM.HK2AA.E02",
+    "https://store.acer.com/en-us/27-acer-kb2-essential-monitor-kb272-ebi",
+    "https://devicebeast.com/display/acer-kb272-ebi-27",
+    "https://www.displayninja.com/acer-kb272-ebi-review/"
+   ],
+   "key": "acer_kb272_ebi"
+  },
+  "right": {
+   "name": "Sceptre E275W-FPT 27\" FHD IPS 75 Hz (most likely \"F27\": edgeless IPS, HDMI x2 + VGA)",
+   "W": 612.6,
+   "H": 359.2,
+   "D": 45.0,
+   "vesa_to_front": 45.0,
+   "top_edge_depth": 10.0,
+   "kg": 3.0,
+   "vesa": 100,
+   "bezel": {
+    "side": 7.3,
+    "top": 7.3,
+    "bottom": 15.6
+   },
+   "psu": "external 12 V 3 A adapter (26 W typ.)",
+   "ports": "2 x HDMI + VGA + audio in/out, rear",
+   "buttons": "rear",
+   "confidence": "medium-low that this is the owner's model; for the E275W-FPT itself W/H/weight/VESA are Sceptre's own figures (24.12 x 14.14 x 1.12 in, 6.61 lb, VESA 100 M4 x 10). The 1.12 in is the thin edge; D (45) and vesa_to_front are ESTIMATES -- measure.",
+   "sources": [
+    "https://www.sceptre.com/support/688/E275W-FPT",
+    "https://www.sceptre.com/Monitors/IPS-Series/E275W-FPT-27-LED-Monitor-product1314category12category99.html"
+   ],
+   "key": "sceptre_e275w_fpt"
+  }
+ },
+ "openings": [
+  {
+   "n": 78,
+   "nz": 116,
+   "clr_x": 2.6499999999999773,
+   "liner_x": 2,
+   "clr_z": 2.0500000000000114
+  },
+  {
+   "n": 77,
+   "nz": 114,
+   "clr_x": 1.6999999999999886,
+   "liner_x": 0.0,
+   "clr_z": 2.8000000000000114
+  }
+ ],
+ "bezel_lips_plates_bottom_top": [
+  [
+   7,
+   3
+  ],
+  [
+   7,
+   3
+  ]
+ ],
+ "sill_plates": [
+  0,
+  2
+ ],
+ "vesa_standoffs_mm": [
+  0,
+  22
+ ],
+ "size_studs": [
+  174,
+  40,
+  159
+ ],
+ "size_mm": [
+  1392.0,
+  395.0,
+  535.4
+ ],
+ "core": {
+  "product": "IKEA BERGSHULT shelf, white, 120x30 cm (47 1/4 x 11 3/4 in), 2.5 cm thick",
+  "mpn": "304.212.35",
+  "url": "https://www.ikea.com/us/en/p/bergshult-shelf-white-30421235/",
+  "w": 1200.0,
+  "d": 300.0,
+  "t": 25.0,
+  "usd": 25.0,
+  "kg": 5.5
+ },
+ "base_studs": [
+  158,
+  40,
+  14
+ ],
+ "frame_studs": {
+  "x": [
+   0,
+   158
+  ],
+  "y": [
+   20,
+   23
+  ],
+  "z": [
+   27,
+   159
+  ]
+ },
+ "pocket_block_origin_studs": [
+  50,
+  14
+ ],
+ "necks": [
+  {
+   "c0": 37,
+   "c1": 43,
+   "x0": 35,
+   "x1": 45
+  },
+  {
+   "c0": 115,
+   "c1": 122,
+   "x0": 113,
+   "x1": 124
+  }
+ ],
+ "glass_plane_y_mm": 171.7,
+ "monitor_bottom_z_mm": [
+  140.65,
+  147.8
+ ],
+ "vesa_centre_z_mm": [
+  324.20000000000005,
+  327.4
+ ],
+ "stand": {
+  "product": "VIVO Single Monitor Desk Mount STAND-V001C (black) / STAND-V001CW (white)",
+  "mpn": "STAND-V001C",
+  "usd": 34.99,
+  "url": "https://vivo-us.com/products/stand-v001c",
+  "max_kg": 8.0,
+  "ship_kg": 3.18,
+  "pole_len": 450.0,
+  "pole_d": 35.0,
+  "bracket": 65.0,
+  "clamp_w": 100.0,
+  "clamp_d": 90.0,
+  "clamp_h": 12.0,
+  "pole_y": 40.0,
+  "clamp_lever": 45.0,
+  "clamp_screw_n": 5000.0,
+  "desk_mm": [
+   10,
+   88
+  ]
+ },
+ "bar": {
+  "product": "Aluminium flat bar 1/8 in x 3/4 in (3.2 x 19 mm), 6063: one 48 in (1219 mm) for the bottom beam, one 36 in (914 mm) for the top beam, e.g. Everbilt / Hillman",
+  "t": 3.2,
+  "h": 19.05,
+  "len": 1219.0,
+  "len_top": 914.0,
+  "usd": 9.0,
+  "usd_top": 7.0,
+  "E": 69000.0
+ },
+ "lids": {
+  "dock bay lid (Plugable UD-6950PDH)": 464,
+  "left bay lid (spare bay / monitor adapter)": 496,
+  "rear lid (pad cables, USB power)": 648
+ },
+ "parts_total": 1435,
+ "distinct_lines": 93,
+ "est_lego_usd": 326.56,
+ "est_non_lego_usd": 140.98,
+ "by_section": {
+  "base": {
+   "parts": 4,
+   "est_usd": 31.96,
+   "colours": {
+    "White": 4
+   }
+  },
+  "pockets": {
+   "parts": 362,
+   "est_usd": 101.99,
+   "colours": {
+    "Dark Bluish Gray": 307,
+    "Black": 51,
+    "Pearl Gold": 4
+   }
+  },
+  "necks": {
+   "parts": 88,
+   "est_usd": 17.26,
+   "colours": {
+    "Dark Bluish Gray": 68,
+    "Bright Light Orange": 3,
+    "Light Nougat": 11,
+    "Lavender": 6
+   }
+  },
+  "frame": {
+   "parts": 472,
+   "est_usd": 74.29,
+   "colours": {
+    "Black": 472
+   }
+  },
+  "dock": {
+   "parts": 509,
+   "est_usd": 101.06,
+   "colours": {
+    "Dark Bluish Gray": 391,
+    "Black": 68,
+    "Light Bluish Gray": 50
+   }
+  }
+ },
+ "parts_by_colour": {
+  "White": 4,
+  "Dark Bluish Gray": 766,
+  "Black": 591,
+  "Pearl Gold": 4,
+  "Bright Light Orange": 3,
+  "Light Nougat": 11,
+  "Lavender": 6,
+  "Light Bluish Gray": 50
+ },
+ "mass_kg": {
+  "base": 0.25,
+  "pockets": 0.86,
+  "necks": 0.22,
+  "frame": 0.76,
+  "dock": 1.0
+ },
+ "lego_kg": 3.09,
+ "checks": [
+  {
+   "check": "layers packed exactly (no overlaps; tray = plan; dock = dock generator's layers)",
+   "ok": true,
+   "detail": "0 overlapping half-cells; tray 11 layers and dock 45 layers exact"
+  },
+  {
+   "check": "every part is in the part table and exists in its colour (>= 5 sets)",
+   "ok": true,
+   "detail": "93 part/colour lines; least common: 3811 White (5 sets), 3030 Bright Light Orange (6 sets), 3623 Lavender (7 sets), 3035 Lavender (13 sets), 3020 Light Nougat (14 sets)"
+  },
+  {
+   "check": "every stud under a part lands in a stud socket",
+   "ok": true,
+   "detail": "all studs aligned"
+  },
+  {
+   "check": "connectivity: baseplates + tray + pedestals + frame are one assembly; the dock is its own",
+   "ok": true,
+   "detail": "2 assemblies: ['base', 'frame', 'necks', 'pockets'] 926 parts; ['dock'] 509 parts; 0 small loose group(s) (none)"
+  },
+  {
+   "check": "parts held from above only (not gripped from below)",
+   "ok": true,
+   "detail": "37 ({'frame': 37}): plates over the cable channels, the frame's lower cross plates between the pedestals, top bezel strips, hooks"
+  },
+  {
+   "check": "pocket clearance >= 1.5 mm per side",
+   "ok": true,
+   "detail": "keyboard x 3.69, keyboard y 5.00, mouse x 2.50, mouse y 1.50"
+  },
+  {
+   "check": "one 3.2 mm tile layer between each pad and its device; pad top touches it",
+   "ok": true,
+   "detail": "keyboard: 156 pad cells under the device all tile=True, space clear=True, on a baseplate=True, pad on the baseplate studs: top 12.9 vs tile underside 12.8 (gap -0.1 mm, taken up by the pad's rubber foot), 8x16 tiles gripped=True; mouse: 104 pad cells under the device all tile=True, space clear=True, on a baseplate=True, pad on the baseplate studs: top 12.9 vs tile underside 12.8 (gap -0.1 mm, taken up by the pad's rubber foot), 8x16 tiles gripped=True"
+  },
+  {
+   "check": "Qi keep-out: steel >= 20 mm and all metal >= 10 mm from each pad",
+   "ok": true,
+   "detail": "nearest metal 79 mm from a pad; under the pads there is only the baseplate and the particleboard shelf"
+  },
+  {
+   "check": "keyboard roughly level with the rim (within 7 mm)",
+   "ok": true,
+   "detail": "pocket floor 42.6 mm above the desk, rim 61.8 (pocket 19.2 mm deep): keys +0.8 mm at the front, +6.3 at the back; mouse +14.8 mm proud"
+  },
+  {
+   "check": "monitor openings: >= 1.5 mm clear all round, bezel strips stay off the picture",
+   "ok": true,
+   "detail": "left acer_kb272_ebi: 4.65 mm to the post / web each side, 2.05 mm under the top beam, 2.1 mm over the bottom beam; bezel strips cover 7.5 / 20.3 mm of the 8.4 / 22.4 mm top / bottom border; sides open; right sceptre_e275w_fpt: 1.70 mm to the post / web each side, 2.80 mm under the top beam, 9.2 mm over the bottom beam; bezel strips cover 6.8 / 13.2 mm of the 7.3 / 15.6 mm top / bottom border; sides open"
+  },
+  {
+   "check": "nothing LEGO touches a monitor (no load on the panels)",
+   "ok": true,
+   "detail": "0 frame parts intersect a housing; 4.3 mm of air between the glass and the bezel strips; stand-offs 0 / 22 mm"
+  },
+  {
+   "check": "frame cannot fall forward: hooks behind the monitors' top edge",
+   "ok": true,
+   "detail": "left: three 2 x 2 bricks under 2 x 6 plates, 7.7 mm behind the top edge (pad with 6 mm foam), overlap 7.5 mm; right: three 2 x 2 bricks under 2 x 6 plates, 1.7 mm behind the top edge (pad with 0 mm foam), overlap 6.8 mm"
+  },
+  {
+   "check": "poles, board and baseplates fit as bought (no cutting)",
+   "ok": true,
+   "detail": "left: VESA centre 324 mm up, pole top 462; 4.73 kg on an 8 kg mount (x1.7); pole 94 mm behind the pedestal; right: VESA centre 327 mm up, pole top 462; 3.0 kg on an 8 kg mount (x2.7); pole 94 mm behind the pedestal; board 1200 x 300 x 25 at x 32, y 95-395 (5 mm in front of the clamp plates); four baseplates 1024 x 256 mm inside it (64 mm from its left end, 112 from its right, 9 mm behind, 35 mm in front); tray and both pedestals stand entirely on baseplates"
+  },
+  {
+   "check": "Plugable dock box behind the board",
+   "ok": true,
+   "detail": "on the desk between the two clamp plates: 528 mm free for the 225 mm box, 95 mm between the desk edge and the board for its 85 mm, and at 24.5 mm it is lower than the 25 mm board in front of it; cables and power bricks hang behind the desk edge"
+  },
+  {
+   "check": "frame stands on the pedestals when level; hooks and bars hold it in a knock",
+   "ok": true,
+   "detail": "frame ~1.11 kg with the bars, centre of mass y 174 over pedestals y 152.0-184.0, 199 mm above them: balanced to 2.9 deg by itself; a 10 deg tilt needs 0.27 N m from the stud clutch and the six hooks"
+  },
+  {
+   "check": "frame beams: aluminium bar deflection < 1.5 mm",
+   "ok": true,
+   "detail": "bottom beam overhangs each pedestal by 280 mm carrying ~0.2 kg -> 0.11 mm; the post between the screens (~0.35 kg) mid-way between the pedestals (628 mm) -> 0.14 mm"
+  },
+  {
+   "check": "monitors on the clamped poles: 50 N push at the top of the screen (10 deg tilt is far less)",
+   "ok": true,
+   "detail": "left: 30.0 N m at the clamp -> screw 666 N of ~5000 (x7.5); pole 24 MPa of 235 (x9.9); right: 28.6 N m at the clamp -> screw 635 N of ~5000 (x7.9); pole 23 MPa of 235 (x10.4); LEGO carries no monitor load; the clamps (or grommet bolts) are mandatory"
+  },
+  {
+   "check": "dock (free-standing): tips sideways at >= 15 deg with the laptop in; plug arrangement unchanged",
+   "ok": true,
+   "detail": "dock ~1.00 kg + laptop 2.15 kg: tips at 22.4 deg; overmold face 0.39 mm below the landing plane; walls unchanged (the tall back section is what holds the laptop)"
+  },
+  {
+   "check": "overall size",
+   "ok": true,
+   "detail": "1392 x 395 x 535 mm (frame 1264 wide + dock 128; board 1200 x 300); tray rim 62 mm, frame from 113 mm, monitors from 141 mm; LEGO ~3.1 kg"
+  }
+ ]
+}

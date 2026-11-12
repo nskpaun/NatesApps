@@ -1,0 +1,97 @@
+{
+ "note": "Non-LEGO parts of the BUDGET LEGO station. Nothing here needs cutting, sawing or drilling: every item is used at the size it is sold in. The four baseplates are LEGO (set 11026) and are in parts.csv. Electronics are the items with these ids in night-array/kit/parts.json.",
+ "items": [
+  {
+   "id": "core_board",
+   "qty": 1,
+   "unit_usd": 25.0,
+   "product": "IKEA BERGSHULT shelf, white, 120x30 cm (47 1/4 x 11 3/4 in), 2.5 cm thick",
+   "mpn": "IKEA 304.212.35",
+   "url": "https://www.ikea.com/us/en/p/bergshult-shelf-white-30421235/",
+   "role": "the base: lies on the desk in front of the clamps, used at its stock size",
+   "dims": "1200 x 300 x 25 mm, particleboard with white foil; brackets not needed"
+  },
+  {
+   "id": "tape",
+   "qty": 1,
+   "unit_usd": 6.0,
+   "product": "double-sided mounting tape, 19-25 mm wide, 1.5 m or more (thin: 1 mm or less), e.g. Scotch / Gorilla / tesa",
+   "mpn": "generic",
+   "url": "any hardware store",
+   "role": "sticks the four baseplates to the board (a strip along every edge and a cross in the middle)",
+   "dims": ""
+  },
+  {
+   "id": "vesa_mount",
+   "qty": 2,
+   "unit_usd": 34.99,
+   "product": "VIVO Single Monitor Desk Mount STAND-V001C (black) / STAND-V001CW (white)",
+   "mpn": "STAND-V001C",
+   "url": "https://vivo-us.com/products/stand-v001c",
+   "role": "carries one monitor each: steel pole, tilt bracket, C-clamp (or grommet bolt)",
+   "dims": "pole 17.7 in (450 mm) x ~35 mm dia; 17.6 lb (8 kg); VESA 75 + 100; desk 10-88 mm (clamp)"
+  },
+  {
+   "id": "frame_bar_bottom",
+   "qty": 1,
+   "unit_usd": 9.0,
+   "product": "Aluminium flat bar 1/8 in x 3/4 in x 48 in (6063), e.g. Everbilt / Hillman",
+   "mpn": "generic 1/8 x 3/4 x 48",
+   "url": "any hardware store (Home Depot / Lowe's / Ace metal rack)",
+   "role": "the frame's bottom beam is built round it; stock length",
+   "dims": "3.2 x 19.05 x 1219 mm"
+  },
+  {
+   "id": "frame_bar_top",
+   "qty": 1,
+   "unit_usd": 7.0,
+   "product": "Aluminium flat bar 1/8 in x 3/4 in x 36 in (6063)",
+   "mpn": "generic 1/8 x 3/4 x 36",
+   "url": "same rack",
+   "role": "in the frame's top beam; stock length",
+   "dims": "3.2 x 19.05 x 914 mm"
+  },
+  {
+   "id": "vesa_standoffs",
+   "qty": 1,
+   "unit_usd": 9.0,
+   "product": "4 x M4 male-female hex stand-off 22 mm + 4 x M4 x 10 screws",
+   "mpn": "generic",
+   "url": "any fastener kit",
+   "role": "brings the thinner monitor's glass into the same plane (left 0 mm, right 22 mm)",
+   "dims": "M4, 22 mm"
+  },
+  {
+   "id": "felt",
+   "qty": 1,
+   "unit_usd": 8.0,
+   "product": "self-adhesive felt sheet 1 mm, A4, x2",
+   "mpn": "generic",
+   "url": "craft store",
+   "role": "dock liners (see ../../dock/README.md)",
+   "dims": "1 mm"
+  },
+  {
+   "id": "eva",
+   "qty": 1,
+   "unit_usd": 7.0,
+   "product": "EVA craft foam 3 mm sheet + 1 mm foam tape",
+   "mpn": "generic",
+   "url": "craft store",
+   "role": "plug pocket pads (dock); pads on the frame hooks (left 6 mm, right 0 mm thick)",
+   "dims": "3 mm / 1 mm"
+  }
+ ],
+ "electronics_in_kit_parts_json": [
+  "dock (Plugable UD-6950PDH)",
+  "cradle_cable (Newnex U4T1C01CR5P010)",
+  "keyboard",
+  "keyboard_qi",
+  "mouse",
+  "qi_pad (x2)",
+  "power_strip (behind / under the desk)",
+  "gan_charger",
+  "ties"
+ ],
+ "total_usd": 140.98
+}

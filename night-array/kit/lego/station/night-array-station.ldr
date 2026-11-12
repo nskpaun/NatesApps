@@ -3,7 +3,7 @@
 0 Name: night-array-station.ldr
 0 Author: make_lego_station.py (Night Array)
 0 !LDRAW_ORG Unofficial_Model
-0 // 176 x 40 studs footprint (1408 x 320 mm), 534.4 mm tall.  Front faces -Z.
+0 // 1408 x 320 x 534 mm.  Front faces -Z.
 0 // Monitors: left Acer KB272 EBI 27" FHD IPS 100 Hz (UM.HK2AA.E02); right Sceptre E275W-FPT 27" FHD IPS 75 Hz (most likely "F27": edgeless IPS, HDMI x2 + VGA)
 0 // Not LEGO, not in the file: VESA pole mounts, monitors, aluminium bars, pads, foam, felt, cables.
 0 // Section: base -- hollow base: floor, outer wall, ribs, deck, deck tiles
