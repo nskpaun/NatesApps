@@ -178,18 +178,18 @@
   "left bay lid (spare bay / monitor adapter)": 512,
   "rear lid (pad cables, USB power)": 648
  },
- "parts_total": 5224,
+ "parts_total": 5217,
  "distinct_lines": 140,
- "est_lego_usd": 1310.56,
+ "est_lego_usd": 1310.33,
  "est_non_lego_usd": 115.98,
  "by_section": {
   "base": {
-   "parts": 2034,
-   "est_usd": 583.88,
+   "parts": 2025,
+   "est_usd": 582.97,
    "colours": {
     "Tan": 155,
-    "Light Bluish Gray": 660,
-    "Sand Blue": 1213,
+    "Light Bluish Gray": 663,
+    "Sand Blue": 1201,
     "Bright Light Orange": 2,
     "Light Nougat": 2,
     "Lavender": 2
@@ -216,30 +216,30 @@
    }
   },
   "necks": {
-   "parts": 375,
-   "est_usd": 82.83,
+   "parts": 378,
+   "est_usd": 83.56,
    "colours": {
-    "Sand Blue": 301,
-    "Bright Light Orange": 15,
+    "Sand Blue": 303,
+    "Bright Light Orange": 16,
     "Light Nougat": 35,
     "Lavender": 24
    }
   },
   "frame": {
-   "parts": 1363,
-   "est_usd": 299.59,
+   "parts": 1362,
+   "est_usd": 299.54,
    "colours": {
-    "Sand Blue": 1363
+    "Sand Blue": 1362
    }
   }
  },
  "parts_by_colour": {
   "Tan": 327,
-  "Light Bluish Gray": 1216,
-  "Sand Blue": 3539,
+  "Light Bluish Gray": 1219,
+  "Sand Blue": 3528,
   "Black": 58,
   "Pearl Gold": 4,
-  "Bright Light Orange": 17,
+  "Bright Light Orange": 18,
   "Light Nougat": 37,
   "Lavender": 26
  },
@@ -250,18 +250,18 @@
   "necks": 0.45,
   "frame": 1.68
  },
- "lego_kg": 7.73,
+ "lego_kg": 7.72,
  "tip_deg_lego_only": {
   "left": 82.8,
   "right": 82.1,
   "back": 60.1,
-  "front": 59.7
+  "front": 59.6
  },
  "tip_deg_with_laptop": {
   "left": 82.4,
   "right": 77.8,
   "back": 54.9,
-  "front": 53.0
+  "front": 52.9
  },
  "checks": [
   {
@@ -280,14 +280,14 @@
    "detail": "all studs aligned"
   },
   {
-   "check": "connectivity: all sections are one stud-connected assembly",
+   "check": "connectivity: one stud-connected assembly; each section holds together on its own",
    "ok": true,
-   "detail": "1 connected group(s); sections share one group: base, pockets, dock, necks, frame"
+   "detail": "1 connected group overall (base, pockets, dock, necks, frame all joined through the floor plates, the deck and the pedestals); per section: base 1 assembly + 12 small group(s) that sit on a neighbouring section; pockets 1 assembly; dock 1 assembly + 1 small group(s) that sit on a neighbouring section; necks 2 assembly + 3 small group(s) that sit on a neighbouring section; frame 1 assembly (necks: the two necks)"
   },
   {
    "check": "parts held from above only (not gripped from below)",
    "ok": true,
-   "detail": "157 ({'pockets': 14, 'frame': 143}): plates bridging cable channels / doors, the top bezel lip, the retaining lips and the bottom corner slopes hang from the course above"
+   "detail": "156 ({'pockets': 14, 'frame': 142}): plates bridging cable channels / doors, the top bezel lip, the retaining lips and the bottom corner slopes hang from the course above"
   },
   {
    "check": "pocket clearance >= 1.5 mm per side",

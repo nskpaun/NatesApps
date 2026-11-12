@@ -10,29 +10,29 @@ part,bricklink_id,name,colour,ldraw_colour,bricklink_colour,qty,est_unit_usd,est
 3008,3008,Brick 1 x 8,Tan,19,2,11,0.22,2.42,206
 3009,3009,Brick 1 x 6,Tan,19,2,2,0.15,0.30,366
 3010,3010,Brick 1 x 4,Tan,19,2,1,0.10,0.10,541
-2456,2456,Brick 2 x 6,Light Bluish Gray,71,86,54,0.22,11.88,380
-2465,2465,Brick 1 x 16,Light Bluish Gray,71,86,35,0.45,15.75,129
-3001,3001,Brick 2 x 4,Light Bluish Gray,71,86,101,0.12,12.12,728
-3002,3002,Brick 2 x 3,Light Bluish Gray,71,86,35,0.10,3.50,463
-3003,3003,Brick 2 x 2,Light Bluish Gray,71,86,23,0.08,1.84,806
-3004,3004,Brick 1 x 2,Light Bluish Gray,71,86,155,0.06,9.30,1070
-3005,3005,Brick 1 x 1,Light Bluish Gray,71,86,84,0.06,5.04,877
-3006,3006,Brick 2 x 10,Light Bluish Gray,71,86,127,0.55,69.85,103
-3007,3007,Brick 2 x 8,Light Bluish Gray,71,86,16,0.30,4.80,206
-3008,3008,Brick 1 x 8,Light Bluish Gray,71,86,8,0.20,1.60,338
-3009,3009,Brick 1 x 6,Light Bluish Gray,71,86,17,0.14,2.38,555
-3010,3010,Brick 1 x 4,Light Bluish Gray,71,86,13,0.09,1.17,770
+2456,2456,Brick 2 x 6,Light Bluish Gray,71,86,57,0.22,12.54,380
+2465,2465,Brick 1 x 16,Light Bluish Gray,71,86,37,0.45,16.65,129
+3001,3001,Brick 2 x 4,Light Bluish Gray,71,86,109,0.12,13.08,728
+3002,3002,Brick 2 x 3,Light Bluish Gray,71,86,34,0.10,3.40,463
+3003,3003,Brick 2 x 2,Light Bluish Gray,71,86,22,0.08,1.76,806
+3004,3004,Brick 1 x 2,Light Bluish Gray,71,86,152,0.06,9.12,1070
+3005,3005,Brick 1 x 1,Light Bluish Gray,71,86,90,0.06,5.40,877
+3006,3006,Brick 2 x 10,Light Bluish Gray,71,86,123,0.55,67.65,103
+3007,3007,Brick 2 x 8,Light Bluish Gray,71,86,17,0.30,5.10,206
+3008,3008,Brick 1 x 8,Light Bluish Gray,71,86,10,0.20,2.00,338
+3009,3009,Brick 1 x 6,Light Bluish Gray,71,86,16,0.14,2.24,555
+3010,3010,Brick 1 x 4,Light Bluish Gray,71,86,16,0.09,1.44,770
 3622,3622,Brick 1 x 3,Light Bluish Gray,71,86,7,0.08,0.56,582
-6112,6112,Brick 1 x 12,Light Bluish Gray,71,86,20,0.35,7.00,185
-3001,3001,Brick 2 x 4,Sand Blue,379,55,601,0.26,156.26,22
-3002,3002,Brick 2 x 3,Sand Blue,379,55,95,0.22,20.90,7
-3003,3003,Brick 2 x 2,Sand Blue,379,55,54,0.18,9.72,9
-3004,3004,Brick 1 x 2,Sand Blue,379,55,285,0.13,37.05,44
-3005,3005,Brick 1 x 1,Sand Blue,379,55,358,0.13,46.54,56
-3009,3009,Brick 1 x 6,Sand Blue,379,55,162,0.31,50.22,24
-3010,3010,Brick 1 x 4,Sand Blue,379,55,62,0.20,12.40,47
-11477,11477,"Slope, Curved 2 x 1 x 2/3",Sand Blue,379,55,4,0.13,0.52,34
-15068,15068,"Slope, Curved 2 x 2 x 2/3",Sand Blue,379,55,8,0.18,1.44,40
+6112,6112,Brick 1 x 12,Light Bluish Gray,71,86,14,0.35,4.90,185
+3001,3001,Brick 2 x 4,Sand Blue,379,55,591,0.26,153.66,22
+3002,3002,Brick 2 x 3,Sand Blue,379,55,100,0.22,22.00,7
+3003,3003,Brick 2 x 2,Sand Blue,379,55,55,0.18,9.90,9
+3004,3004,Brick 1 x 2,Sand Blue,379,55,286,0.13,37.18,44
+3005,3005,Brick 1 x 1,Sand Blue,379,55,356,0.13,46.28,56
+3009,3009,Brick 1 x 6,Sand Blue,379,55,175,0.31,54.25,24
+3010,3010,Brick 1 x 4,Sand Blue,379,55,63,0.20,12.60,47
+11477,11477,"Slope, Curved 2 x 1 x 2/3",Sand Blue,379,55,6,0.13,0.78,34
+15068,15068,"Slope, Curved 2 x 2 x 2/3",Sand Blue,379,55,12,0.18,2.16,40
 3665,3665,"Slope, Inverted 45 2 x 1",Sand Blue,379,55,10,0.18,1.80,7
 2445,2445,Plate 2 x 12,Tan,19,2,3,0.33,0.99,98
 3020,3020,Plate 2 x 4,Tan,19,2,1,0.09,0.09,945
@@ -62,14 +62,14 @@ part,bricklink_id,name,colour,ldraw_colour,bricklink_colour,qty,est_unit_usd,est
 15573,15573,Plate 1 x 2 with 1 Stud (Jumper),Light Bluish Gray,71,86,76,0.05,3.80,831
 2445,2445,Plate 2 x 12,Light Bluish Gray,71,86,11,0.30,3.30,359
 3020,3020,Plate 2 x 4,Light Bluish Gray,71,86,6,0.08,0.48,1615
-3021,3021,Plate 2 x 3,Light Bluish Gray,71,86,11,0.06,0.66,1266
+3021,3021,Plate 2 x 3,Light Bluish Gray,71,86,12,0.06,0.72,1266
 3022,3022,Plate 2 x 2,Light Bluish Gray,71,86,17,0.05,0.85,1524
-3023,3023,Plate 1 x 2,Light Bluish Gray,71,86,20,0.04,0.80,1959
-3024,3024,Plate 1 x 1,Light Bluish Gray,71,86,70,0.03,2.10,1042
-3027,3027,Plate 6 x 16,Light Bluish Gray,71,86,1,1.30,1.30,72
+3023,3023,Plate 1 x 2,Light Bluish Gray,71,86,25,0.04,1.00,1959
+3024,3024,Plate 1 x 1,Light Bluish Gray,71,86,65,0.03,1.95,1042
+3027,3027,Plate 6 x 16,Light Bluish Gray,71,86,2,1.30,2.60,72
 3028,3028,Plate 6 x 12,Light Bluish Gray,71,86,25,0.80,20.00,124
-3029,3029,Plate 4 x 12,Light Bluish Gray,71,86,16,0.65,10.40,211
-3030,3030,Plate 4 x 10,Light Bluish Gray,71,86,4,0.55,2.20,174
+3029,3029,Plate 4 x 12,Light Bluish Gray,71,86,15,0.65,9.75,211
+3030,3030,Plate 4 x 10,Light Bluish Gray,71,86,5,0.55,2.75,174
 3031,3031,Plate 4 x 4,Light Bluish Gray,71,86,5,0.20,1.00,542
 3032,3032,Plate 4 x 6,Light Bluish Gray,71,86,27,0.30,8.10,500
 3033,3033,Plate 6 x 10,Light Bluish Gray,71,86,1,0.70,0.70,189
@@ -78,39 +78,41 @@ part,bricklink_id,name,colour,ldraw_colour,bricklink_colour,qty,est_unit_usd,est
 3036,3036,Plate 6 x 8,Light Bluish Gray,71,86,2,0.55,1.10,258
 3460,3460,Plate 1 x 8,Light Bluish Gray,71,86,6,0.12,0.72,704
 3623,3623,Plate 1 x 3,Light Bluish Gray,71,86,3,0.05,0.15,960
-3666,3666,Plate 1 x 6,Light Bluish Gray,71,86,5,0.08,0.40,1056
+3666,3666,Plate 1 x 6,Light Bluish Gray,71,86,3,0.08,0.24,1056
 3710,3710,Plate 1 x 4,Light Bluish Gray,71,86,26,0.06,1.56,1498
 3795,3795,Plate 2 x 6,Light Bluish Gray,71,86,24,0.12,2.88,1087
 3832,3832,Plate 2 x 10,Light Bluish Gray,71,86,7,0.25,1.75,500
 41539,41539,Plate 8 x 8,Light Bluish Gray,71,86,1,1.10,1.10,146
-4282,4282,Plate 2 x 16,Light Bluish Gray,71,86,37,0.45,16.65,289
+4282,4282,Plate 2 x 16,Light Bluish Gray,71,86,38,0.45,17.10,289
 4477,4477,Plate 1 x 10,Light Bluish Gray,71,86,1,0.15,0.15,434
 60479,60479,Plate 1 x 12,Light Bluish Gray,71,86,23,0.20,4.60,323
-91405,91405,Plate 16 x 16,Light Bluish Gray,71,86,8,4.00,32.00,44
-92438,92438,Plate 8 x 16,Light Bluish Gray,71,86,14,2.20,30.80,81
+91405,91405,Plate 16 x 16,Light Bluish Gray,71,86,7,4.00,28.00,44
+92438,92438,Plate 8 x 16,Light Bluish Gray,71,86,15,2.20,33.00,81
 3020,3020,Plate 2 x 4,Light Nougat,78,90,15,0.16,2.40,14
 3021,3021,Plate 2 x 3,Light Nougat,78,90,8,0.12,0.96,21
 3023,3023,Plate 1 x 2,Light Nougat,78,90,1,0.08,0.08,55
 3623,3623,Plate 1 x 3,Light Nougat,78,90,4,0.10,0.40,18
 3710,3710,Plate 1 x 4,Light Nougat,78,90,7,0.12,0.84,23
-3023,3023,Plate 1 x 2,Bright Light Orange,191,110,4,0.06,0.24,313
+3023,3023,Plate 1 x 2,Bright Light Orange,191,110,1,0.06,0.06,313
+3024,3024,Plate 1 x 1,Bright Light Orange,191,110,2,0.04,0.08,193
 3030,3030,Plate 4 x 10,Bright Light Orange,191,110,4,0.83,3.32,6
 3460,3460,Plate 1 x 8,Bright Light Orange,191,110,4,0.18,0.72,57
 3623,3623,Plate 1 x 3,Bright Light Orange,191,110,2,0.08,0.16,111
-3710,3710,Plate 1 x 4,Bright Light Orange,191,110,1,0.09,0.09,164
-3020,3020,Plate 2 x 4,Sand Blue,379,55,13,0.18,2.34,59
-3021,3021,Plate 2 x 3,Sand Blue,379,55,10,0.13,1.30,12
+3710,3710,Plate 1 x 4,Bright Light Orange,191,110,2,0.09,0.18,164
+3020,3020,Plate 2 x 4,Sand Blue,379,55,11,0.18,1.98,59
+3021,3021,Plate 2 x 3,Sand Blue,379,55,12,0.13,1.56,12
 3022,3022,Plate 2 x 2,Sand Blue,379,55,6,0.11,0.66,70
-3023,3023,Plate 1 x 2,Sand Blue,379,55,57,0.09,5.13,99
-3024,3024,Plate 1 x 1,Sand Blue,379,55,19,0.07,1.33,33
-3032,3032,Plate 4 x 6,Sand Blue,379,55,93,0.66,61.38,8
-3623,3623,Plate 1 x 3,Sand Blue,379,55,19,0.11,2.09,53
-3710,3710,Plate 1 x 4,Sand Blue,379,55,381,0.13,49.53,71
+3023,3023,Plate 1 x 2,Sand Blue,379,55,60,0.09,5.40,99
+3024,3024,Plate 1 x 1,Sand Blue,379,55,13,0.07,0.91,33
+3032,3032,Plate 4 x 6,Sand Blue,379,55,94,0.66,62.04,8
+3623,3623,Plate 1 x 3,Sand Blue,379,55,15,0.11,1.65,53
+3710,3710,Plate 1 x 4,Sand Blue,379,55,384,0.13,49.92,71
 3795,3795,Plate 2 x 6,Sand Blue,379,55,69,0.26,17.94,7
 3298,3298,Slope 33 3 x 2,Tan,19,2,10,0.28,2.80,38
 3037,3037,Slope 45 2 x 4,Light Bluish Gray,71,86,4,0.30,1.20,163
 3038,3038,Slope 45 2 x 3,Light Bluish Gray,71,86,18,0.25,4.50,68
 3039,3039,Slope 45 2 x 2,Light Bluish Gray,71,86,3,0.12,0.36,423
+3040b,3040,Slope 45 2 x 1,Sand Blue,379,55,20,0.18,3.60,28
 3298,3298,Slope 33 3 x 2,Sand Blue,379,55,34,0.55,18.70,11
 2431,2431,Tile 1 x 4 with Groove,Black,0,11,1,0.10,0.10,1418
 26603,26603,Tile 2 x 3,Black,0,11,2,0.15,0.30,407
@@ -130,10 +132,10 @@ part,bricklink_id,name,colour,ldraw_colour,bricklink_colour,qty,est_unit_usd,est
 2431,2431,Tile 1 x 4 with Groove,Light Nougat,78,90,2,0.20,0.40,16
 2431,2431,Tile 1 x 4 with Groove,Bright Light Orange,191,110,2,0.15,0.30,94
 3069b,3069b,Tile 1 x 2 with Groove,Pearl Gold,297,115,4,0.08,0.32,126
-26603,26603,Tile 2 x 3,Sand Blue,379,55,46,0.33,15.18,7
-3068b,3068b,Tile 2 x 2 with Groove,Sand Blue,379,55,4,0.15,0.60,24
-3069b,3069b,Tile 1 x 2 with Groove,Sand Blue,379,55,52,0.11,5.72,91
+26603,26603,Tile 2 x 3,Sand Blue,379,55,44,0.33,14.52,7
+3068b,3068b,Tile 2 x 2 with Groove,Sand Blue,379,55,5,0.15,0.75,24
+3069b,3069b,Tile 1 x 2 with Groove,Sand Blue,379,55,55,0.11,6.05,91
 3070b,3070b,Tile 1 x 1 with Groove,Sand Blue,379,55,10,0.09,0.90,67
 63864,63864,Tile 1 x 3,Sand Blue,379,55,6,0.18,1.08,25
-6636,6636,Tile 1 x 6,Sand Blue,379,55,105,0.33,34.65,34
+6636,6636,Tile 1 x 6,Sand Blue,379,55,102,0.33,33.66,34
 87079,87079,Tile 2 x 4,Sand Blue,379,55,187,0.33,61.71,40

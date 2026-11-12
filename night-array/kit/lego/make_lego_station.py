@@ -256,7 +256,7 @@ for i in (0, 1):
     cw = 6 if abs(POLE_C[i][0] - round(POLE_C[i][0])) < 0.01 else 7       # channel width (centred on the pole)
     c0 = int(round(POLE_C[i][0] - cw / 2))
     NECK.append({"c0": c0, "c1": c0 + cw, "x0": c0 - 2, "x1": c0 + cw + 2,
-                 "hole": R(c0, int(round(POLE_C[i][1])) - 3, cw, 6)})
+                 "hole": R(c0, int(round(POLE_C[i][1])) - 3, cw, 7)})
 NECK_Z0, NECK_COURSES = 13, 7                      # base plate at L13, then 7 courses (21 plates)
 ZB = NECK_Z0 + 1 + 3 * NECK_COURSES                # 35: frame bottom beam starts
 ZO = ZB + 8                                        # 43: bottom of the openings
@@ -346,7 +346,7 @@ for x in (14, 26, FRONT_X[1][0]):                                 # full ribs: l
 for x in range(PB0 + 8, PB0 + base.TRAY_W - 6, 16):               # rear zone, behind the pocket block
     RIBS |= R(x, 2, 2, REAR - 4)
 RIBS -= CUTOUT
-HOLE_BEAM = set().union(*(R(int(round(POLE_C[i][0])) - CLAMP_HALF, 8, 2 * CLAMP_HALF, 2) for i in (0, 1)))  # L8-L11 only
+HOLE_BEAM = set().union(*(R(int(round(POLE_C[i][0])) - CLAMP_HALF, 9, 2 * CLAMP_HALF, 2) for i in (0, 1)))  # L8-L11 only
 STRUCT = (WALL2 | SPINE | MID | RIBS | HOLE_BEAM) & HZ
 # openings in the structure
 DOOR_CABLE = set()                                                # L1-L4, 4 studs wide
@@ -941,6 +941,9 @@ def write_ldr(path):
     path.write_text("\n".join(L) + "\n")
 
 
+BRICKLINK_ID = {"3040b": "3040"}      # everything else has the same id on BrickLink
+
+
 def price(p):
     return round(PARTS[p["part"]][4] * COLOURS[p["color"]][3], 2)
 
@@ -951,7 +954,7 @@ def bom(parts):
     for (pid, col), n in sorted(cnt.items(), key=lambda kv: (PARTS[kv[0][0]][0], kv[0][1], kv[0][0])):
         kind, w, l, name, pr = PARTS[pid]
         unit = round(pr * COLOURS[col][3], 2)
-        rows.append({"part": pid, "bricklink_id": pid, "name": name, "kind": kind, "colour": COLOURS[col][2],
+        rows.append({"part": pid, "bricklink_id": BRICKLINK_ID.get(pid, pid), "name": name, "kind": kind, "colour": COLOURS[col][2],
                      "ldraw_colour": col, "bricklink_colour": COLOURS[col][0], "qty": n, "unit_usd": unit,
                      "total_usd": round(n * unit, 2), "sets_with_this_colour": avail(pid, col)})
     return rows
@@ -1228,14 +1231,31 @@ def run_checks(rows, refs):
             for j in adj[stack.pop()]:
                 if j not in comp:
                     comp[j] = i; stack.append(j)
-    by_sec = defaultdict(set)
-    for i, p in enumerate(ALL):
-        by_sec[p["section"]].add(comp[i])
     n_comp = len(set(comp.values()))
     loose = Counter(ALL[r]["section"] + ":" + ALL[r]["part"] for r in set(comp.values()))
-    chk("connectivity: all sections are one stud-connected assembly", n_comp == 1,
-        f"{n_comp} connected group(s); " + ("sections share one group: " + ", ".join(SECTIONS) if n_comp == 1 else
-                                            f"groups rooted at {dict(loose.most_common(8))}"))
+    sec_groups = {}
+    for s in SECTIONS:                                   # each section on its own (as you would lift it out)
+        idx = [i for i, p in enumerate(ALL) if p["section"] == s]
+        inset_, seen_, sizes = set(idx), set(), []
+        for i in idx:
+            if i in seen_:
+                continue
+            seen_.add(i); stack = [i]; n_ = 1
+            while stack:
+                for j in adj[stack.pop()]:
+                    if j in inset_ and j not in seen_:
+                        seen_.add(j); stack.append(j); n_ += 1
+            sizes.append(n_)
+        sec_groups[s] = sorted(sizes, reverse=True)
+    want_groups = {"base": 1, "pockets": 1, "dock": 1, "necks": 2, "frame": 1}
+    ok_sec = all(len([g for g in sec_groups[s] if g > 6]) == want_groups[s] for s in SECTIONS)
+    chk("connectivity: one stud-connected assembly; each section holds together on its own", n_comp == 1 and ok_sec,
+        f"{n_comp} connected group overall (base, pockets, dock, necks, frame all joined through the floor plates, "
+        f"the deck and the pedestals); per section: "
+        + "; ".join(f"{s} {len([g for g in sec_groups[s] if g > 6])} assembly" + (f" + {len([g for g in sec_groups[s] if g <= 6])} "
+                    f"small group(s) that sit on a neighbouring section" if any(g <= 6 for g in sec_groups[s]) else "")
+                    for s in SECTIONS) + " (necks: the two necks)"
+        if n_comp == 1 else f"groups rooted at {dict(loose.most_common(8))}; per section {sec_groups}")
     hang = [p for i, p in enumerate(ALL) if p["z"] > 0 and not any(ALL[j]["z"] < p["z"] for j in adj[i])]
     hc = Counter(p["section"] for p in hang)
     chk("parts held from above only (not gripped from below)", True,
@@ -1487,7 +1507,8 @@ def main():
     for c in checks:
         print(f"  [{'OK ' if c['ok'] else 'FAIL'}] {c['check']}: {c['detail']}")
     if "--no-render" not in sys.argv:
-        subprocess.run(["node", str(HERE / "render_lego_station.mjs"), str(OUT)], check=True)
+        subprocess.run(["node", str(HERE / "render_lego_station.mjs"), str(OUT)] + (["overview"] if LITE else []),
+                       check=True)
     return 0 if all(c["ok"] for c in checks) else 1
 
 

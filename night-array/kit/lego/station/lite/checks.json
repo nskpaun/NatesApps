@@ -164,30 +164,32 @@
   ]
  },
  "bar": {
-  "product": "Aluminium flat bar 1/8 in x 3/4 in x 48 in (3.2 x 19 x 1219 mm), e.g. Everbilt / Hillman, 6063",
+  "product": "Aluminium flat bar 1/8 in x 3/4 in (3.2 x 19 mm), 6063: one 48 in (1219 mm) for the bottom beam, one 36 in (914 mm) for the top beam, e.g. Everbilt / Hillman",
   "t": 3.2,
   "h": 19.05,
   "len": 1219.0,
+  "len_top": 914.0,
   "usd": 9.0,
+  "usd_top": 7.0,
   "E": 69000.0
  },
  "lids": {
-  "dock bay lid (Plugable UD-6950PDH)": 512,
+  "dock bay lid (Plugable UD-6950PDH)": 480,
   "left bay lid (spare bay / monitor adapter)": 512,
   "rear lid (pad cables, USB power)": 648
  },
- "parts_total": 4428,
- "distinct_lines": 138,
- "est_lego_usd": 1128.26,
- "est_non_lego_usd": 117.98,
+ "parts_total": 4469,
+ "distinct_lines": 140,
+ "est_lego_usd": 1133.65,
+ "est_non_lego_usd": 115.98,
  "by_section": {
   "base": {
-   "parts": 1318,
-   "est_usd": 412.05,
+   "parts": 1325,
+   "est_usd": 410.64,
    "colours": {
     "Tan": 155,
-    "Light Bluish Gray": 653,
-    "Sand Blue": 504,
+    "Light Bluish Gray": 663,
+    "Sand Blue": 501,
     "Bright Light Orange": 2,
     "Light Nougat": 2,
     "Lavender": 2
@@ -214,27 +216,27 @@
    }
   },
   "necks": {
-   "parts": 303,
-   "est_usd": 73.99,
+   "parts": 329,
+   "est_usd": 79.16,
    "colours": {
-    "Sand Blue": 229,
+    "Sand Blue": 255,
     "Bright Light Orange": 15,
     "Light Nougat": 35,
     "Lavender": 24
    }
   },
   "frame": {
-   "parts": 1355,
-   "est_usd": 297.96,
+   "parts": 1363,
+   "est_usd": 299.59,
    "colours": {
-    "Sand Blue": 1355
+    "Sand Blue": 1363
    }
   }
  },
  "parts_by_colour": {
   "Tan": 327,
-  "Light Bluish Gray": 1209,
-  "Sand Blue": 2750,
+  "Light Bluish Gray": 1219,
+  "Sand Blue": 2781,
   "Black": 58,
   "Pearl Gold": 4,
   "Bright Light Orange": 17,
@@ -242,23 +244,23 @@
   "Lavender": 26
  },
  "mass_kg": {
-  "base": 2.81,
+  "base": 2.82,
   "pockets": 1.31,
   "dock": 1.01,
-  "necks": 0.44,
-  "frame": 1.67
+  "necks": 0.45,
+  "frame": 1.68
  },
- "lego_kg": 7.25,
+ "lego_kg": 7.27,
  "tip_deg_lego_only": {
   "left": 82.7,
   "right": 81.8,
   "back": 59.4,
-  "front": 58.8
+  "front": 58.7
  },
  "tip_deg_with_laptop": {
-  "left": 82.3,
+  "left": 82.2,
   "right": 77.2,
-  "back": 54.3,
+  "back": 54.2,
   "front": 52.0
  },
  "checks": [
@@ -270,7 +272,7 @@
   {
    "check": "every part is in the part table and exists in its colour (>= 5 sets, Rebrickable inventories)",
    "ok": true,
-   "detail": "138 part/colour lines, all LDraw ids verified against library.ldraw.org; least common line: 3030 Bright Light Orange (6 sets), 3002 Sand Blue (7 sets), 3665 Sand Blue (7 sets), 3623 Lavender (7 sets), 3795 Sand Blue (7 sets), 26603 Sand Blue (7 sets)"
+   "detail": "140 part/colour lines, all LDraw ids verified against library.ldraw.org; least common line: 3030 Bright Light Orange (6 sets), 3002 Sand Blue (7 sets), 3665 Sand Blue (7 sets), 3623 Lavender (7 sets), 3795 Sand Blue (7 sets), 26603 Sand Blue (7 sets)"
   },
   {
    "check": "every stud under a part lands in a stud socket",
@@ -278,14 +280,14 @@
    "detail": "all studs aligned"
   },
   {
-   "check": "connectivity: all sections are one stud-connected assembly",
+   "check": "connectivity: one stud-connected assembly; each section holds together on its own",
    "ok": true,
-   "detail": "1 connected group(s); sections share one group: base, pockets, dock, necks, frame"
+   "detail": "1 connected group overall (base, pockets, dock, necks, frame all joined through the floor plates, the deck and the pedestals); per section: base 1 assembly + 12 small group(s) that sit on a neighbouring section; pockets 1 assembly; dock 1 assembly + 1 small group(s) that sit on a neighbouring section; necks 2 assembly + 3 small group(s) that sit on a neighbouring section; frame 1 assembly (necks: the two necks)"
   },
   {
    "check": "parts held from above only (not gripped from below)",
    "ok": true,
-   "detail": "150 ({'pockets': 14, 'frame': 136}): plates bridging cable channels / doors, the top bezel lip, the retaining lips and the bottom corner slopes hang from the course above"
+   "detail": "157 ({'pockets': 14, 'frame': 143}): plates bridging cable channels / doors, the top bezel lip, the retaining lips and the bottom corner slopes hang from the course above"
   },
   {
    "check": "pocket clearance >= 1.5 mm per side",
@@ -325,12 +327,12 @@
   {
    "check": "LEGO station on its own (it carries no monitor): tips at >= 10 deg, laptop docked or not",
    "ok": true,
-   "detail": "LEGO ~7.2 kg (estimate), centre of mass 96 mm up: tips at left 83 / right 82 / back 59 / front 59 deg; with the 2.15 kg laptop: left 82 / right 77 / back 54 / front 52 deg"
+   "detail": "LEGO ~7.3 kg (estimate), centre of mass 96 mm up: tips at left 83 / right 82 / back 59 / front 59 deg; with the 2.15 kg laptop: left 82 / right 77 / back 54 / front 52 deg"
   },
   {
    "check": "frame stands on the pedestals by itself when level (lips only work in a knock)",
    "ok": true,
-   "detail": "frame ~2.07 kg with the two bars, centre of mass y 166 (pedestals y 144.0-184.0), 204 mm above them: balanced to 5.0 deg without any clutch; beyond that the stud clutch and then the retaining lips hold it (a 10 deg tilt needs 0.36 N m)"
+   "detail": "frame ~2.08 kg with the two bars, centre of mass y 166 (pedestals y 144.0-184.0), 205 mm above them: balanced to 5.0 deg without any clutch; beyond that the stud clutch and then the retaining lips hold it (a 10 deg tilt needs 0.37 N m)"
   },
   {
    "check": "frame beams: aluminium bar deflection < 1.5 mm",
@@ -345,7 +347,7 @@
   {
    "check": "Plugable dock bay",
    "ok": true,
-   "detail": "bay 256 x 176 x 35.2 mm clear (floor to deck); box 225 x 85 x 24.5 sits against the spine with 27 mm to the beam line and 91 mm of cable space in front of it (the beam is 22.4 mm above the floor on two 2 x 2 posts); lid = 2 deck plates"
+   "detail": "bay 240 x 176 x 35.2 mm clear (floor to deck); box 225 x 85 x 24.5 sits against the spine with 27 mm to the beam line and 91 mm of cable space in front of it (the beam is 22.4 mm above the floor on two 2 x 2 posts); lid = 3 deck plates"
   },
   {
    "check": "power strip",

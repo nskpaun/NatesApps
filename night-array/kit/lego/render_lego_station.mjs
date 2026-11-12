@@ -175,14 +175,14 @@ window.render = (view, step) => {
   const full = (o = {}) => doc.bricks.map(b => ({ b, colour: new THREE.Color(b.color_hex), opts: { edgeOpacity: 0.28, ...o } }));
   if (view === 'step') {
     const list = doc.bricks.filter(b => b.step <= step).map(b => {
-      const c = new THREE.Color(b.color_hex); if (b.step < step) c.lerp(BG, 0.45);
+      const c = new THREE.Color(b.color_hex); if (b.step < step) c.lerp(BG, 0.22);
       return { b, colour: c, opts: b.step === step ? { edgeColor: 0xff7a00, edgeOpacity: 1 } : { edgeOpacity: 0.2 } };
     });
     addBricks(list); desk();
     refs(rf => (rf.step || 99) <= step && !(rf.kind === 'device' && step < 16) ? { hi: rf.step === step } : null);
     const top = Math.max(60, ...doc.bricks.filter(b => b.step <= step).map(b => b.z + b.sz),
       ...doc.reference.filter(f => (f.step || 99) <= step).map(f => f.z + f.sz));
-    look(-16, 30, 3050 + top * 1.7, new THREE.Vector3(C.x, top * 0.42, SY * 0.5));
+    look(-14, 27, 2350 + top * 1.3, new THREE.Vector3(C.x, top * 0.4, SY * 0.5));
   }
   if (view === 'overview') {
     addBricks(full()); desk();

@@ -12,14 +12,24 @@
    "dims": "pole 17.7 in (450 mm) x ~35 mm dia; 17.6 lb (8 kg); VESA 75 + 100; desk 10-88 mm (clamp)"
   },
   {
-   "id": "frame_bar",
-   "qty": 2,
+   "id": "frame_bar_bottom",
+   "qty": 1,
    "unit_usd": 9.0,
-   "product": "Aluminium flat bar 1/8 in x 3/4 in x 48 in (3.2 x 19 x 1219 mm), e.g. Everbilt / Hillman, 6063",
+   "product": "Aluminium flat bar 1/8 in x 3/4 in x 48 in (6063), e.g. Everbilt / Hillman",
    "mpn": "generic 1/8 x 3/4 x 48",
    "url": "any hardware store (Home Depot / Lowe's / Ace metal rack)",
-   "role": "stiffener inside the frame's bottom and top beam (slot 8 mm wide x 19.2 mm high); no cutting",
-   "dims": "3.2 x 19.05 x 1219 mm, ~0.2 kg each"
+   "role": "stiffener in the frame's bottom beam (slot 8 mm wide x 19.2 mm high); no cutting",
+   "dims": "3.2 x 19.05 x 1219 mm, ~0.2 kg"
+  },
+  {
+   "id": "frame_bar_top",
+   "qty": 1,
+   "unit_usd": 7.0,
+   "product": "Aluminium flat bar 1/8 in x 3/4 in x 36 in (6063)",
+   "mpn": "generic 1/8 x 3/4 x 36",
+   "url": "same rack",
+   "role": "stiffener in the frame's top beam, centred on the web between the screens; no cutting",
+   "dims": "3.2 x 19.05 x 914 mm, ~0.15 kg"
   },
   {
    "id": "vesa_standoffs",
@@ -74,5 +84,5 @@
   "gan_charger",
   "ties"
  ],
- "total_usd": 117.98
+ "total_usd": 115.98
 }
