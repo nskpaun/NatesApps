@@ -17,6 +17,8 @@ data class Settings(
     val speed: Float = 1.0f,
     /** Loudness of the voice from the phone's speaker, 0 (silent) to 1 (as loud as it goes). */
     val volume: Float = 0.8f,
+    /** Click in the glasses' speakers each time the highlight moves to another reply. */
+    val tick: Boolean = true,
     /** Use the toolkit's simulated glasses instead of a real pair. */
     val simulatedGlasses: Boolean = false,
 ) {
@@ -42,6 +44,7 @@ class SettingsStore(context: Context) {
             putInt("voice", next.voice)
             putFloat("speed", next.speed)
             putFloat("volume", next.volume)
+            putBoolean("tick", next.tick)
             putBoolean("simulatedGlasses", next.simulatedGlasses)
         }
     }
@@ -52,6 +55,7 @@ class SettingsStore(context: Context) {
         voice = prefs.getInt("voice", Settings.DEFAULT_VOICE),
         speed = prefs.getFloat("speed", 1.0f),
         volume = prefs.getFloat("volume", 0.8f),
+        tick = prefs.getBoolean("tick", true),
         simulatedGlasses = prefs.getBoolean("simulatedGlasses", false),
     )
 }

@@ -10,15 +10,16 @@ sealed interface GlassesScreen {
     ) : GlassesScreen
 
     /**
-     * Four reply slots, one per d-pad direction in [Dpad] order. A null slot is still being
-     * written. [heard] is what the partner said, null for the quick phrases ([quick]).
-     * [done] is false while the model is still writing.
+     * Four reply slots, one per position in [Dpad] order. A null slot is still being written.
+     * [heard] is what the partner said, null for the quick phrases ([quick]). [done] is false
+     * while the model is still writing. [focus] is the highlighted slot, if any.
      */
     data class Choices(
         val heard: String?,
         val replies: List<Reply?>,
         val done: Boolean,
         val quick: Boolean,
+        val focus: Dpad? = null,
     ) : GlassesScreen
 }
 
@@ -35,6 +36,7 @@ fun screenFor(state: State): GlassesScreen = when (val phase = state.phase) {
         replies = Dpad.entries.map { phase.replies.getOrNull(it.ordinal) },
         done = phase.done,
         quick = phase.isQuickPhrases,
+        focus = phase.focus,
     )
 
     is Phase.Speaking -> GlassesScreen.Status("Saying", phase.text)

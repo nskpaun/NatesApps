@@ -129,9 +129,9 @@ class ModelStoreTest {
     }
 
     @Test
-    fun `the catalogue adds up to about three and a half gigabytes with unique paths`() {
+    fun `the catalogue adds up to just under two gigabytes with unique paths`() {
         assertEquals(Models.ALL.size, Models.ALL.map { it.path }.toSet().size)
-        assertTrue(Models.ALL.sumOf { it.bytes } in 3_300_000_000L..3_500_000_000L)
+        assertTrue(Models.ALL.sumOf { it.bytes } in 1_800_000_000L..2_000_000_000L)
         assertTrue(Models.ALL.all { it.url.startsWith("https://") })
     }
 }

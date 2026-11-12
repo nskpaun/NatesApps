@@ -1,14 +1,17 @@
 package com.natesapps.fastchat
 
 import android.app.Application
+import android.content.pm.ApplicationInfo
 import android.util.Log
 import com.natesapps.fastchat.core.Effect
 import com.natesapps.fastchat.core.Event
 import com.natesapps.fastchat.core.GlassesInput
+import com.natesapps.fastchat.core.Phase
 import com.natesapps.fastchat.core.State
 import com.natesapps.fastchat.core.reduce
 import com.natesapps.fastchat.core.screenFor
 import com.natesapps.fastchat.glasses.GlassesLink
+import com.natesapps.fastchat.glasses.Tick
 import com.natesapps.fastchat.llm.LlamaEngine
 import com.natesapps.fastchat.llm.ReplyWriter
 import com.natesapps.fastchat.models.ModelStore
@@ -51,9 +54,13 @@ class FastChat(private val app: Application) {
 
     private val scope = MainScope()
 
+    /** Debug builds log what was heard and offered, to test from a computer. Release builds never do. */
+    private val debuggable = app.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0
+
     val settings = SettingsStore(app)
     val models = ModelStore(File(app.getExternalFilesDir(null) ?: app.filesDir, "models"))
     val glasses = GlassesLink(app, scope)
+    private val tick = Tick(app)
 
     private val _setup = MutableStateFlow<Setup>(Setup.NeedsDownload(0))
     val setup: StateFlow<Setup> = _setup.asStateFlow()
@@ -83,6 +90,14 @@ class FastChat(private val app: Application) {
 
     init {
         scope.launch { glasses.inputs.collect { dispatch(Event.Input(it)) } }
+        scope.launch {
+            glasses.closedOnGlasses.collect {
+                if (_conversation.value.phase != Phase.Off) {
+                    dispatch(Event.Stop)
+                    dispatch(Event.Problem("Paused, because FastChat was closed on the glasses."))
+                }
+            }
+        }
         scope.launch {
             settings.settings.map { it.simulatedGlasses }.distinctUntilChanged().collect(glasses::setSimulated)
         }
@@ -135,7 +150,7 @@ class FastChat(private val app: Application) {
                 _setup.value = Setup.Loading("Voice")
                 val loadedVoice = withContext(Dispatchers.Default) { Voice(app, models) }
 
-                _setup.value = Setup.Loading("Reply writer (Bonsai)")
+                _setup.value = Setup.Loading("Reply writer")
                 val loadedWriter = withContext(Dispatchers.Default) {
                     ReplyWriter(LlamaEngine.load(models.path(Models.LLM)))
                 }
@@ -174,7 +189,13 @@ class FastChat(private val app: Application) {
     fun debugHeard(text: String) {
         if (_setup.value != Setup.Ready) return
         listenJob?.cancel()
+        Log.i(TAG, "heard: $text")
         dispatch(Event.Heard(text))
+    }
+
+    /** Test hook: forgets the conversation so far, so test turns do not build on each other. */
+    fun debugReset() {
+        _conversation.value = _conversation.value.copy(history = emptyList())
     }
 
     /** Test hook: performs [input] through the simulated glasses when they are on. */
@@ -183,8 +204,17 @@ class FastChat(private val app: Application) {
     }
 
     private fun dispatch(event: Event) {
-        val step = reduce(_conversation.value, event)
+        val before = _conversation.value
+        val step = reduce(before, event)
         _conversation.value = step.state
+        // Feedback the wearer can feel without looking: a click each time the highlight lands
+        // on another reply.
+        val focus = (step.state.phase as? Phase.Choosing)?.focus
+        if (focus != null && focus != (before.phase as? Phase.Choosing)?.focus && settings.settings.value.tick) {
+            tick.play()
+        }
+        // FastChat is on the glasses only while a conversation is running.
+        glasses.setWanted(step.state.phase != Phase.Off)
         glasses.show(screenFor(step.state))
         step.effects.forEach(::perform)
     }
@@ -218,8 +248,11 @@ class FastChat(private val app: Application) {
                             update.stats?.let {
                                 _lastStats.value = it
                                 Log.i(TAG, "replies: prompt ${it.promptTokens} tok in ${it.promptMs} ms" +
-                                    (if (it.prefixReused) " (persona cached)" else "") +
+                                    (if (it.prefixReused) " (examples cached)" else "") +
                                     ", output ${it.outputTokens} tok in ${it.outputMs} ms = ${it.tokensPerSecond} tok/s")
+                            }
+                            if (debuggable && update.done) {
+                                Log.i(TAG, "offered: " + update.replies.joinToString(" | ") { "${it.emoji} ${it.text}" })
                             }
                             if (update.done && update.replies.isEmpty()) {
                                 dispatch(Event.GenerationFailed(effect.generation, "The model wrote no replies"))

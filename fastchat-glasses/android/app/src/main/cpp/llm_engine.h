@@ -22,7 +22,7 @@ struct LoadParams {
 };
 
 struct GenParams {
-    // Bonsai's recommended settings with thinking off.
+    // The settings the reply prompt was tuned with.
     float temperature = 0.7f;
     float top_p = 0.8f;
     int top_k = 20;
@@ -48,7 +48,8 @@ public:
     ~Engine();
 
     // Evaluates `prefix` and keeps a snapshot of the model state after it, so later generate()
-    // calls with the same prefix skip straight to the part that changed.
+    // calls with the same prefix skip straight to the part that changed. The last few prefixes
+    // are kept, so different prompts can take turns.
     bool prime(const std::string& prefix, std::string* error);
 
     // Completes prefix + suffix. `grammar` is a GBNF grammar constraining the output ("" for
@@ -73,11 +74,15 @@ private:
     int n_batch_ = 0;
     int n_past_ = 0;
 
-    // Tokens of the primed prefix and the state snapshot taken right after evaluating them.
-    std::vector<int32_t> prefix_tokens_;
-    std::vector<uint8_t> prefix_state_;
-    // True while the context holds exactly the prefix and nothing after it.
-    bool at_prefix_ = false;
+    // A prefix that has been evaluated, and the model state right after it.
+    struct Snapshot {
+        std::vector<int32_t> tokens;
+        std::vector<uint8_t> state;
+    };
+    static constexpr size_t kMaxSnapshots = 3;
+    std::vector<Snapshot> snapshots_; // oldest first
+    // Index of the snapshot whose prefix is exactly what the context holds now, or -1.
+    int loaded_ = -1;
 
     std::atomic<bool> cancel_{false};
 };

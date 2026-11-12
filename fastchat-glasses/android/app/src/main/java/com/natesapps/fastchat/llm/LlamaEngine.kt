@@ -3,7 +3,7 @@ package com.natesapps.fastchat.llm
 import java.io.Closeable
 
 /**
- * The on-device language model: Bonsai through llama.cpp (see `src/main/cpp`).
+ * The on-device language model: LFM3 through llama.cpp (see `src/main/cpp`).
  *
  * Calls block and must not overlap; [ReplyWriter] keeps them on one thread. [cancel] is the
  * exception: it may be called from any thread to stop the call in progress.
@@ -37,11 +37,12 @@ class LlamaEngine private constructor(private var handle: Long) : Closeable {
         suffix: String,
         grammar: String,
         maxTokens: Int,
+        temperature: Float = TEMPERATURE,
         onText: (String) -> Boolean,
     ): Stats {
         val stats = nativeGenerate(
             handle, prefix.toByteArray(), suffix.toByteArray(), grammar.toByteArray(),
-            TEMPERATURE, TOP_P, TOP_K, PRESENCE_PENALTY, maxTokens,
+            temperature, TOP_P, TOP_K, PRESENCE_PENALTY, maxTokens,
         ) { bytes -> onText(String(bytes, Charsets.UTF_8)) }
         return Stats(stats[0].toInt(), stats[1], stats[2].toInt(), stats[3], stats[4] == 1L)
     }
@@ -56,8 +57,9 @@ class LlamaEngine private constructor(private var handle: Long) : Closeable {
     }
 
     companion object {
-        // Bonsai's recommended sampling with thinking off.
-        private const val TEMPERATURE = 0.7f
+        // The sampling the prompt was tuned with. LFM3's own recommendation (temperature 0.1) was
+        // tried and made the four replies too alike.
+        const val TEMPERATURE = 0.7f
         private const val TOP_P = 0.8f
         private const val TOP_K = 20
         private const val PRESENCE_PENALTY = 1.5f
@@ -67,7 +69,7 @@ class LlamaEngine private constructor(private var handle: Long) : Closeable {
         }
 
         /** Loads the GGUF at [path]. Takes a few seconds; throws if the file cannot be loaded. */
-        fun load(path: String, contextTokens: Int = 2048, threads: Int = defaultThreads()): LlamaEngine =
+        fun load(path: String, contextTokens: Int = 4096, threads: Int = defaultThreads()): LlamaEngine =
             LlamaEngine(nativeLoad(path.toByteArray(), contextTokens, threads))
 
         /** Leave two cores for audio and the UI; more than six threads stops paying off. */
