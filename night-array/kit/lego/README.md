@@ -2,6 +2,8 @@
 
 A LEGO build of the Night Array **pocket section** desk tray (the resin version is in [`../poc`](../poc/README.md)). It has a keyboard pocket for the Keychron K3 Ultra (with its NILLKIN Magic Tag receiver) and a mouse pocket for the Lenovo X9. Each device charges from an Anker 313 Qi pad hidden under its pocket, through **one layer of LEGO tiles (3.2 mm)**. Every part is a common, current LEGO part in Dark Bluish Gray, Black or Light Bluish Gray. No part contains metal.
 
+The full station built round this tray (base, necks, screen frame for two monitors, dock) is in [`station/`](station/README.md).
+
 ![assembled, keyboard and mouse ghosted](overview.png)
 
 | | |
