@@ -96,6 +96,18 @@ def trace(cam, ids=None):
     return (t, P) if ids is None else (t, P, sid)
 
 
+def visible(eye, P, eps=1e-3):
+    """Exact shadow test for points P (n, 3): True where no primitive lies between the eye and the point."""
+    eye = np.array(eye, float)
+    d = P - eye
+    dist = np.linalg.norm(d, axis=-1)
+    d = d / np.maximum(dist, 1e-9)[:, None]
+    t = np.full(len(P), np.inf)
+    for p in PRIMS:
+        t = np.minimum(t, hit(eye, d, p))
+    return t > dist - eps * (1 + dist)
+
+
 def project(cam, P):
     eye, r, u, f = basis(cam)
     v = P - eye

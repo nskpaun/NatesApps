@@ -2,7 +2,7 @@
   llm_boxes.py "DESCRIPTION" OUT.json
 Output: {"request", "room": [width, height, depth], "objects": [{"name", "prims": [primitive, ...]}]}  (see ../spike/blockout.py)
 """
-import json, sys, math, re, urllib.request
+import json, sys, math, re, urllib.request, urllib.error
 
 FURNITURE = {  # width along the wall, depth out from the wall; built from several boxes each
     "sofa": (2.0, 0.9), "armchair": (0.85, 0.85), "coffee_table": (1.0, 0.6), "bookshelf": (1.2, 0.35),
@@ -37,7 +37,7 @@ Each piece: {"label": short name, "shape": "box" or "cylinder" or a furniture na
 - "place": {"wall": "back"|"front"|"left"|"right", "along": 0..1}   one piece against a wall (along 0.5 = middle of that wall)
 - "place": {"ring": {"centre": [u, v], "radius": metres, "count": n, "from": degrees, "to": degrees}}
       n copies evenly spaced on a circle or arc, each turned to face the centre. "size" is the size of ONE copy (a bench is about 2 m wide), not the whole row. Angle 0 points right (+x), 90 points to the back wall, 180 left, 270 to the front wall. 0 to 360 is a full circle; 200 to 340 is an arc on the front side of the centre, which is where an audience sits to watch something at the back.
-- "place": {"corners": true}                  four copies, one near each corner
+- "place": {"corners": true}                  FOUR copies, one near each corner. Only for things the description puts in every corner (pillars, lamps). A single thing "in the back left corner" is ONE piece: {"wall": "back", "along": 0} (back right: along 1; front left: {"wall": "front", "along": 0}; front right: along 1)
 
 Rules: choose a room size that suits the space (a bedroom is about 4 x 4 x 2.6; a hall or theatre is 10 to 16 wide and 4 to 6 high). Use 3 to 12 pieces. Everything rests on the floor (base 0) unless it sits on top of another piece. A raised stage is a low, wide box or cylinder with base 0 and height 0.5 to 1. Curved rows of seating are rings that share one centre (the thing being watched) and have increasing radii, about 1.2 m apart, with more copies in the outer rows. A piece "by a window" goes on the same wall as the window, and you must also add the window. Leave the middle of the floor open unless the description puts something there. Do not include lights, torches, fabric, colours or materials: only large solid shapes.
 
@@ -67,7 +67,9 @@ Example for "a reading room: sofa on the back wall, armchair by the window on th
 Description: '''.replace("FURNITURE_NAMES", ", ".join(FURNITURE))
 
 clamp = lambda v, lo, hi: max(lo, min(hi, v))
-num = lambda v, d: float(v) if isinstance(v, (int, float)) else d
+num = lambda v, d: float(v) if isinstance(v, (int, float)) and math.isfinite(v) else d   # the model's numbers can be missing, text or NaN
+pair = lambda v: (list(v) + [None, None])[:2] if isinstance(v, (list, tuple)) else [None, None]
+WALLS = ("back", "front", "left", "right")
 FOCUS = re.compile(r"stage|altar|platform|podium|screen|throne|pulpit|dais", re.I)
 TINY = re.compile(r"torch|candle|light|lantern|flame|cloth|tent|fabric|curtain", re.I)
 
@@ -76,6 +78,7 @@ def placements(place, room, foot, focus):
     W, _, D = room; fw, fd = foot
     if "wall" in place:
         a = clamp(num(place.get("along"), 0.5), 0, 1); wall = place["wall"]
+        if not isinstance(wall, str) or wall not in WALLS: return []        # an unknown wall name used to mean the right wall
         if wall in ("back", "front"):
             x = clamp(a * W, fw / 2 + 0.05, W - fw / 2 - 0.05)
             return [(x, D - fd / 2, math.pi)] if wall == "back" else [(x, fd / 2, 0.0)]
@@ -85,9 +88,11 @@ def placements(place, room, foot, focus):
         m = max(fw, fd) / 2 + 0.3
         return [(m, m, 0.0), (W - m, m, 0.0), (m, D - m, 0.0), (W - m, D - m, 0.0)]
     if "ring" in place:
-        r = place["ring"]; cu, cv = (r.get("centre") or [0.5, 0.5])[:2]; cx, cz = clamp(cu, 0, 1) * W, clamp(cv, 0, 1) * D
+        r = place["ring"]
+        if not isinstance(r, dict): return []
+        cu, cv = pair(r.get("centre")); cx, cz = clamp(num(cu, 0.5), 0, 1) * W, clamp(num(cv, 0.5), 0, 1) * D
         n = int(clamp(num(r.get("count"), 6), 1, 40)); a0, a1 = num(r.get("from"), 0), num(r.get("to"), 360)
-        if a1 <= a0: a1 += 360
+        if a1 <= a0: a1 = a0 + ((a1 - a0) % 360 or 360)
         span = min(a1 - a0, 360); full = span >= 359
         # keep the ring inside the room
         rad = clamp(num(r.get("radius"), 2), 0.5, min(cx, W - cx, cz, D - cz) - max(fw, fd) / 2 - 0.1) if min(cx, W - cx, cz, D - cz) > 1 else 0.5
@@ -101,34 +106,57 @@ def placements(place, room, foot, focus):
             th = math.radians(a0 + span * ((i + 0.0) / n if full else (i / (n - 1) if n > 1 else 0.5)))
             out.append((cx + rad * math.cos(th), cz + rad * math.sin(th), math.atan2(-math.cos(th), -math.sin(th))))
         return out
-    u, v = (place.get("at") or [0.5, 0.5])[:2]
+    u, v = pair(place.get("at"))
     return [(clamp(num(u, 0.5), 0, 1) * W, clamp(num(v, 0.5), 0, 1) * D, 0.0)]
 
 def to_world(local, x, z, yaw):   # local (u, y, v) offset from the footprint centre -> world
     cs, sn = math.cos(yaw), math.sin(yaw)
     return [x + cs * local[0] + sn * local[2], local[1], z - sn * local[0] + cs * local[2]]
 
+def fit(prims, room, shrink):
+    """Move one placed piece (all its primitives together) so its yaw-rotated extent lies inside the room.
+    A single box or cylinder that is larger than the room is shrunk first; anything else too large is centred."""
+    def ext(p):
+        if p["shape"] == "cyl": return p["r"], p["r"]
+        cs, sn = abs(math.cos(p["yaw"])), abs(math.sin(p["yaw"]))
+        return cs * p["h"][0] + sn * p["h"][2], sn * p["h"][0] + cs * p["h"][2]
+    if shrink and len(prims) == 1:
+        p = prims[0]; hx, hz = ext(p); k = min(1.0, room[0] / (2 * hx), room[2] / (2 * hz))
+        if k < 1:
+            if p["shape"] == "cyl": p["r"] *= k
+            else: p["h"][0] *= k; p["h"][2] *= k
+    for ax, L in ((0, room[0]), (2, room[2])):
+        lo = min(p["c"][ax] - ext(p)[ax // 2] for p in prims); hi = max(p["c"][ax] + ext(p)[ax // 2] for p in prims)
+        move = (L - lo - hi) / 2 if hi - lo >= L else clamp(lo, 0, L - (hi - lo)) - lo
+        for p in prims: p["c"][ax] += move
+
 def expand(layout):
-    r = layout.get("room") or {}
+    if not isinstance(layout, dict): layout = {}
+    r = layout.get("room") if isinstance(layout.get("room"), dict) else {}
     room = [clamp(num(r.get("width"), 4), 3, 24), clamp(num(r.get("height"), 2.6), 2.4, 9), clamp(num(r.get("depth"), 4), 3, 24)]
-    pieces = [p for p in layout.get("pieces", []) if isinstance(p, dict) and isinstance(p.get("place"), dict)]
+    pieces = layout.get("pieces") if isinstance(layout.get("pieces"), list) else []
+    pieces = [p for p in pieces if isinstance(p, dict) and isinstance(p.get("place"), dict) and isinstance(p.get("shape"), str)]
+    def size(p):     # a bare number is taken as the width or radius; anything else that is not a list is ignored
+        z = p.get("size"); return list(z) if isinstance(z, (list, tuple)) else [z] if isinstance(z, (int, float)) else []
     def foot(p):
-        s = p.get("shape"); z = p.get("size") or []
+        s = p.get("shape"); z = size(p)
         if s in FURNITURE: return FURNITURE[s]
-        if s == "cylinder": rr = clamp(num(z[0] if z else None, 0.3), 0.08, 6); return (2 * rr, 2 * rr)
-        return (clamp(num(z[0] if z else None, 1), 0.1, room[0]), clamp(num(z[2] if len(z) > 2 else None, 1), 0.1, room[2]))
+        if s == "cylinder": rr = clamp(num(z[0] if z else None, 0.3), 0.08, min(6, room[0] / 2, room[2] / 2)); return (2 * rr, 2 * rr)
+        side = p["place"].get("wall") in ("left", "right")              # on a side wall the width runs along the room's depth
+        return (clamp(num(z[0] if z else None, 1), 0.1, room[2] if side else room[0]), clamp(num(z[2] if len(z) > 2 else None, 1), 0.1, room[0] if side else room[2]))
     focus = None
     for p in pieces:
         if FOCUS.search(str(p.get("label", ""))) and "ring" not in p["place"]:
-            x, z, _ = placements(p["place"], room, foot(p), None)[0]; focus = (x, z); break
+            at = placements(p["place"], room, foot(p), None)
+            if at: focus = at[0][:2]; break
     objs = []
     for p in pieces:
-        label, s, z = str(p.get("label") or p.get("shape") or "piece")[:30], p.get("shape"), p.get("size") or []
+      try:
+        label, s, z = str(p.get("label") or p.get("shape") or "piece")[:30], p.get("shape"), size(p)
         fw, fd = foot(p)
         if s not in FURNITURE and s not in ("box", "cylinder"): continue
         if s not in FURNITURE and (TINY.search(label) or min(fw, fd) < 0.12): continue      # lights and fabric are for the painter, not the blockout
         for x, zc, yaw in placements(p["place"], room, (fw, fd), focus):
-            x, zc = clamp(x, min(fw, fd) / 2, room[0] - min(fw, fd) / 2), clamp(zc, min(fw, fd) / 2, room[2] - min(fw, fd) / 2)
             if s in FURNITURE:
                 gap = 0.25 if s in ("armchair", "chair", "sofa", "desk") and any(q.get("shape") == "window" and q["place"].get("wall") == p["place"].get("wall") for q in pieces) and "wall" in p["place"] else 0
                 prims = []
@@ -139,7 +167,10 @@ def expand(layout):
                 hgt = clamp(num(z[1] if len(z) > 1 else None, 1), 0.1, room[1]); base = 0.0   # everything settles onto the floor
                 if s == "cylinder": prims = [{"shape": "cyl", "c": [x, base + hgt / 2, zc], "r": fw / 2, "hy": hgt / 2}]
                 else: prims = [{"shape": "box", "c": [x, base + hgt / 2, zc], "h": [fw / 2, hgt / 2, fd / 2], "yaw": yaw}]
+            fit(prims, room, s not in FURNITURE)        # nothing may poke through a wall: the depth maps would slice it
             objs.append({"name": label, "prims": prims})
+      except Exception as e:      # one malformed piece must not fail the whole world
+        print("skipped a piece the layout model wrote badly:", type(e).__name__, e, file=sys.stderr)
     return room, objs[:80]
 
 def ask(req, model="qwen3.5:9b"):
@@ -152,9 +183,16 @@ if __name__ == "__main__":
     req, path = sys.argv[1], sys.argv[2]
     try:
         layout, secs = ask(req)
-    except (ValueError, KeyError) as e:
+        room, objs = expand(layout)
+    except OSError as e:      # most specific first: HTTPError and TimeoutError are both OSErrors, and a connect timeout hides in URLError.reason
+        if isinstance(e, urllib.error.HTTPError):
+            if e.code == 404: raise SystemExit("The layout model has not been downloaded. Run: ollama pull qwen3.5:9b")
+            raise SystemExit(f"Ollama could not run the layout model (HTTP {e.code}). It may be out of memory; try again in a moment.")
+        if isinstance(e, TimeoutError) or isinstance(getattr(e, "reason", None), TimeoutError):
+            raise SystemExit("The layout model took too long to answer. Try again, or describe the space more simply.")
+        raise SystemExit("Could not reach the layout model. Check that Ollama is running.")
+    except Exception:
         raise SystemExit("The layout model did not return a usable plan. Try describing the space more simply.")
-    room, objs = expand(layout)
     if not objs: raise SystemExit("The layout model's plan had nothing solid in it. Try naming the main things in the space.")
     json.dump({"request": req, "room": room, "objects": objs}, open(path, "w"), indent=1)
     names = {}

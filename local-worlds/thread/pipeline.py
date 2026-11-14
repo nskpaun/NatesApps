@@ -50,8 +50,12 @@ def photos(d, name):
     stage("building the mesh and collider")
     run([PY, "mesh_photos.py", d, f"{d}/mesh"])
     s = json.load(open(f"{d}/scene.json"))
-    register({"name": name, "ply": f"{rel}/scene.ply", "mesh": f"{rel}/mesh.glb", "collider": f"{rel}/mesh_collider.glb", "up": s["up"], "center": s["center"],
-              "eye": s["eye"], "forward": s["forward"], "note": f"{n_reg} photos, {s['splats'] // 1000}k splats", "kind": "photos"})
+    entry = {"name": name, "ply": f"{rel}/scene.ply", "mesh": f"{rel}/mesh.glb", "collider": f"{rel}/mesh_collider.glb", "up": s["up"], "center": s["center"],
+             "eye": s["eye"], "forward": s["forward"], "note": f"{n_reg} photos, {s['splats'] // 1000}k splats", "kind": "photos"}
+    entry.update({k: s[k] for k in ("focal", "width") if k in s})
+    # mesh_meta.json also holds estimates of scale, floor and up; they are kept on disk but not used yet, because the
+    # scale disagrees with the viewer's own estimate by about 20% and one real measurement is needed to say which is right
+    register(entry)
     stage("done")
 
 def port_open(p):
@@ -61,10 +65,11 @@ def port_open(p):
 def prompt(d, name, layout, style):
     rel = "/" + os.path.relpath(d, HERE)
     os.makedirs(d, exist_ok=True)
-    env = {"WORLD_DIR": os.path.relpath(d, HERE), "WORLD_VIEWS": os.environ.get("WORLD_VIEWS", "12")}
-    n_views = int(env["WORLD_VIEWS"])
-    painted = os.path.exists(f"{d}/boxes.json") and len(glob.glob(f"{d}/gen/images/*.png")) >= n_views
-    if not painted:                                     # a re-run of the same world reuses its painted views
+    n_views = int(os.environ.get("WORLD_VIEWS", "12"))
+    # the full detail level paints at 1024x768; the others at 768x576, which is about twice as fast per view
+    env = {"WORLD_DIR": os.path.relpath(d, HERE), "WORLD_VIEWS": str(n_views),
+           "WORLD_PAINT": os.environ.get("WORLD_PAINT", "1024x768" if n_views >= 16 else "768x576")}
+    if not os.path.exists(f"{d}/boxes.json"):           # a re-run keeps its layout: asking the model again could change it
         stage("planning the layout")
         started = None
         if not port_open(11434):
@@ -76,22 +81,23 @@ def prompt(d, name, layout, style):
             run([PY, "llm_boxes.py", layout, f"{d}/boxes.json"])
         finally:
             if started: started.terminate()            # one model in memory at a time
-        pieces = ", ".join(dict.fromkeys(re.sub(r"[_\d]+", " ", o["name"]).strip() for o in json.load(open(f"{d}/boxes.json"))["objects"]))
-        stage("rendering the blockout")
-        run([PY, "chisel_ring.py", "prep"], env)
-        stage("painting views")
-        run([PY_IMG, "chisel_ring.py", "gen", "gen", f"interior photo, {style}, with {pieces}"], env)
-    pieces = ", ".join(dict.fromkeys(re.sub(r"[_\d]+", " ", o["name"]).strip() for o in json.load(open(f"{d}/boxes.json"))["objects"]))
+    stage("rendering the blockout")
+    run([PY, "chisel_ring.py", "prep"], env)
+    stage("painting views")
+    run([PY_IMG, "chisel_ring.py", "gen", "gen", style], env)   # skips views already painted for this layout, view count, size and style
     stage("making the views agree")
     run([PY, "consistent.py", "gen"], env)
     stage("training the splat")
-    run([PY, "train_scene.py", f"{d}/gen_c", f"{d}/gen_c/gen_c", "10000"])
+    # painted rooms have no view-dependent shine, so low-order colour is enough: the file is about 2.4x smaller
+    run([PY, "train_scene.py", f"{d}/gen_c", f"{d}/gen_c/gen_c", "10000", "--sh", "1"])
     stage("building the mesh and collider")
     run([PY, "blockout_mesh.py", "gen_c"], env)
-    s = json.load(open(f"{d}/gen_c/gen_c_scene.json"))
-    register({"name": name, "ply": f"{rel}/gen_c/gen_c.ply", "mesh": f"{rel}/gen_c/gen_c_mesh.glb", "collider": f"{rel}/gen_c/gen_c_mesh_collider.glb", "up": s["up"], "center": s["center"],
-              "eye": s["eye"], "forward": s["forward"], "metre": json.load(open(f"{d}/gen_c/gen_c_metre.json"))["metre"], "room": json.load(open(f"{d}/gen_c/gen_c_metre.json"))["room"], "flat": True, "lamp": 5,
-              "note": f"invented: {layout[:60]}", "kind": "prompt"})
+    s, m = json.load(open(f"{d}/gen_c/gen_c_scene.json")), json.load(open(f"{d}/gen_c/gen_c_metre.json"))
+    entry = {"name": name, "ply": f"{rel}/gen_c/gen_c.ply", "mesh": f"{rel}/gen_c/gen_c_mesh.glb", "collider": f"{rel}/gen_c/gen_c_mesh_collider.glb", "up": s["up"], "center": s["center"],
+             "eye": s["eye"], "forward": s["forward"], "metre": m["metre"], "room": m["room"], "flat": True, "lamp": 5, "note": f"invented: {layout[:60]}", "kind": "prompt"}
+    entry.update({k: m[k] for k in ("centre", "floor") if k in m})          # exact room placement for the viewer
+    entry.update({k: s[k] for k in ("focal", "width") if k in s})           # lets the viewer match the trainer's blur
+    register(entry)
     stage("done")
 
 if __name__ == "__main__":

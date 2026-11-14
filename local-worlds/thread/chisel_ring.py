@@ -1,9 +1,9 @@
-"""Blockout -> ring of depth maps -> depth-guided pictures -> COLMAP-format dataset for the splat trainer.
-  chisel_ring.py prep                 depth maps + cameras
-  chisel_ring.py gen NAME "PROMPT"    pictures (model loaded once)
-  chisel_ring.py colmap NAME          write chisel/NAME/{images,sparse/0}
+"""Blockout -> ring of depth maps -> depth-guided pictures.
+  chisel_ring.py prep                depth maps + cameras
+  chisel_ring.py gen NAME "STYLE"    pictures (model loaded once; already-painted views are skipped)
+Environment: WORLD_DIR (the world's folder), WORLD_VIEWS (how many views), WORLD_PAINT (picture size, default 1024x768).
 """
-import sys, json, os, time
+import sys, json, os, re, time
 import numpy as np
 from PIL import Image
 sys.path.insert(0, "../spike")
@@ -19,19 +19,25 @@ PRIM_OBJ = [oi for oi, o in enumerate(objs) for _ in o["prims"]]     # which obj
 c = np.array([RW / 2, 0.0, RD / 2])
 EYE = 1.5 if RH < 3.2 else 1.7
 
-def free(eye):
-    """Pull a camera position towards the room's centre until it is not inside (or right against) any shape."""
+def free(eye, margin=0.25):
+    """A camera position that is not inside (or right against) any shape: the given spot, else the nearest free spot
+    found by sliding towards or away from the room's centre. None if there is none."""
     eye = np.array(eye, float)
-    for _ in range(12):
-        if not any(B.inside(eye, p, 0.25) for p in B.PRIMS): break
-        eye[[0, 2]] = c[[0, 2]] + (eye[[0, 2]] - c[[0, 2]]) * 0.85
-    return eye
+    clear = lambda e: not any(B.inside(e, p, margin) for p in B.PRIMS)
+    inside_room = lambda e: 0.3 < e[0] < RW - 0.3 and 0.3 < e[2] < RD - 0.3
+    for k in (1.0, 0.9, 1.1, 0.8, 1.2, 0.7, 1.3, 0.6, 0.5, 0.4, 0.3):
+        e = eye.copy(); e[[0, 2]] = c[[0, 2]] + (eye[[0, 2]] - c[[0, 2]]) * k
+        if inside_room(e) and clear(e): return e
+    return None
 
 B.CAMS = {}
 for i in range(N):
     a = 2 * np.pi * i / N
     off = np.array([np.cos(a) * RW, 0, np.sin(a) * RD])               # an ellipse that follows the room's shape
-    eye = free(c + off * 0.325 + [0, EYE, 0])
+    want = c + off * 0.325 + [0, EYE, 0]
+    eye = free(want)
+    if eye is None: eye = free(want, 0.0)
+    if eye is None: eye = want                                        # a painted view must exist for every index
     B.CAMS[str(i)] = (tuple(eye), tuple(c - off * 0.4 + [0, 0.8, 0]))
 
 def prep():
@@ -39,47 +45,67 @@ def prep():
     for k, cam in B.CAMS.items():
         t, P = B.trace(cam)
         inv = 1 / np.maximum(t, 0.3)
-        img = (inv - inv.min()) / (inv.max() - inv.min())
+        # robust contrast: a few very near pixels must not flatten the rest of the map, and far walls need visible steps
+        lo, hi = np.percentile(inv, [1, 99])
+        img = np.clip((inv - lo) / max(hi - lo, 1e-6), 0, 1) ** 0.6
         Image.fromarray((img * 255).astype(np.uint8)).convert("RGB").save(f"{D}/depth/{int(k):02d}.png")
         np.save(f"{D}/depth/{int(k):02d}.npy", P.astype(np.float32))
     print("depth maps", N)
 
-def gen(name, prompt):
+def view_prompt(i, style):
+    """Name only what this view's blockout actually contains, so the painter does not add furniture that is elsewhere."""
+    _, _, sid = B.trace(B.CAMS[str(i)], PRIM_OBJ)
+    share = np.bincount(sid.ravel(), minlength=6 + len(objs)) / sid.size
+    seen = {}
+    for oi, o in enumerate(objs):
+        if share[6 + oi] > 0.005:
+            name = re.sub(r"[_\d]+", " ", o["name"]).strip()
+            seen[name] = seen.get(name, 0) + share[6 + oi]
+    names = [n for n, _ in sorted(seen.items(), key=lambda kv: -kv[1])][:6]
+    what = ("In view: " + ", ".join(names) + ".") if names else "A bare stretch of wall and floor."
+    return f"interior photo, {style}. {what}"
+
+def speed_patches():
+    """mflux is patched in memory, not on disk. Measured on this Mac at 1024x768: a step drops from about 15.3 s to
+    12.2 s and the slow first step on later views (up to 33 s) goes away."""
+    import dataclasses, mlx.core as mx
+    from mflux.models.z_image.variants.controlnet.controlnet_util import ZImageControlnetUtil
+    from mflux.models.z_image.model.z_image_text_encoder.prompt_encoder import PromptEncoder
+    enc = ZImageControlnetUtil.encode_controls
+    def encode_controls(*a, **k):      # keep the transformer in bfloat16: float32 control latents drag every layer to float32
+        r = enc(*a, **k)
+        return dataclasses.replace(r, control_latents=[x.astype(mx.bfloat16) for x in r.control_latents])
+    ZImageControlnetUtil.encode_controls = staticmethod(encode_controls)
+    # the blockout depth map is used as it is; by default mflux would run Depth Pro on it and use that estimate instead
+    ZImageControlnetUtil._depth = staticmethod(lambda img: img.convert("RGB"))
+    encode, cache = PromptEncoder.encode_prompt, {}
+    def encode_prompt(*a, **k):        # each distinct prompt is encoded once
+        key = k.get("prompt")
+        if key not in cache:
+            cache[key] = encode(*a, **k); mx.eval(cache[key])
+        return cache[key]
+    PromptEncoder.encode_prompt = staticmethod(encode_prompt)
+
+def gen(name, style):
     from mflux.models.z_image.variants.controlnet.control_types import ControlSpec, ControlType
     from mflux.models.z_image.variants.controlnet.z_image_turbo_controlnet import ZImageTurboControlnet
-    os.makedirs(f"{D}/{name}/images", exist_ok=True)
+    out = f"{D}/{name}/images"; os.makedirs(out, exist_ok=True)
+    pw, ph = (int(v) for v in os.environ.get("WORLD_PAINT", f"{B.W}x{B.H}").split("x"))
+    meta_path, meta = f"{D}/{name}/views.json", {"views": N, "room": [RW, RH, RD], "paint": [pw, ph], "style": style}
+    if not os.path.exists(meta_path) or json.load(open(meta_path)) != meta:   # anything painted for another setup is stale
+        for f in os.listdir(out): os.remove(f"{out}/{f}")
+    json.dump(meta, open(meta_path, "w"))
+    todo = [i for i in range(N) if not os.path.exists(f"{out}/{i:02d}.png")]
+    if not todo: return print("all views already painted")
+    speed_patches()
     model = ZImageTurboControlnet(quantize=8)
-    for i in range(N):
+    for i in todo:
         t = time.time()
-        img = model.generate_image(seed=7, prompt=prompt, controlnet_strength=1.0, num_inference_steps=9, width=B.W, height=B.H,
-                                   controls=[ControlSpec(type=ControlType.depth, image_path=f"{D}/depth/{i:02d}.png", strength=0.9)])
-        img.save(f"{D}/{name}/images/{i:02d}.png")
         print(f"STAGE: painting view {i + 1} of {N}", flush=True)
+        img = model.generate_image(seed=7, prompt=view_prompt(i, style), controlnet_strength=1.0, num_inference_steps=9, width=pw, height=ph,
+                                   controls=[ControlSpec(type=ControlType.depth, image_path=f"{D}/depth/{i:02d}.png", strength=0.9)])
+        img.save(f"{out}/{i:02d}.tmp.png"); os.replace(f"{out}/{i:02d}.tmp.png", f"{out}/{i:02d}.png")   # never leave a half-written picture
         print(name, i, round(time.time() - t), "s", flush=True)
 
-def colmap(name):
-    S = np.diag([1.0, 1, -1])  # mirror z: the blockout world is left-handed
-    out = f"{D}/{name}/sparse/0"; os.makedirs(out, exist_ok=True)
-    f = B.W / 2 / np.tan(np.radians(B.FOV) / 2)
-    open(f"{out}/cameras.txt", "w").write(f"1 PINHOLE {B.W} {B.H} {f} {f} {B.W/2} {B.H/2}\n")
-    im, pts = [], []
-    rng = np.random.default_rng(0)
-    for i in range(N):
-        eye, r, u, fw = B.basis(B.CAMS[str(i)])
-        R = np.stack([S @ -r, S @ -u, S @ fw])
-        assert np.linalg.det(R) > 0.99
-        t = -R @ (S @ eye)
-        from scipy.spatial.transform import Rotation
-        qx, qy, qz, qw = Rotation.from_matrix(R).as_quat(); q = [qw, qx, qy, qz]
-        im.append(f"{i+1} {' '.join(map(str, q))} {' '.join(map(str, t))} 1 {i:02d}.png\n\n")
-        P = np.load(f"{D}/depth/{i:02d}.npy").reshape(-1, 3)
-        C = np.asarray(Image.open(f"{D}/{name}/images/{i:02d}.png").convert("RGB")).reshape(-1, 3)
-        idx = rng.choice(len(P), 3000, replace=False)
-        pts += [(S @ P[j], C[j]) for j in idx]
-    open(f"{out}/images.txt", "w").write("".join(im))
-    open(f"{out}/points3D.txt", "w").write("".join(f"{k+1} {p[0]} {p[1]} {p[2]} {c[0]} {c[1]} {c[2]} 0.5\n" for k, (p, c) in enumerate(pts)))
-    os.system(f"colmap model_converter --input_path {out} --output_path {out} --output_type BIN 2>&1 | tail -3")
-    print("colmap dataset", name, len(pts), "points", os.listdir(out))
-
 if __name__ == "__main__":
-    {"prep": prep, "gen": gen, "colmap": colmap}[sys.argv[1]](*sys.argv[2:])
+    {"prep": prep, "gen": gen}[sys.argv[1]](*sys.argv[2:])
