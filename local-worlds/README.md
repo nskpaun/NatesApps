@@ -1,0 +1,122 @@
+# Nate's Worlds
+
+Turn photos of a room, or a sentence describing one, into a 3D world you can look around, drop balls in and relight. Everything runs on this Mac with local models: no cloud services are called once the models are downloaded.
+
+![The office, reconstructed from 20 phone photos](docs/office-splat.jpg)
+
+| | |
+|---|---|
+| ![A cabin invented from one sentence](docs/cabin.jpg) | ![The same layout restyled as a sci-fi lounge](docs/scifi.jpg) |
+| A cabin invented from one sentence | The same layout, restyled |
+| ![Night mode with a draggable lamp](docs/office-night.jpg) | ![The reconstructed mesh with balls resting on the desk](docs/office-mesh-balls.jpg) |
+| Night mode with a draggable lamp | The mesh, with balls resting on the desk |
+| ![A bedroom built from a prompt in the app](docs/bedroom.jpg) | ![The New world dialog](docs/new-world.jpg) |
+| A bedroom built from a prompt in the app | The New world dialog |
+
+## What it does
+
+| Tool | Input | Output |
+|---|---|---|
+| Photos to world | 20 to 60 overlapping photos of a room (JPG, PNG, HEIC) | A Gaussian splat you can orbit |
+| Splat to mesh | Any world | A GLB mesh and a collider; balls bounce on it |
+| Relight | Any world | Night mode with a draggable lamp and shadows |
+| Prompt to world | A layout sentence and a style sentence | A blocked-out room, painted and turned into a splat |
+
+In the app, choose **New world…**, then **From your photos** or **From a prompt**. One world is built at a time, and a panel in the corner shows progress.
+
+## Requirements
+
+- An Apple Silicon Mac. Developed on an M4 Pro with 64 GB; the pipelines are kept under about 32 GB by running one model at a time.
+- macOS 14 or later, Xcode command line tools (`xcode-select --install`), and [Homebrew](https://brew.sh).
+- Tens of GB of free disk for model weights, which download on first use.
+
+## Build
+
+From the `local-worlds` folder:
+
+```bash
+brew install uv colmap ollama libusb node
+```
+
+```bash
+ollama pull qwen3.5:9b
+```
+
+```bash
+uv venv --python 3.12 thread/.venv && uv pip install --python thread/.venv/bin/python -r thread/requirements.txt
+```
+
+```bash
+uv venv --python 3.12 spike/.venv && uv pip install --python spike/.venv/bin/python -r spike/requirements.txt
+```
+
+```bash
+npm install --prefix thread/viewer
+```
+
+```bash
+app/build.sh
+```
+
+That produces `app/Nate's Worlds.app`. Drag it to the Desktop or Applications and open it.
+
+The app is a thin window around this folder: it starts `thread/server.py` and shows the page. It stores the folder's path when built, so rebuild it if the folder moves. It is signed ad hoc, for this Mac only.
+
+To run without the app:
+
+```bash
+thread/.venv/bin/python thread/server.py 8765
+```
+
+Then open `http://127.0.0.1:8765/viewer/index.html`.
+
+To redraw the icon, run `thread/.venv/bin/python make_icon.py` inside `app/`, then rebuild.
+
+## How it works
+
+**Photos to world** (`pipeline.py photos`, a few minutes)
+
+1. COLMAP solves where each photo was taken.
+2. msplat trains a Gaussian splat on the Mac's GPU.
+3. Depth Pro estimates depth for each photo. Each depth map is scaled to match COLMAP's 3D points, and all of them are fused into one mesh, coloured from the photos.
+
+**Prompt to world** (`pipeline.py prompt`, about 22 to 45 minutes depending on detail)
+
+1. Qwen3.5 9B reads the layout sentence and chooses furniture pieces and which wall each goes on. Code turns those choices into boxes: the blockout.
+2. The blockout is rendered as depth maps from a ring of cameras.
+3. Z-Image Turbo with a depth ControlNet paints each view so it follows the blockout.
+4. Separately painted views disagree with each other, so each wall, the floor and each furniture piece takes its look from one view only. That view is projected onto the blockout and re-rendered from 40 cameras.
+5. msplat trains a splat from those views. The blockout boxes serve as the mesh and collider.
+
+**Viewer** (`thread/viewer`): three.js with Spark for splats and Rapier for physics. Night mode multiplies the splat by the light reaching the mesh, so splat detail survives.
+
+## Models
+
+| Model | Job | Runs through |
+|---|---|---|
+| Qwen3.5 9B | Layout sentence to furniture placement | Ollama |
+| Z-Image Turbo + Z-Image-Turbo-Fun-Controlnet-Union 2.1 | Painting views that follow the blockout | mflux (MLX) |
+| Depth Pro | Depth for each photo | mflux (MLX) |
+
+COLMAP, msplat, Open3D, three.js, Spark and Rapier do the rest and have no model weights. Check each model's licence before using this for anything beyond personal use.
+
+## Known limits
+
+- **Invented rooms look like a collage up close.** Seams show where surfaces meet, and furniture is painted onto its box, so it looks right from the front and stretched from the side.
+- **Invented rooms are always 4 m by 4 m**, built from a fixed set of pieces: sofa, armchair, chair, bed, desk, coffee table, dining table, side table, bookshelf, cabinet, floor lamp, plant, window.
+- **Photo meshes have holes** where no photo looked, and their colour is per vertex, so it is blurry. Balls can fall through holes; a flat safety floor catches them.
+- **Invented rooms have no ceiling.** The cameras never look up, so the ceiling shows as dark haze.
+- **Not yet tested with Wi-Fi off.** Nothing calls out after the models are downloaded, but that has not been verified.
+- No export of relit splats, no texture baking, no flythrough video from the app.
+
+## Layout
+
+| Path | What |
+|---|---|
+| `app/` | The macOS app: `main.swift`, `build.sh`, `make_icon.py` |
+| `thread/server.py` | Local server: static files plus the job API |
+| `thread/pipeline.py` | The two pipelines |
+| `thread/viewer/` | The page |
+| `thread/worlds/` | Worlds built in the app (not in git) |
+| `spike/` | The image-model environment and `blockout.py`, the box renderer |
+| `STEEL-THREAD-PLAN.md` | The plan for the spike that first connected everything |

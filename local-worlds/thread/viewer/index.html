@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Nate's Worlds</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+html,body{margin:0;height:100%;background:#111;color:#eee;font:14px system-ui,sans-serif;overflow:hidden}
+#bar{position:fixed;top:10px;left:10px;display:flex;gap:10px;align-items:center;background:#000a;padding:8px 12px;border-radius:8px;flex-wrap:wrap;max-width:calc(100% - 44px)}
+button,select{font:inherit;padding:4px 10px;border-radius:6px;border:1px solid #555;background:#222;color:#eee;cursor:pointer}
+label{display:flex;gap:4px;align-items:center;cursor:pointer}
+#status{position:fixed;bottom:10px;left:10px;background:#000a;padding:6px 10px;border-radius:6px}
+#job{position:fixed;bottom:10px;right:10px;background:#000c;padding:10px 14px;border-radius:8px;max-width:360px;display:none}
+#job b{display:block;margin-bottom:4px} #job small{color:#aaa;display:block;margin-top:4px;word-break:break-word}
+#job button{margin-top:8px}
+dialog{background:#1b1b1f;color:#eee;border:1px solid #444;border-radius:12px;padding:20px;width:min(520px,calc(100vw - 48px));font:14px system-ui,sans-serif}
+dialog::backdrop{background:#0009}
+dialog h2{margin:0 0 12px;font-size:18px} dialog p{color:#aaa;margin:6px 0 12px}
+.tabs{display:flex;gap:6px;margin-bottom:14px} .tabs button[aria-selected=true]{background:#3b5bdb;border-color:#3b5bdb}
+dialog label{display:block;margin:10px 0 4px;color:#ccc} dialog input[type=text],dialog textarea,dialog select{width:100%;box-sizing:border-box;padding:7px 9px;border-radius:6px;border:1px solid #555;background:#111;color:#eee;font:inherit}
+dialog textarea{min-height:64px;resize:vertical} .row{display:flex;justify-content:flex-end;gap:8px;margin-top:16px} .primary{background:#3b5bdb;border-color:#3b5bdb}
+#err{color:#ff8a8a;min-height:18px;margin-top:8px}
+</style>
+<script type="importmap">{"imports":{
+"three":"/viewer/node_modules/three/build/three.module.js",
+"three/addons/":"/viewer/node_modules/three/examples/jsm/",
+"@sparkjsdev/spark":"/viewer/node_modules/@sparkjsdev/spark/dist/spark.module.js",
+"rapier":"/viewer/node_modules/@dimforge/rapier3d-compat/dist/rapier.mjs"}}</script>
+</head><body>
+<div id="bar">
+  <select id="scene" aria-label="Scene"></select>
+  <label><input type="radio" name="mode" value="splat" checked>Splat</label>
+  <label><input type="radio" name="mode" value="mesh">Mesh</label>
+  <label><input type="radio" name="mode" value="collider">Collider</label>
+  <button id="drop">Drop balls</button>
+  <label><input type="checkbox" id="night">Night mode + lamp</label>
+  <button id="new" class="primary">New world…</button>
+</div>
+<div id="job" role="status"><b id="jobTitle"></b><span id="jobStage"></span><small id="jobLog"></small><button id="jobCancel">Cancel</button></div>
+<dialog id="dlg">
+  <h2>New world</h2>
+  <div class="tabs" role="tablist">
+    <button role="tab" id="tabPhotos" aria-selected="true">From your photos</button>
+    <button role="tab" id="tabPrompt" aria-selected="false">From a prompt</button>
+  </div>
+  <label for="wname">Name</label><input type="text" id="wname" placeholder="My living room">
+  <div id="panePhotos">
+    <p>Pick 20 to 60 overlapping photos of one room. Walk around while shooting; do not stand in one spot. Takes a few minutes.</p>
+    <label for="files">Photos (JPG, PNG or HEIC)</label><input type="file" id="files" multiple accept="image/*,.heic,.HEIC">
+  </div>
+  <div id="panePrompt" hidden>
+    <p>Describe what goes where, then how it should look. The room is 4 m by 4 m. Pieces available: sofa, armchair, chair, bed, desk, coffee table, dining table, side table, bookshelf, cabinet, floor lamp, plant, window.</p>
+    <label for="layout">Layout</label><textarea id="layout" placeholder="A bedroom: bed on the back wall, desk by the window on the left wall, bookshelf on the right wall, a plant in the back right corner"></textarea>
+    <label for="style">Style</label><textarea id="style" placeholder="a bright Scandinavian bedroom, pale wood, white linen, morning light"></textarea>
+    <label for="views">Detail</label><select id="views"><option value="8">Quick: 8 views, about 22 minutes</option><option value="12" selected>Standard: 12 views, about 33 minutes</option><option value="16">Full: 16 views, about 45 minutes</option></select>
+  </div>
+  <div id="err" role="alert"></div>
+  <div class="row"><button id="dlgCancel">Cancel</button><button id="dlgGo" class="primary">Build world</button></div>
+</dialog>
+<div id="status">loading…</div>
+<script type="module" src="main.js"></script>
+</body></html>

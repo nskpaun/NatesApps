@@ -1,0 +1,21 @@
+# environments and dependencies
+.venv/
+node_modules/
+# built app
+app/*.app
+# generated worlds and intermediate data (large)
+thread/office/
+thread/chisel/
+thread/worlds/
+thread/scenes.json
+thread/*.mp4
+thread/*.log
+thread/cp*.png
+thread/cp*.jpg
+thread/hour-rooms-novel.jpg
+spike/out/
+*.ply
+*.npy
+*.txt.tmp
+thread-start.txt
+hour-start.txt

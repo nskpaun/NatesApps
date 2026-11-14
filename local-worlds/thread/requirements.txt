@@ -1,0 +1,6 @@
+msplat
+numpy
+pillow
+scipy
+open3d
+trimesh
