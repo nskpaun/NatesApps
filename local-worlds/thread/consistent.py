@@ -73,7 +73,8 @@ for k, cam in enumerate(tgt):
             miss = vis & (ssid[ey, ex_x] != s)
             for dy, dx in OFFS:
                 if not miss.any(): break
-                m = miss & (ssid[ey + dy, ex_x + dx] == s)
+                # clip: entries moved by an earlier offset can already sit on the picture's last row or column
+                m = miss & (ssid[np.clip(ey + dy, 0, H - 1), np.clip(ex_x + dx, 0, W - 1)] == s)
                 ey[m] += dy; ex_x[m] += dx; miss &= ~m
             ok[ex] = vis & ~miss; yi[ex] = ey; xi[ex] = ex_x
         best = np.where(ok, score, best); col[ok] = simg[yi[ok], xi[ok]]
