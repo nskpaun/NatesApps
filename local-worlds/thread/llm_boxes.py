@@ -1,6 +1,7 @@
 """Description -> local LLM writes a rough layout -> code checks it and expands it into primitives.
   llm_boxes.py "DESCRIPTION" OUT.json
 Output: {"request", "room": [width, height, depth], "objects": [{"name", "prims": [primitive, ...]}]}  (see ../spike/blockout.py)
+An object placed against a wall or in a ring also has "yaw": its front faces (sin yaw, 0, cos yaw). "focus": [x, z] is what an audience watches, if anything.
 """
 import json, sys, math, re, urllib.request, urllib.error
 
@@ -130,7 +131,8 @@ def fit(prims, room, shrink):
         move = (L - lo - hi) / 2 if hi - lo >= L else clamp(lo, 0, L - (hi - lo)) - lo
         for p in prims: p["c"][ax] += move
 
-def expand(layout):
+def expand(layout, info=None):
+    """-> (room, objects). info, if given, receives "focus": the floor point an audience faces."""
     if not isinstance(layout, dict): layout = {}
     r = layout.get("room") if isinstance(layout.get("room"), dict) else {}
     room = [clamp(num(r.get("width"), 4), 3, 24), clamp(num(r.get("height"), 2.6), 2.4, 9), clamp(num(r.get("depth"), 4), 3, 24)]
@@ -149,6 +151,7 @@ def expand(layout):
         if FOCUS.search(str(p.get("label", ""))) and "ring" not in p["place"]:
             at = placements(p["place"], room, foot(p), None)
             if at: focus = at[0][:2]; break
+    if info is not None and focus: info["focus"] = [float(focus[0]), float(focus[1])]
     objs = []
     for p in pieces:
       try:
@@ -168,7 +171,8 @@ def expand(layout):
                 if s == "cylinder": prims = [{"shape": "cyl", "c": [x, base + hgt / 2, zc], "r": fw / 2, "hy": hgt / 2}]
                 else: prims = [{"shape": "box", "c": [x, base + hgt / 2, zc], "h": [fw / 2, hgt / 2, fd / 2], "yaw": yaw}]
             fit(prims, room, s not in FURNITURE)        # nothing may poke through a wall: the depth maps would slice it
-            objs.append({"name": label, "prims": prims})
+            faces = "wall" in p["place"] or "ring" in p["place"]       # elsewhere the turn is 0 and means nothing: shapes.py chooses a facing
+            objs.append({"name": label, "prims": prims, **({"yaw": yaw} if faces else {})})
       except Exception as e:      # one malformed piece must not fail the whole world
         print("skipped a piece the layout model wrote badly:", type(e).__name__, e, file=sys.stderr)
     return room, objs[:80]
@@ -182,8 +186,8 @@ def ask(req, model="qwen3.5:9b"):
 if __name__ == "__main__":
     req, path = sys.argv[1], sys.argv[2]
     try:
-        layout, secs = ask(req)
-        room, objs = expand(layout)
+        layout, secs = ask(req); info = {}
+        room, objs = expand(layout, info)
     except OSError as e:      # most specific first: HTTPError and TimeoutError are both OSErrors, and a connect timeout hides in URLError.reason
         if isinstance(e, urllib.error.HTTPError):
             if e.code == 404: raise SystemExit("The layout model has not been downloaded. Run: ollama pull qwen3.5:9b")
@@ -194,7 +198,7 @@ if __name__ == "__main__":
     except Exception:
         raise SystemExit("The layout model did not return a usable plan. Try describing the space more simply.")
     if not objs: raise SystemExit("The layout model's plan had nothing solid in it. Try naming the main things in the space.")
-    json.dump({"request": req, "room": room, "objects": objs}, open(path, "w"), indent=1)
+    json.dump({"request": req, "room": room, "objects": objs, **info}, open(path, "w"), indent=1)
     names = {}
     for o in objs: names[o["name"]] = names.get(o["name"], 0) + 1
     print(f"room {room[0]:g} x {room[2]:g} m, {room[1]:g} m high;", ", ".join(f"{n} x {k}" if n > 1 else k for k, n in names.items()))

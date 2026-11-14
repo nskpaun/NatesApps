@@ -19,7 +19,15 @@ err = float(np.abs((s * (R @ src.T).T + t) - dst).max()); print("fit error", err
 if err > 1e-3 * float(np.abs(dst - mu_d).max()): raise SystemExit(f"The room shape does not line up with the trained world (fit error {err:.3g}). Rebuild this world from the start.")
 def paint(m, color):
     m.visual.vertex_colors = np.tile([*color, 255], (len(m.vertices), 1)); return m
-def prim_mesh(p):
+def prim_mesh(p, faces):
+    if p["shape"] == "mesh":            # a generated shape, thinned to at most `faces` triangles
+        import open3d as o3d
+        z = np.load(p["file"])
+        g = o3d.geometry.TriangleMesh(o3d.utility.Vector3dVector(z["V"].astype(float)), o3d.utility.Vector3iVector(z["F"].astype(np.int32)))
+        if len(z["F"]) > faces: g = g.simplify_quadric_decimation(faces)
+        m = trimesh.Trimesh(np.asarray(g.vertices), np.asarray(g.triangles), process=False)
+        if m.volume < 0: m.invert()     # faces must point outwards, like the boxes'
+        return paint(m, (170, 170, 170))
     if p["shape"] == "box":
         m = trimesh.creation.box(extents=2 * np.array(p["h"], float))
         m.apply_transform(trimesh.transformations.rotation_matrix(p.get("yaw", 0.0), [0, 1, 0]))
@@ -29,11 +37,12 @@ def prim_mesh(p):
     m.apply_translation(p["c"]); return paint(m, (170, 170, 170))
 lo, hi = np.array(B.ROOM[0], float), np.array(B.ROOM[1], float)
 room = trimesh.creation.box(extents=hi - lo); room.apply_translation((lo + hi) / 2); room.invert()
-parts = [paint(room, (120, 120, 125))] + [prim_mesh(p) for p in B.PRIMS]
-m = trimesh.util.concatenate(parts)
-m.vertices = (s * (R @ (m.vertices * [1, 1, -1]).T).T + t)
-m.invert()  # the z mirror flipped the winding
-m.export(f"{C.D}/{name}/{name}_mesh.glb"); m.export(f"{C.D}/{name}/{name}_mesh_collider.glb")
+# the shown mesh keeps a shape's detail; the collider only needs its rough form
+for suffix, faces in (("mesh", 20000), ("mesh_collider", 3000)):
+    m = trimesh.util.concatenate([paint(room.copy(), (120, 120, 125))] + [prim_mesh(p, faces) for p in B.PRIMS])
+    m.vertices = (s * (R @ (m.vertices * [1, 1, -1]).T).T + t)
+    m.invert()  # the z mirror flipped the winding
+    m.export(f"{C.D}/{name}/{name}_{suffix}.glb")
 mid = s * R @ (S @ [C.RW / 2, 0, C.RD / 2]) + t     # middle of the room's floor in the trained frame, so the viewer need not guess it from the mesh
 json.dump({"metre": float(s), "room": [C.RW, C.RH, C.RD], "centre": [float(mid[0]), float(mid[2])], "floor": float(mid[1])}, open(f"{C.D}/{name}/{name}_metre.json", "w"))
-print("tris", len(m.faces))
+print("collider tris", len(m.faces))

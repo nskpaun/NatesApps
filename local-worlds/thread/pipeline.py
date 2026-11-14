@@ -3,15 +3,17 @@
   pipeline.py prompt WORLD_DIR "Name" "LAYOUT" "STYLE"   sentence + style -> blockout -> pictures -> splat
 Each step prints a 'STAGE: ...' line. On success the world is added to scenes.json.
 """
-import sys, os, re, json, subprocess, shutil, glob, socket, time
+import sys, os, re, json, subprocess, shutil, glob, socket, time, hashlib
 HERE = os.path.dirname(os.path.abspath(__file__))
 PY = os.path.join(HERE, ".venv/bin/python")                 # splat training, meshing
 PY_IMG = os.path.join(HERE, "../spike/.venv/bin/python")    # image and depth models (mflux)
 
 def stage(t): print("STAGE: " + t, flush=True)
-def run(cmd, env=None, quiet=False):
+def run(cmd, env=None, quiet=False, soft=False):      # soft: a failure is reported and the pipeline carries on
     r = subprocess.run(cmd, cwd=HERE, env={**os.environ, **(env or {})}, stdout=subprocess.DEVNULL if quiet else None, stderr=subprocess.STDOUT if not quiet else subprocess.DEVNULL)
-    if r.returncode: raise SystemExit(f"Step failed: {' '.join(map(str, cmd[:3]))}")
+    if r.returncode and soft: print(f"Skipped a step that failed: {' '.join(map(str, cmd[:3]))}", flush=True)
+    elif r.returncode: raise SystemExit(f"Step failed: {' '.join(map(str, cmd[:3]))}")
+    return not r.returncode
 
 def register(entry):
     path = os.path.join(HERE, "scenes.json")
@@ -69,18 +71,42 @@ def prompt(d, name, layout, style):
     # the full detail level paints at 1024x768; the others at 768x576, which is about twice as fast per view
     env = {"WORLD_DIR": os.path.relpath(d, HERE), "WORLD_VIEWS": str(n_views),
            "WORLD_PAINT": os.environ.get("WORLD_PAINT", "1024x768" if n_views >= 16 else "768x576")}
-    if not os.path.exists(f"{d}/boxes.json"):           # a re-run keeps its layout: asking the model again could change it
-        stage("planning the layout")
+    # objects get real 3D shapes unless WORLD_SHAPES is 0 (or not a number) or the shape model is not installed. Their plan
+    # needs the layout model too, so both questions are asked in one sitting; a plan made for this layout and style is kept
+    try: shaped = int(float(os.environ.get("WORLD_SHAPES", "6"))) > 0
+    except (ValueError, OverflowError): shaped = False
+    hy3d = os.environ.get("HY3D_DIR") or os.path.join(HERE, "../ext/Hunyuan3D-Swift")
+    if shaped and not (os.path.exists(f"{hy3d}/.build/release/hy3d") and os.path.isdir(f"{hy3d}/weights/shape-small")):
+        print(f"The 3D shape model is not installed ({os.path.normpath(hy3d)}): objects stay boxes.", flush=True); shaped = False
+    need_layout = not os.path.exists(f"{d}/boxes.json")           # a re-run keeps its layout: asking the model again could change it
+    try:
+        p, w = json.load(open(f"{d}/shapes/plan.json")), json.load(open(f"{d}/boxes.json"))
+        layout_sum = hashlib.md5(json.dumps([w.get("room"), w.get("objects")], sort_keys=True).encode()).hexdigest()     # as shapes.stamp
+        planned = p.get("style") == style and p.get("layout") == layout_sum
+    except (OSError, ValueError, AttributeError): planned = False
+    need_plan = shaped and not planned
+    if need_layout or need_plan:
+        if need_layout: stage("planning the layout")
         started = None
         if not port_open(11434):
-            started = subprocess.Popen(["ollama", "serve"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            for _ in range(60):
+            try: started = subprocess.Popen(["ollama", "serve"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            except OSError: pass                   # Ollama is not installed: the steps below say so in plain words
+            for _ in range(60 if started else 0):
                 if port_open(11434): break
                 time.sleep(0.25)
         try:
-            run([PY, "llm_boxes.py", layout, f"{d}/boxes.json"])
+            if need_layout: run([PY, "llm_boxes.py", layout, f"{d}/boxes.json"])
+            if need_plan:
+                stage("choosing which objects get real shapes")
+                run([PY, "shapes.py", "plan", style], env, soft=True)
         finally:
             if started: started.terminate()            # one model in memory at a time
+    if shaped:      # each step loads one model, skips what exists, and on any failure leaves the objects as boxes
+        stage("making shapes for the objects")
+        t = time.time()
+        run([PY_IMG, "shapes.py", "pictures"], env, soft=True)
+        run([PY, "shapes.py", "build"], env, soft=True)        # also after a failure above: it uses the pictures that were made
+        print(f"shapes took {time.time() - t:.0f} s", flush=True)
     stage("rendering the blockout")
     run([PY, "chisel_ring.py", "prep"], env)
     stage("painting views")

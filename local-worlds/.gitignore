@@ -19,3 +19,5 @@ spike/out/
 *.txt.tmp
 thread-start.txt
 hour-start.txt
+# third-party code and weights fetched for experiments
+ext/

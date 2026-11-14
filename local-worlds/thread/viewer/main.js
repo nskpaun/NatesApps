@@ -129,7 +129,9 @@ async function loadPart(def) {
 // Meshes for a part: flat view, collider wireframe, and the night-mode pair (depth prepass + lit pass multiplied over the splat).
 function buildMeshes(p) {
   for (const k of ["flat", "wire", "pre", "lit"]) if (p[k]) { p.inner.remove(p[k]); p[k].material.dispose(); }
-  p.flat = new THREE.Mesh(p.visGeo, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide }));
+  // an invented room's mesh has no colours of its own: shade it by which way each face points, so its shapes can be read
+  p.flat = new THREE.Mesh(p.visGeo, p.isRoom ? new THREE.MeshNormalMaterial({ flatShading: true, side: THREE.DoubleSide })
+    : new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide }));
   p.wire = new THREE.Mesh(p.colGeo, new THREE.MeshBasicMaterial({ color: 0x35d0ff, wireframe: true }));
   p.pre = new THREE.Mesh(p.visGeo, new THREE.MeshBasicMaterial({ colorWrite: false, transparent: true, side: THREE.DoubleSide }));
   p.lit = new THREE.Mesh(p.visGeo, new THREE.MeshStandardMaterial({ color: 0xffffff, flatShading: p.isRoom, roughness: 1, metalness: 0, side: THREE.DoubleSide,

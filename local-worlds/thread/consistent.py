@@ -11,6 +11,7 @@ import chisel_ring as C
 B = C.B; W, H = B.W, B.H
 objs = C.objs
 NS = 6 + len(objs)
+MESH = np.isin(np.arange(NS), [6 + oi for oi in C.SHAPES])       # surfaces that are generated shapes, not boxes
 
 def trace(cam):
     return B.trace(cam, C.PRIM_OBJ)
@@ -24,7 +25,7 @@ for i in range(C.N):
     if im.size != (W, H): im = im.resize((W, H), Image.LANCZOS)      # pictures may be painted smaller than the working size
     edge = np.zeros((H, W), bool)                                    # source pixels with another surface next to them
     for dy, dx in OFFS: edge |= sid != np.roll(sid, (dy, dx), (0, 1))
-    src.append((t, np.asarray(im, np.float32), np.bincount(sid.ravel(), minlength=NS), sid, edge))
+    src.append((t, np.asarray(im, np.float32), np.bincount(sid.ravel(), minlength=NS), sid, edge, C.halo(sid)))
 count = np.stack([s[2] for s in src], 1).astype(float)          # surface x view: pixels of that surface seen
 rank = np.argsort(np.argsort(-count, axis=1), axis=1).astype(float)  # 0 = best view for the surface
 rank[count < 400] = 1e6
@@ -75,16 +76,31 @@ wall = np.isin(np.arange(NS), (0, 2, 3, 5)); wsum = np.zeros((2, 3)); wn = np.ze
 def render(k):
     """One target view: for every pixel, the colour from the best painted view that truly sees that surface point."""
     cam = tgt[k]
-    t, P, sid = trace(cam)
+    if MESH.any():
+        t, P, sid, nrm = B.trace(cam, C.PRIM_OBJ, True)
+        on = MESH[sid]; Pm, nm = P[on], nrm[on]
+    else: t, P, sid = trace(cam); on = None
     best = np.full((H, W), 1e5); col = np.zeros((H, W, 3), np.float32)
     # try the painted views most likely to own this picture's surfaces first: once a pixel has its best-ranked source,
     # lower-ranked views skip it, which is most of the work saved
     share = np.bincount(sid.ravel(), minlength=NS)
     for v in np.argsort((np.minimum(rank, C.N) * share[:, None]).sum(0)):
-        st, simg, _, ssid, sedge = src[v]
-        score = rank[sid, v]; want = score < best                    # only where this view would become the source
+        st, simg, _, ssid, sedge, shalo = src[v]
+        score = rank[sid, v]
+        if on is not None and on.any():
+            # a picture that sees a curved shape side-on smears it, and its outline rarely matches the shape to the pixel:
+            # such a view is used only where no view sees the point reasonably head-on
+            to = np.array(src_cams[str(v)][0]) - Pm; cos = (to * nm).sum(1) / np.maximum(np.linalg.norm(to, axis=1), 1e-9)
+            score[on] += C.N * (cos < C.GRAZE)
+            # a view behind the surface is no source at all: through a gap or a single-sheet part it would lend the paint of the other side
+            score[on] = np.where(cos <= 0, 1e6, score[on])
         px, py, dist, z = B.project(src_cams[str(v)], P)
         xi, yi = np.round(px).astype(int), np.round(py).astype(int)
+        if on is not None:
+            # the band around a shape's outline in a picture often holds the shape's own paint: the wall or floor seen
+            # there is taken from another view where one exists, or the car's outline ends up stamped on the wall behind it
+            score = score + C.N * shalo[np.clip(yi, 0, H - 1), np.clip(xi, 0, W - 1)]
+        want = score < best                                          # only where this view would become the source
         want &= (z > 0.05) & (xi >= 1) & (xi < W - 1) & (yi >= 1) & (yi < H - 1)
         xi, yi = np.clip(xi, 0, W - 1), np.clip(yi, 0, H - 1)
         # room faces away from any silhouette in the source: same surface, depth within a tolerance that grows with distance

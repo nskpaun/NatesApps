@@ -2,8 +2,10 @@
 Renders depth from any camera by ray casting, and projects points into cameras. Used by the world pipeline in ../thread.
 
 Coordinates: x right, y up, z towards the back wall; the room spans (0,0,0) to (width, height, depth).
-A primitive is {"shape": "box", "c": centre, "h": half sizes, "yaw": radians} or {"shape": "cyl", "c": centre, "r": radius, "hy": half height}.
+A primitive is {"shape": "box", "c": centre, "h": half sizes, "yaw": radians}, {"shape": "cyl", "c": centre, "r": radius, "hy": half height}
+or {"shape": "mesh", "file": npz with V (n,3) and F (m,3) in room coordinates, "c": centre and "h": half sizes of its bounding box}.
 """
+import os
 import numpy as np
 
 W, H, FOV = 1024, 768, 65.0
@@ -38,8 +40,37 @@ def slab(eye, d, lo, hi):
     return np.minimum(t1, t2).max(-1), np.maximum(t1, t2).min(-1)
 
 
+SCENES = {}   # (process id, mesh file) -> ray-casting scene
+
+
+def mesh_cast(eye, d, p):
+    """Distance along each ray to a mesh primitive (inf where missed) and the unit surface normal there, turned to face
+    the ray's origin (zero where missed)."""
+    try: import open3d as o3d            # only here: the painting environment has no Open3D and never ray-casts a mesh
+    except ImportError: raise SystemExit("Generated shapes can only be rendered in the thread environment: run this step with thread/.venv/bin/python.")
+    key = (os.getpid(), p["file"])       # a scene built before a fork must not be used in the child: one per process
+    if key not in SCENES:
+        z = np.load(p["file"])
+        SCENES[key] = o3d.t.geometry.RaycastingScene()
+        SCENES[key].add_triangles(o3d.core.Tensor(z["V"].astype(np.float32)), o3d.core.Tensor(z["F"].astype(np.uint32)))
+    eye = np.asarray(eye, float); dd = d.reshape(-1, 3)
+    t = np.full(len(dd), np.inf); n = np.zeros((len(dd), 3), np.float32)
+    h = np.array(p["h"], float) + 1e-3
+    tn, tf = slab(eye - np.array(p["c"], float), dd, -h, h)
+    m = (tn < tf) & (tf > 0)             # only rays that cross the bounding box are cast
+    if m.any():
+        r = np.concatenate([np.broadcast_to(eye, (int(m.sum()), 3)), dd[m]], 1).astype(np.float32)
+        got = SCENES[key].cast_rays(o3d.core.Tensor(r), nthreads=1)   # one thread: callers already run one process per core
+        nn = got["primitive_normals"].numpy()
+        nn[(nn * dd[m]).sum(1) > 0] *= -1
+        t[m] = got["t_hit"].numpy(); n[m] = nn
+    return t.reshape(d.shape[:-1]), n.reshape(d.shape)
+
+
 def hit(eye, d, p):
-    """Distance along each ray to the primitive's surface (inf where missed or where the ray starts inside it)."""
+    """Distance along each ray to the primitive's surface (inf where missed or, for boxes and cylinders, where the ray
+    starts inside it)."""
+    if p["shape"] == "mesh": return mesh_cast(eye, d, p)[0]
     c = np.array(p["c"], float)
     if p["shape"] == "box":
         cs, sn = np.cos(p.get("yaw", 0.0)), np.sin(p.get("yaw", 0.0))
@@ -69,16 +100,17 @@ def hit(eye, d, p):
 
 def inside(pt, p, margin=0.0):
     c = np.array(p["c"], float); o = np.array(pt, float) - c
-    if p["shape"] == "box":
+    if p["shape"] != "cyl":             # a mesh counts as its bounding box
         cs, sn = np.cos(p.get("yaw", 0.0)), np.sin(p.get("yaw", 0.0))
         l = np.array([cs * o[0] - sn * o[2], o[1], sn * o[0] + cs * o[2]])
         return bool(np.all(np.abs(l) <= np.array(p["h"]) + margin))
     return bool(o[0] ** 2 + o[2] ** 2 <= (p["r"] + margin) ** 2 and abs(o[1]) <= p["hy"] + margin)
 
 
-def trace(cam, ids=None):
+def trace(cam, ids=None, normals=False):
     """Depth and world point per pixel. With ids (one id per primitive), also returns a surface id per pixel:
-    0..5 for the room's faces, otherwise 6 + the primitive's id."""
+    0..5 for the room's faces, otherwise 6 + the primitive's id. With normals, also the surface normal per pixel where
+    a mesh is seen (facing the camera; zero elsewhere)."""
     eye, d = rays(cam)
     _, t = slab(eye, d, *ROOM)   # the camera is inside the room: distance to the far wall
     sid = None
@@ -86,14 +118,17 @@ def trace(cam, ids=None):
         P = eye + d * t[..., None]
         lo, hi = np.array(ROOM[0]), np.array(ROOM[1])
         sid = np.argmin(np.concatenate([np.abs(P - lo), np.abs(P - hi)], -1), -1)
+    nrm = np.zeros(d.shape, np.float32) if normals else None
     for i, p in enumerate(PRIMS):
-        tn = hit(eye, d, p)
+        tn, n = mesh_cast(eye, d, p) if normals and p["shape"] == "mesh" else (hit(eye, d, p), 0.0)
         closer = tn < t
         t = np.where(closer, tn, t)
         if ids is not None:
             sid = np.where(closer, 6 + ids[i], sid)
+        if normals:
+            nrm = np.where(closer[..., None], n, nrm)
     P = eye + d * t[..., None]
-    return (t, P) if ids is None else (t, P, sid)
+    return (t, P) + (() if ids is None else (sid,)) + ((nrm,) if normals else ())
 
 
 def visible(eye, P, eps=1e-3):
