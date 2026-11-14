@@ -76,8 +76,10 @@ def main(a):
     n = ds.num_train
     poses = np.array([np.array(ds.camera_pose(i), np.float32).reshape(4, 4) for i in range(n)])
     up = poses[:, :3, 1].mean(0); up /= np.linalg.norm(up)
+    # start in the middle of where the photos were taken: the first photo can be an outlier (shot from a doorway, say)
+    start = int(np.argmin(np.linalg.norm(poses[:, :3, 3] - np.median(poses[:, :3, 3], axis=0), axis=1)))
     scene = {"up": up.tolist(), "center": poses[:, :3, 3].mean(0).tolist(), "poses": poses.tolist(),
-             "eye": poses[0, :3, 3].tolist(), "forward": (-poses[0, :3, 2]).tolist(), "splats": tr.splat_count}
+             "eye": poses[start, :3, 3].tolist(), "forward": (-poses[start, :3, 2]).tolist(), "splats": tr.splat_count}
     try: fw = intrinsics(src)
     except Exception: fw = None  # optional fields must never cost a finished training run its scene.json
     if fw:  # optional fields: the viewer falls back when they are missing
