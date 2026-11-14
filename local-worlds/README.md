@@ -12,6 +12,8 @@ Turn photos of a room, or a sentence describing one, into a 3D world you can loo
 | Night mode with a draggable lamp | The mesh, with balls resting on the desk |
 | ![A bedroom built from a prompt in the app](docs/bedroom.jpg) | ![The New world dialog](docs/new-world.jpg) |
 | A bedroom built from a prompt in the app | The New world dialog |
+| ![Three rooms arranged from above in the stitch editor](docs/stitch-editor.jpg) | ![Looking through a doorway from one room into the next](docs/stitch-doorway.jpg) |
+| Stitching three rooms into one world | Looking through a doorway into the next room |
 
 ## What it does
 
@@ -21,8 +23,20 @@ Turn photos of a room, or a sentence describing one, into a 3D world you can loo
 | Splat to mesh | Any world | A GLB mesh and a collider; balls bounce on it |
 | Relight | Any world | Night mode with a draggable lamp and shadows |
 | Prompt to world | A layout sentence and a style sentence | A blocked-out room, painted and turned into a splat |
+| Stitch worlds | Two or more worlds | One bigger world, with doorways between rooms |
 
 In the app, choose **New world…**, then **From your photos** or **From a prompt**. One world is built at a time, and a panel in the corner shows progress.
+
+## Stitching worlds together
+
+Choose **Stitch worlds…** to see your worlds from above with their ceilings hidden.
+
+1. Tick the worlds to include.
+2. Click a world to select it, then drag the arrows to move it. Switch to **Rotate** to turn it. **Snap** moves in 25 cm steps and turns in 15° steps.
+3. Drop a room near another and it slides so the two walls meet. A green block shows where a doorway will be cut.
+4. Name it and choose **Save as one world**.
+
+The stitched world keeps a list of its rooms and where each one sits, so it loads the original worlds side by side. Doorways (1 m wide, 2.1 m tall) are cut through the splats, the mesh and the collider wherever two invented rooms have facing walls that touch, so balls roll from room to room. Chain rooms this way to lay out a dungeon.
 
 ## Requirements
 
@@ -107,6 +121,9 @@ COLMAP, msplat, Open3D, three.js, Spark and Rapier do the rest and have no model
 - **Photo meshes have holes** where no photo looked, and their colour is per vertex, so it is blurry. Balls can fall through holes; a flat safety floor catches them.
 - **Invented rooms have no ceiling.** The cameras never look up, so the ceiling shows as dark haze.
 - **Not yet tested with Wi-Fi off.** Nothing calls out after the models are downloaded, but that has not been verified.
+- **Doorways are cut only between invented rooms.** Worlds made from photos can be placed in a stitched world but get no doorway, because their walls are not known exactly.
+- **A doorway cuts through whatever is there**, including furniture standing against that wall.
+- **There is no walking mode yet.** You look around with an orbit camera; moving through a dungeon on foot is not built.
 - No export of relit splats, no texture baking, no flythrough video from the app.
 
 ## Layout
@@ -118,5 +135,6 @@ COLMAP, msplat, Open3D, three.js, Spark and Rapier do the rest and have no model
 | `thread/pipeline.py` | The two pipelines |
 | `thread/viewer/` | The page |
 | `thread/worlds/` | Worlds built in the app (not in git) |
+| `thread/scenes.json` | The list of worlds, including stitched ones (not in git) |
 | `spike/` | The image-model environment and `blockout.py`, the box renderer |
 | `STEEL-THREAD-PLAN.md` | The plan for the spike that first connected everything |

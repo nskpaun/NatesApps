@@ -6,6 +6,9 @@ html,body{margin:0;height:100%;background:#111;color:#eee;font:14px system-ui,sa
 #bar{position:fixed;top:10px;left:10px;display:flex;gap:10px;align-items:center;background:#000a;padding:8px 12px;border-radius:8px;flex-wrap:wrap;max-width:calc(100% - 44px)}
 button,select{font:inherit;padding:4px 10px;border-radius:6px;border:1px solid #555;background:#222;color:#eee;cursor:pointer}
 label{display:flex;gap:4px;align-items:center;cursor:pointer}
+#bar[hidden],#stitchBar[hidden]{display:none}
+#stitchBar{position:fixed;top:10px;left:10px;display:flex;gap:10px;align-items:center;background:#000c;padding:8px 12px;border-radius:8px;flex-wrap:wrap;max-width:calc(100% - 44px)}
+#stitchList{display:flex;gap:10px;flex-wrap:wrap} #stitchBar small{flex-basis:100%;color:#bbb} #stitchBar input[type=text]{padding:4px 8px;border-radius:6px;border:1px solid #555;background:#111;color:#eee;font:inherit;width:190px}
 #status{position:fixed;bottom:10px;left:10px;background:#000a;padding:6px 10px;border-radius:6px}
 #job{position:fixed;bottom:10px;right:10px;background:#000c;padding:10px 14px;border-radius:8px;max-width:360px;display:none}
 #job b{display:block;margin-bottom:4px} #job small{color:#aaa;display:block;margin-top:4px;word-break:break-word}
@@ -32,6 +35,18 @@ dialog textarea{min-height:64px;resize:vertical} .row{display:flex;justify-conte
   <button id="drop">Drop balls</button>
   <label><input type="checkbox" id="night">Night mode + lamp</label>
   <button id="new" class="primary">New world…</button>
+  <button id="stitch">Stitch worlds…</button>
+</div>
+<div id="stitchBar" hidden>
+  <b>Stitch worlds</b>
+  <div id="stitchList"></div>
+  <label><input type="radio" name="smode" value="translate" checked>Move</label>
+  <label><input type="radio" name="smode" value="rotate">Rotate</label>
+  <label><input type="checkbox" id="snap" checked>Snap</label>
+  <input type="text" id="stitchName" placeholder="Name, e.g. My dungeon" aria-label="Name for the stitched world">
+  <button id="stitchSave" class="primary" disabled>Save as one world</button>
+  <button id="stitchCancel">Cancel</button>
+  <small id="stitchHint"></small>
 </div>
 <div id="job" role="status"><b id="jobTitle"></b><span id="jobStage"></span><small id="jobLog"></small><button id="jobCancel">Cancel</button></div>
 <dialog id="dlg">

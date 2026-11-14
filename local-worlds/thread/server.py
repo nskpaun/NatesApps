@@ -4,6 +4,7 @@
   POST /api/upload?job=ID&name=FILE     raw photo bytes (call once per photo, before starting a photos job)
   POST /api/jobs                        JSON {type:"photos", id, name} or {type:"prompt", name, layout, style, views}
   POST /api/cancel
+  POST /api/stitch                      JSON {name, parts:[{ref, x, z, rot}]}: save several worlds placed side by side as one
 One job runs at a time, so only one large model is in memory at once.
 """
 import sys, os, json, re, time, threading, subprocess, signal, secrets
@@ -57,6 +58,17 @@ class H(SimpleHTTPRequestHandler):
         if u.path == "/api/cancel":
             if proc: job["state"] = "cancelled"; os.killpg(proc.pid, signal.SIGTERM)
             return self.send_json({"ok": True})
+        if u.path == "/api/stitch":
+            body = json.loads(self.rfile.read(n) or b"{}"); path = os.path.join(HERE, "scenes.json")
+            with lock:
+                scenes = json.load(open(path)); single = {s["name"] for s in scenes if "parts" not in s}
+                parts = [{"ref": p["ref"], "x": float(p["x"]), "z": float(p["z"]), "rot": float(p["rot"])} for p in body.get("parts", []) if p.get("ref") in single]
+                if len(parts) < 2: return self.send_json({"error": "Pick at least two worlds to stitch"}, 400)
+                name = (body.get("name") or "").strip()[:60] or "Stitched world"; base, k = name, 2
+                while name in {s["name"] for s in scenes}: name, k = f"{base} {k}", k + 1
+                scenes.append({"name": name, "kind": "stitched", "parts": parts, "note": f"{len(parts)} worlds stitched"})
+                json.dump(scenes, open(path + ".tmp", "w"), indent=1); os.replace(path + ".tmp", path)
+            return self.send_json({"ok": True, "name": name})
         if u.path == "/api/jobs":
             body = json.loads(self.rfile.read(n) or b"{}")
             with lock:
