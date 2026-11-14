@@ -94,12 +94,12 @@ To redraw the icon, run `thread/.venv/bin/python make_icon.py` inside `app/`, th
 2. msplat trains a Gaussian splat on the Mac's GPU.
 3. Depth Pro estimates depth for each photo. Each depth map is scaled to match COLMAP's 3D points, and all of them are fused into one mesh, coloured from the photos.
 
-**Prompt to world** (`pipeline.py prompt`, about 10 to 32 minutes depending on detail; a 12-view world measured 14.5 minutes)
+**Prompt to world** (`pipeline.py prompt`, roughly 14 to 40 minutes depending on detail)
 
 1. Qwen3.5 9B reads the layout sentence and writes a rough plan: the room's size, plus pieces placed against walls, at points, at the corners, or in rings and arcs. A piece is a box, an upright cylinder, or a named piece of furniture. Code checks the plan (everything is kept inside the room and resting on the floor, rows are thinned so copies do not overlap, an audience is turned to face a stage) and expands it into the blockout.
-2. The blockout is rendered as depth maps from a ring of cameras.
+2. The blockout is rendered as depth maps from a ring of cameras, plus four to six cameras higher up looking down, so the middle of the floor and the tops of furniture get painted too.
 3. Z-Image Turbo with a depth ControlNet paints each view so it follows the blockout. Views are painted in order, and each one is given the pixels that earlier views already show of it, through the ControlNet's inpainting input, so the room stays the same room from every angle (neighbouring views disagree about a third as much as when painted separately). Each view's prompt names only the pieces visible in it. Quick and Standard detail paint at 768x576, Full at 1024x768. A cancelled build resumes from the views already painted.
-4. Separately painted views disagree with each other, so each wall, the floor and each furniture piece takes its look from one view only. That view is projected onto the blockout and re-rendered from about 50 cameras, including views pitched up at the ceiling, which is filled with a light flat colour because no picture paints it.
+4. Separately painted views disagree with each other, so each wall, the floor and each furniture piece takes its look from one view only. That view is projected onto the blockout and re-rendered from about 115 cameras: the painted positions, rings near the centre, views pitched up at the ceiling, views looking down at the floor, a grid of standing positions around the room and a low ring. This matters more than anything else for how the splat holds up while you move: a splat is only well-behaved where training cameras have looked, and with cameras only near the centre the floor and off-centre viewpoints turned to streaks and haze. Unpainted patches of a wall or floor continue the surrounding paint.
 5. msplat trains a splat from those views. The blockout boxes serve as the mesh and collider.
 
 **Viewer** (`thread/viewer`): three.js with Spark for splats and Rapier for physics. Night mode multiplies the splat by the light reaching the mesh, so splat detail survives.
@@ -120,7 +120,15 @@ Painting views dominates a prompt build. Measured on an M4 Pro: about 57 s per v
 
 Tried and not adopted: a full-resolution training schedule (2.4 times slower with no gain on a held-out score), the unquantised image model (no faster, 33 GB), and Rapier's internal-edge fix for colliders (it made walls one-sided, so balls rolled out through them).
 
+## What was tried for splat quality and dropped
+
+- Seeding training from depth-lifted pixels of the painted views: objects gained real shape but the result was ragged, and the trainer drops splats when too many fall in one screen tile.
+- Building the splat directly with no training (flat splats on exact planes plus depth-lifted relief): no streaks, but blurrier walls and holes where no view looked.
+
 ## Known limits
+
+- **Large halls and complex objects are still weak.** In a 12 m garage the floor is soft and the cars are boxes with smeared paint: the pictures are too coarse for that much floor, and anything more complicated than a box or cylinder has no real shape.
+- **Photo worlds need many more photos than 20 to hold up while moving.** There is no way to invent extra views of a real room; expect good results only near where photos were taken.
 
 - **Furniture in invented rooms is painted onto simple shapes**, so it looks right from the front and flatter from the side. Some seams remain where surfaces meet.
 - **Invented spaces are box-shaped rooms** from 3 to 24 m across, filled with boxes, cylinders and a fixed set of furniture. Curved walls, sloped roofs, stairs and tiers are not possible; a tent or dome exists only as painted texture.

@@ -38,6 +38,26 @@ up = ((C.RH, 6, 0.0), (0.6 * C.RH, 6, 0.5)) if C.RH >= 3.2 else ((C.RH, 10, 0.0)
 rings = [(C.EYE - 0.25, 0.14, 0.55, 0.55, 12, 0.5), (C.EYE + 0.2, 0.225, 0.55, 0.5, 12, 0.5)] + [(C.EYE - 0.3, 0.15, 0.5, y, n, ph) for y, n, ph in up]
 # four steep views across the middle of the ceiling, which the ring above leaves unseen
 rings.append((C.EYE - 0.3, 0.2, -0.03, C.RH, 4, 0.25))
+# views that cost no painting but pin the splat down where people actually look while moving around: the floor from
+# above, the room from a grid of standing positions, and a low ring. Without them the floor is only ever seen at a
+# grazing angle from near the centre, and training stretches it into streaks.
+def add(eye, look):
+    e = C.free(eye)
+    if e is not None and np.linalg.norm(np.array(look) - e) > 0.3: tgt.append((tuple(e), tuple(look)))
+for i in range(12):                                                  # looking down across the middle of the floor
+    a = 2 * np.pi * (i + 0.25) / 12; off = np.array([np.cos(a) * C.RW, 0, np.sin(a) * C.RD])
+    add(c + off * 0.3 + [0, C.EYE + 0.2, 0], c - off * 0.1)
+for i in range(8):                                                   # looking down at the floor along the walls
+    a = 2 * np.pi * (i + 0.5) / 8; off = np.array([np.cos(a) * C.RW, 0, np.sin(a) * C.RD])
+    add(c + off * 0.12 + [0, C.EYE + 0.2, 0], c + off * 0.46)
+for fx in (0.2, 0.5, 0.8):                                           # standing at a grid of spots, looking four ways
+    for fz in (0.2, 0.5, 0.8):
+        pos = np.array([fx * C.RW, C.EYE, fz * C.RD])
+        for dx, dz in ((1, 1), (1, -1), (-1, 1), (-1, -1)):
+            add(pos, pos + np.array([dx * 0.25 * C.RW, -0.45, dz * 0.25 * C.RD]))
+for i in range(6):                                                   # a low ring, as if crouching
+    a = 2 * np.pi * (i + 0.5) / 6; off = np.array([np.cos(a) * C.RW, 0, np.sin(a) * C.RD])
+    add(c + off * 0.25 + [0, 0.9, 0], c - off * 0.3 + [0, 0.5, 0])
 n_up = 0
 for ri, (h, r, lr, look, n, ph) in enumerate(rings):
     for i in range(n):
@@ -51,10 +71,16 @@ for old in glob.glob(f"{out}/images/*.png") + glob.glob(f"{out}/sparse/0/*.bin")
 S = np.diag([1.0, 1, -1]); f = W / 2 / np.tan(np.radians(B.FOV) / 2)
 im_lines, pts = [], []; rng = np.random.default_rng(0); sums = np.zeros((NS, 3)); ns = np.zeros(NS); tot = np.zeros(NS); pending = []
 wall = np.isin(np.arange(NS), (0, 2, 3, 5)); wsum = np.zeros((2, 3)); wn = np.zeros(2)   # painted wall colour: [all, top third]
-for k, cam in enumerate(tgt):
+
+def render(k):
+    """One target view: for every pixel, the colour from the best painted view that truly sees that surface point."""
+    cam = tgt[k]
     t, P, sid = trace(cam)
     best = np.full((H, W), 1e5); col = np.zeros((H, W, 3), np.float32)
-    for v in range(C.N):
+    # try the painted views most likely to own this picture's surfaces first: once a pixel has its best-ranked source,
+    # lower-ranked views skip it, which is most of the work saved
+    share = np.bincount(sid.ravel(), minlength=NS)
+    for v in np.argsort((np.minimum(rank, C.N) * share[:, None]).sum(0)):
         st, simg, _, ssid, sedge = src[v]
         score = rank[sid, v]; want = score < best                    # only where this view would become the source
         px, py, dist, z = B.project(src_cams[str(v)], P)
@@ -78,29 +104,76 @@ for k, cam in enumerate(tgt):
                 ey[m] += dy; ex_x[m] += dx; miss &= ~m
             ok[ex] = vis & ~miss; yi[ex] = ey; xi[ex] = ex_x
         best = np.where(ok, score, best); col[ok] = simg[yi[ok], xi[ok]]
-    have = best < 1e5
-    np.add.at(sums, sid[have], col[have]); np.add.at(ns, sid[have], 1); tot += np.bincount(sid.ravel(), minlength=NS)
+    return k, P.astype(np.float32), sid.astype(np.int16), col.astype(np.uint8), best < 1e5
+
+# the views are independent, so they are rendered in parallel (forked workers share the painted pictures without copying)
+import multiprocessing as mp
+from scipy import ndimage
+workers = max(1, min(8, (os.cpu_count() or 4) - 2, len(tgt)))
+if workers > 1:
+    with mp.get_context("fork").Pool(workers) as pool: results = pool.map(render, range(len(tgt)), chunksize=1)
+else: results = [render(k) for k in range(len(tgt))]
+
+CELL = 0.03                                                          # texture cell on a room face, in metres
+lo3, hi3 = np.array(B.ROOM[0], float), np.array(B.ROOM[1], float)
+def cells(f, P):
+    """Texture cell indices on room face f for world points P."""
+    u, w = [a for a in range(3) if a != f % 3]
+    nu, nw = int(np.ceil((hi3[u] - lo3[u]) / CELL)), int(np.ceil((hi3[w] - lo3[w]) / CELL))
+    return np.clip(((P[..., u] - lo3[u]) / CELL).astype(int), 0, nu - 1), np.clip(((P[..., w] - lo3[w]) / CELL).astype(int), 0, nw - 1), nu, nw
+tex = {}
+for k, P, sid, col, have in results:
+    cam = tgt[k]; colf = col.astype(np.float32)
+    sh = sid[have]                                                   # np.bincount, not np.add.at: the latter is many times slower
+    for ch in range(3): sums[:, ch] += np.bincount(sh, weights=colf[have][:, ch], minlength=NS)
+    ns += np.bincount(sh, minlength=NS); tot += np.bincount(sid.ravel(), minlength=NS)
     for j, m in enumerate((have & wall[sid], have & wall[sid] & (P[..., 1] > C.RH * 2 / 3))):
-        wsum[j] += col[m].sum(0); wn[j] += m.sum()
-    pending.append((k, cam, P, sid, col, have))
+        wsum[j] += colf[m].sum(0); wn[j] += m.sum()
+    for fc in range(6):                                              # gather every painted pixel of a face into its texture
+        m = have & (sid == fc)
+        if not m.any(): continue
+        iu, iw, nu, nw = cells(fc, P[m])
+        if fc not in tex: tex[fc] = [np.zeros((nu, nw, 3)), np.zeros((nu, nw))]
+        flat = iu * nw + iw; cm = colf[m]
+        for ch in range(3): tex[fc][0][..., ch] += np.bincount(flat, weights=cm[:, ch], minlength=nu * nw).reshape(nu, nw)
+        tex[fc][1] += np.bincount(flat, minlength=nu * nw).reshape(nu, nw)
+    pending.append((k, cam, P, sid, colf, have))
 mean = sums / np.maximum(ns, 1)[:, None]
 # surfaces no picture covers must not be black: use the overall painted colour. A ceiling that is unpainted, or painted
 # only as a far dark sliver, becomes one flat lightened upper-wall colour
 overall = sums.sum(0) / ns.sum() if ns.sum() else np.full(3, 128.0)
 mean[ns == 0] = overall
-if ns[4] < 0.5 * tot[4]:
+flat_ceiling = ns[4] < 0.5 * tot[4]
+if flat_ceiling:
     j = 1 if wn[1] else 0
     mean[4] = 0.6 * (wsum[j] / wn[j] if wn[j] else overall) + 0.4 * 255
     for p in pending: p[5][p[3] == 4] = False
+# unpainted parts of a wall or floor continue the surrounding paint instead of turning one flat colour: each empty
+# texture cell takes the nearest painted cell's colour, then the borrowed area is blurred so it reads as soft floor, not shards
+fill_tex = {}
+for fc, (acc, cnt) in tex.items():
+    if fc == 4 and flat_ceiling: continue
+    painted = cnt > 0
+    if painted.all() or not painted.any(): continue
+    avg = acc / np.maximum(cnt, 1)[..., None]
+    idx = ndimage.distance_transform_edt(~painted, return_distances=False, return_indices=True)
+    near = avg[idx[0], idx[1]]
+    soft = np.stack([ndimage.gaussian_filter(near[..., ch], 8) for ch in range(3)], -1)
+    fill_tex[fc] = np.where(painted[..., None], avg, soft)
 for k, cam, P, sid, col, have in pending:
-    col = np.where(have[..., None], col, mean[sid])
-    Image.fromarray(col.astype(np.uint8)).save(f"{out}/images/{k:02d}.png")
+    fillc = mean[sid]
+    for fc, t_ in fill_tex.items():
+        m = ~have & (sid == fc)
+        if m.any():
+            iu, iw, _, _ = cells(fc, P[m]); fillc[m] = t_[iu, iw]
+    col = np.where(have[..., None], col, fillc)
+    Image.fromarray(col.astype(np.uint8)).save(f"{out}/images/{k:03d}.png")
     eye, r, u, fw = B.basis(cam)
     R = np.stack([S @ -r, S @ -u, S @ fw]); tv = -R @ (S @ eye)
     qx, qy, qz, qw = Rotation.from_matrix(R).as_quat()
-    im_lines.append(f"{k+1} {qw} {qx} {qy} {qz} {tv[0]} {tv[1]} {tv[2]} 1 {k:02d}.png\n\n")
+    im_lines.append(f"{k+1} {qw} {qx} {qy} {qz} {tv[0]} {tv[1]} {tv[2]} 1 {k:03d}.png\n\n")
     idx = rng.choice(W * H, 2500, replace=False)
-    pts += [(S @ P.reshape(-1, 3)[j], col.reshape(-1, 3)[j]) for j in idx]
+    pts += [(S @ P.reshape(-1, 3)[j].astype(float), col.reshape(-1, 3)[j]) for j in idx]
 open(f"{out}/sparse/0/cameras.txt", "w").write(f"1 PINHOLE {W} {H} {f} {f} {W/2} {H/2}\n")
 open(f"{out}/sparse/0/images.txt", "w").write("".join(im_lines))
 open(f"{out}/sparse/0/points3D.txt", "w").write("".join(f"{i+1} {p[0]} {p[1]} {p[2]} {int(c[0])} {int(c[1])} {int(c[2])} 0.5\n" for i, (p, c) in enumerate(pts)))

@@ -12,6 +12,7 @@ def parse(argv):
     p.add_argument("--downscales", type=int, help="TrainingConfig.num_downscales")
     p.add_argument("--res-schedule", type=int, help="TrainingConfig.resolution_schedule (steps per downscale level)")
     p.add_argument("--sh", type=int, choices=(0, 1, 2, 3), help="TrainingConfig.sh_degree")
+    p.add_argument("--set", action="append", default=[], metavar="FIELD=VALUE", help="set any other numeric TrainingConfig field, e.g. --set refine_every=100000")
     p.add_argument("--eval-every", type=int, default=0, help="hold out every Nth photo and print the score (measurement only)")
     return p.parse_args(argv)
 
@@ -68,6 +69,9 @@ def main(a):
     if a.downscales is not None: cfg.num_downscales = a.downscales
     if a.res_schedule is not None: cfg.resolution_schedule = a.res_schedule
     if a.sh is not None: cfg.sh_degree = a.sh
+    for kv in a.set:
+        k, v = kv.split("=", 1); cur = getattr(cfg, k)          # unknown field names fail here, before training
+        setattr(cfg, k, [float(x) for x in v.split(",")] if isinstance(cur, (list, tuple)) else type(cur)(float(v)))
     print("config", {k: getattr(cfg, k) for k in ("iterations", "num_downscales", "resolution_schedule", "sh_degree")}, flush=True)
     t0 = time.time()
     tr = msplat.GaussianTrainer(ds, cfg); tr.train(lambda s: None, iters)  # 2nd arg is callback_every, not a step count

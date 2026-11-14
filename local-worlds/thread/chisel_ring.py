@@ -10,7 +10,7 @@ from PIL import Image, ImageFilter
 sys.path.insert(0, "../spike")
 import blockout as B
 
-N, D = int(os.environ.get("WORLD_VIEWS", "16")), os.environ.get("WORLD_DIR", "chisel")
+RING, D = int(os.environ.get("WORLD_VIEWS", "16")), os.environ.get("WORLD_DIR", "chisel")   # RING: views in the level ring
 world = json.load(open(f"{D}/boxes.json"))
 objs = world["objects"]
 RW, RH, RD = world.get("room", [4.0, 2.6, 4.0])
@@ -32,14 +32,22 @@ def free(eye, margin=0.25):
     return None
 
 B.CAMS = {}
-for i in range(N):
-    a = 2 * np.pi * i / N
+for i in range(RING):
+    a = 2 * np.pi * i / RING
     off = np.array([np.cos(a) * RW, 0, np.sin(a) * RD])               # an ellipse that follows the room's shape
     want = c + off * 0.325 + [0, EYE, 0]
     eye = free(want)
     if eye is None: eye = free(want, 0.0)
     if eye is None: eye = want                                        # a painted view must exist for every index
     B.CAMS[str(i)] = (tuple(eye), tuple(c - off * 0.4 + [0, 0.8, 0]))
+# a few views from higher up looking down, painted after the ring: the ring looks across the room, so it never sees the
+# middle of the floor or the tops and far sides of low furniture
+n_extra = 4 if RW * RD < 60 else 6
+for i in range(n_extra):
+    a = 2 * np.pi * (i + 0.5) / n_extra; off = np.array([np.cos(a) * RW, 0, np.sin(a) * RD])
+    eye = free(c + off * 0.3 + [0, min(RH - 0.3, EYE + 0.6), 0])
+    if eye is not None: B.CAMS[str(len(B.CAMS))] = (tuple(eye), tuple(c - off * 0.08))
+N = len(B.CAMS)                                                       # every painted view: the ring, then the downward ones
 
 def prep():
     os.makedirs(f"{D}/depth", exist_ok=True)
@@ -141,8 +149,8 @@ def gen(name, style):
     out = f"{D}/{name}/images"; os.makedirs(out, exist_ok=True)
     pw, ph = (int(v) for v in os.environ.get("WORLD_PAINT", f"{B.W}x{B.H}").split("x"))
     chain = os.environ.get("WORLD_CHAIN", "1") != "0"
-    steps = 6 if N <= 8 else 8                                  # the quick level trades a little detail for time
-    meta_path, meta = f"{D}/{name}/views.json", {"views": N, "room": [RW, RH, RD], "paint": [pw, ph], "style": style, "chain": chain, "file": CN_FILE}
+    steps = 6 if RING <= 8 else 8                                  # the quick level trades a little detail for time
+    meta_path, meta = f"{D}/{name}/views.json", {"views": RING, "painted": N, "room": [RW, RH, RD], "paint": [pw, ph], "style": style, "chain": chain, "file": CN_FILE}
     if not os.path.exists(meta_path) or json.load(open(meta_path)) != meta:   # anything painted for another setup is stale
         for f in os.listdir(out): os.remove(f"{out}/{f}")
     json.dump(meta, open(meta_path, "w"))
