@@ -98,7 +98,7 @@ To redraw the icon, run `thread/.venv/bin/python make_icon.py` inside `app/`, th
 
 1. Qwen3.5 9B reads the layout sentence and writes a rough plan: the room's size, plus pieces placed against walls, at points, at the corners, or in rings and arcs. A piece is a box, an upright cylinder, or a named piece of furniture. Code checks the plan (everything is kept inside the room and resting on the floor, rows are thinned so copies do not overlap, an audience is turned to face a stage) and expands it into the blockout.
 2. The blockout is rendered as depth maps from a ring of cameras.
-3. Z-Image Turbo with a depth ControlNet paints each view so it follows the blockout. Each view's prompt names only the pieces visible in it. Quick and Standard detail paint at 768x576, Full at 1024x768. A cancelled build resumes from the views already painted.
+3. Z-Image Turbo with a depth ControlNet paints each view so it follows the blockout. Views are painted in order, and each one is given the pixels that earlier views already show of it, through the ControlNet's inpainting input, so the room stays the same room from every angle (neighbouring views disagree about a third as much as when painted separately). Each view's prompt names only the pieces visible in it. Quick and Standard detail paint at 768x576, Full at 1024x768. A cancelled build resumes from the views already painted.
 4. Separately painted views disagree with each other, so each wall, the floor and each furniture piece takes its look from one view only. That view is projected onto the blockout and re-rendered from about 50 cameras, including views pitched up at the ceiling, which is filled with a light flat colour because no picture paints it.
 5. msplat trains a splat from those views. The blockout boxes serve as the mesh and collider.
 
@@ -109,20 +109,20 @@ To redraw the icon, run `thread/.venv/bin/python make_icon.py` inside `app/`, th
 | Model | Job | Runs through |
 |---|---|---|
 | Qwen3.5 9B | Layout sentence to furniture placement | Ollama |
-| Z-Image Turbo + Z-Image-Turbo-Fun-Controlnet-Union 2.1 | Painting views that follow the blockout | mflux (MLX) |
+| Z-Image Turbo + Z-Image-Turbo-Fun-Controlnet-Union 2.1 (the `2601-8steps` distilled file, 6.7 GB) | Painting views that follow the blockout | mflux (MLX) |
 | Depth Pro | Depth for each photo | mflux (MLX) |
 
 COLMAP, msplat, Open3D, three.js, Spark and Rapier do the rest and have no model weights. Check each model's licence before using this for anything beyond personal use.
 
 ## Speed notes
 
-Painting views dominates a prompt build. Measured on an M4 Pro: about 59 s per view at 768x576 and about 110 s at 1024x768, down from about 160 s. The gains come from patches applied to mflux in memory (`speed_patches` in `thread/chisel_ring.py`): the control input is kept in the model's 16-bit format so the transformer does not fall back to 32-bit, each distinct prompt is encoded once, and the blockout depth map is used directly. Peak memory while painting is about 18 GB.
+Painting views dominates a prompt build. Measured on an M4 Pro: about 57 s per view at 768x576 with 8 steps (about 49 s with the Quick level's 6 steps), down from about 160 s at 1024x768. The gains come from patches applied to mflux in memory (`speed_patches` in `thread/chisel_ring.py`): the control input is kept in the model's 16-bit format so the transformer does not fall back to 32-bit, each distinct prompt is encoded once, and the blockout depth map is used directly. Peak memory while painting is about 18 GB.
 
 Tried and not adopted: a full-resolution training schedule (2.4 times slower with no gain on a held-out score), the unquantised image model (no faster, 33 GB), and Rapier's internal-edge fix for colliders (it made walls one-sided, so balls rolled out through them).
 
 ## Known limits
 
-- **Invented rooms look like a collage up close.** Seams show where surfaces meet, and furniture is painted onto its box, so it looks right from the front and stretched from the side.
+- **Furniture in invented rooms is painted onto simple shapes**, so it looks right from the front and flatter from the side. Some seams remain where surfaces meet.
 - **Invented spaces are box-shaped rooms** from 3 to 24 m across, filled with boxes, cylinders and a fixed set of furniture. Curved walls, sloped roofs, stairs and tiers are not possible; a tent or dome exists only as painted texture.
 - **The layout model is small and makes spatial mistakes.** Code catches the common ones, but an unusual description can still give an odd arrangement.
 - **Photo meshes have holes** where no photo looked, and their colour is per vertex, so it is blurry. Balls can fall through holes; a flat safety floor catches them.
