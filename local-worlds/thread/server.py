@@ -25,7 +25,7 @@ def run_job(args, meta):
         for line in proc.stdout:
             lf.write(line); line = line.strip()
             if line.startswith("STAGE: "): job["stage"] = line[7:]
-            elif line and "%|" not in line: last = line; job["log"] = (job["log"] + [line])[-6:]
+            elif line and "%|" not in line and not line.startswith("Step failed"): last = line; job["log"] = (job["log"] + [line])[-6:]
         code = proc.wait()
     job["finished"] = time.time()
     if job["state"] == "cancelled": pass

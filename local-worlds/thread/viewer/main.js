@@ -37,7 +37,7 @@ const back = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 16), new THREE.MeshB
   depthWrite: false, blending: THREE.CustomBlending, blendEquation: THREE.AddEquation, blendSrc: THREE.DstColorFactor, blendDst: THREE.ZeroFactor }));
 back.renderOrder = 9.5; back.frustumCulled = false; back.visible = false; scene.add(back);
 
-const ROOM = 4, DOOR = { w: 1.0, h: 2.1 };   // invented rooms are 4 m square
+const DOOR = { w: 1.0, h: 2.1 };
 
 // Split triangles until no edge is longer than maxEdge, so pieces of big flat walls can be removed for doorways.
 function tessellate(geo, maxEdge) {
@@ -76,10 +76,11 @@ async function loadPart(def) {
   const floorY = pct(ys, lo), metre = def.metre ?? (pct(ys, hi) - floorY) / (def.heightMetres ?? 2.4);
   const cx = (pct(xs, lo) + pct(xs, hi)) / 2, cz = (pct(zs, lo) + pct(zs, hi)) / 2;
   inner.quaternion.copy(q); inner.scale.setScalar(1 / metre); inner.position.set(-cx / metre, -floorY / metre, -cz / metre);
-  const half = isRoom ? ROOM / 2 : Math.max(pct(xs, hi) - pct(xs, lo), pct(zs, hi) - pct(zs, lo)) / metre / 2;
-  if (isRoom) { visGeo = colGeo = geometryFrom(tessellate(colGeo, 0.25 * metre)); }
+  // footprint in metres: exact for invented rooms, estimated for photo worlds
+  const roomW = isRoom ? (def.room?.[0] ?? 4) : (pct(xs, hi) - pct(xs, lo)) / metre, roomD = isRoom ? (def.room?.[2] ?? 4) : (pct(zs, hi) - pct(zs, lo)) / metre;
+  if (isRoom) { visGeo = colGeo = geometryFrom(tessellate(colGeo, (roomW * roomD > 60 ? 0.5 : 0.25) * metre)); }
   else visGeo.computeVertexNormals();
-  return { def, outer, inner, splat, visGeo, colGeo, isRoom, half, metre };
+  return { def, outer, inner, splat, visGeo, colGeo, isRoom, roomW, roomD, metre };
 }
 
 // Meshes for a part: flat view, collider wireframe, and the night-mode pair (depth prepass + lit pass multiplied over the splat).
@@ -96,21 +97,28 @@ function buildMeshes(p) {
 }
 
 // Doorways: where two invented rooms have walls touching, find the overlap and return a box to cut through both.
+// The four walls of a room in world space: outward normal n, centre c, direction along the wall t, and length len.
+function wallsOf(p) {
+  return [[1, 0], [-1, 0], [0, 1], [0, -1]].map(([nx, nz]) => {
+    const n = new THREE.Vector3(nx, 0, nz).applyAxisAngle(new THREE.Vector3(0, 1, 0), p.outer.rotation.y);
+    return { n, c: p.outer.position.clone().addScaledVector(n, (nx ? p.roomW : p.roomD) / 2), t: new THREE.Vector3(-n.z, 0, n.x), len: nx ? p.roomD : p.roomW };
+  });
+}
+// For two facing walls: the gap between them and the stretch where they overlap (as an interval along a.t from a.c).
+function facing(a, b) {
+  if (a.n.dot(b.n) > -0.985) return null;
+  const d = b.c.clone().sub(a.c), gap = d.dot(a.n), along = d.dot(a.t);
+  const lo = Math.max(-a.len / 2, along - b.len / 2), hi = Math.min(a.len / 2, along + b.len / 2);
+  return { gap, lo, hi };
+}
 function findDoors(parts) {
   const doors = [], rooms = parts.filter((p) => p.isRoom);
-  const walls = (p) => [[1, 0], [-1, 0], [0, 1], [0, -1]].map(([nx, nz]) => {
-    const n = new THREE.Vector3(nx, 0, nz).applyAxisAngle(new THREE.Vector3(0, 1, 0), p.outer.rotation.y);
-    return { n, c: p.outer.position.clone().addScaledVector(n, ROOM / 2), t: new THREE.Vector3(-n.z, 0, n.x) };
-  });
   for (let i = 0; i < rooms.length; i++) for (let j = i + 1; j < rooms.length; j++)
-    for (const a of walls(rooms[i])) for (const b of walls(rooms[j])) {
-      if (a.n.dot(b.n) > -0.985) continue;                              // walls must face each other
-      const d = b.c.clone().sub(a.c), gap = d.dot(a.n), along = d.dot(a.t);
-      if (gap < -0.15 || gap > 0.6) continue;                           // touching, or a small gap between them
-      const overlap = ROOM - Math.abs(along);
-      if (overlap < DOOR.w + 0.4) continue;
-      const centre = a.c.clone().addScaledVector(a.t, along / 2).addScaledVector(a.n, gap / 2);
-      doors.push({ centre, yaw: Math.atan2(a.n.x, a.n.z), depth: gap + 0.7 });
+    for (const a of wallsOf(rooms[i])) for (const b of wallsOf(rooms[j])) {
+      const f = facing(a, b);
+      if (!f || f.gap < -0.15 || f.gap > 0.6 || f.hi - f.lo < DOOR.w + 0.4) continue;    // touching (or nearly) with room for a door
+      const centre = a.c.clone().addScaledVector(a.t, (f.lo + f.hi) / 2).addScaledVector(a.n, f.gap / 2);
+      doors.push({ centre, yaw: Math.atan2(a.n.x, a.n.z), depth: f.gap + 0.7 });
     }
   return doors;
 }
@@ -197,7 +205,7 @@ function drop(n = 25) {
     // aim at a random point in the lower middle of the view and spawn just above the surface found there
     ray.setFromCamera(new THREE.Vector2((Math.random() - 0.5) * 1.2, (Math.random() - 0.75) * 0.9), camera);
     const hit = ray.intersectObjects(wires, false)[0];
-    if (!hit || hit.distance > 5) continue;
+    if (!hit || hit.distance > 9) continue;
     const r = 0.035 + Math.random() * 0.025;
     const p = hit.point.clone().addScaledVector(ray.ray.direction, -0.15).add(new THREE.Vector3(0, 0.25 + Math.random() * 0.4, 0));
     const body = S.phys.createRigidBody(RAPIER.RigidBodyDesc.dynamic().setTranslation(p.x, p.y, p.z).setCcdEnabled(true).setLinearDamping(0.1).setAngularDamping(0.3));
@@ -267,15 +275,10 @@ mover.addEventListener("dragging-changed", (e) => { orbit.enabled = !e.value; if
 // when a room is dropped with a wall close to another room's wall, slide it so the two walls meet exactly
 function snapFlush(p) {
   if (!p.isRoom) return;
-  const wallsOf = (r) => [[1, 0], [-1, 0], [0, 1], [0, -1]].map(([nx, nz]) => {
-    const n = new THREE.Vector3(nx, 0, nz).applyAxisAngle(new THREE.Vector3(0, 1, 0), r.outer.rotation.y);
-    return { n, c: r.outer.position.clone().addScaledVector(n, ROOM / 2), t: new THREE.Vector3(-n.z, 0, n.x) };
-  });
   let best = null;
   for (const q of E.parts.values()) if (q !== p && q.isRoom) for (const a of wallsOf(p)) for (const b of wallsOf(q)) {
-    if (a.n.dot(b.n) > -0.985) continue;
-    const d = b.c.clone().sub(a.c), gap = d.dot(a.n), along = d.dot(a.t);
-    if (Math.abs(gap) < 0.9 && ROOM - Math.abs(along) > DOOR.w + 0.4 && (!best || Math.abs(gap) < Math.abs(best.gap))) best = { gap, n: a.n };
+    const f = facing(a, b);
+    if (f && Math.abs(f.gap) < 0.9 && f.hi - f.lo > DOOR.w + 0.4 && (!best || Math.abs(f.gap) < Math.abs(best.gap))) best = { gap: f.gap, n: a.n };
   }
   if (best) p.outer.position.addScaledVector(best.n, best.gap);
 }
@@ -288,7 +291,7 @@ function setMoverMode() {
 }
 function outline(p, colour) {
   if (p.outline) p.outer.remove(p.outline);
-  const h = p.half, pts = [[-h, -h], [h, -h], [h, h], [-h, h]].map(([x, z]) => new THREE.Vector3(x, 0.06, z));
+  const hx = p.roomW / 2, hz = p.roomD / 2, pts = [[-hx, -hz], [hx, -hz], [hx, hz], [-hx, hz]].map(([x, z]) => new THREE.Vector3(x, 0.06, z));
   p.outline = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: colour, depthTest: false }));
   p.outline.renderOrder = 20; p.outer.add(p.outline);
 }
@@ -315,7 +318,7 @@ async function togglePart(def, on) {
   const p = await loadPart(def); buildMeshes(p);
   p.flat.visible = p.pre.visible = p.lit.visible = false; p.wire.visible = false;
   const used = [...E.parts.values()].map((q) => q.outer.position.x);
-  p.outer.position.set(used.length ? Math.max(...used) + 5 : 0, 0, 0);
+  p.outer.position.set(used.length ? Math.max(...[...E.parts.values()].map((q) => q.outer.position.x + q.roomW / 2)) + p.roomW / 2 + 1 : 0, 0, 0);
   E.parts.set(def.name, p); select(p); showDoors(); status("Stitch: click a world to select it, then drag the arrows. Scroll to zoom.");
 }
 function enterStitch() {
@@ -324,8 +327,8 @@ function enterStitch() {
     const l = document.createElement("label"), c = document.createElement("input"); c.type = "checkbox";
     c.addEventListener("change", () => togglePart(d, c.checked)); l.append(c, d.name); return l;
   }));
-  camera.position.set(2.5, 17, 4); orbit.target.set(2.5, 0, 0); orbit.update();
-  eraseBox(new THREE.Vector3(0, 52.2, 0), 0, 500, 50, 500);       // hide ceilings so rooms are visible from above
+  camera.position.set(4, 26, 6); orbit.target.set(4, 0, 0); orbit.update();
+  eraseBox(new THREE.Vector3(0, 52.2, 0), 0, 500, 50, 500);       // hide everything above 2.2 m so rooms are visible from above
   setMoverMode(); showDoors(); status("Stitch: tick worlds to add them.");
 }
 function exitStitch() {

@@ -1,4 +1,4 @@
-"""Boxes -> ring of depth maps -> depth-guided pictures -> COLMAP-format dataset for the splat trainer.
+"""Blockout -> ring of depth maps -> depth-guided pictures -> COLMAP-format dataset for the splat trainer.
   chisel_ring.py prep                 depth maps + cameras
   chisel_ring.py gen NAME "PROMPT"    pictures (model loaded once)
   chisel_ring.py colmap NAME          write chisel/NAME/{images,sparse/0}
@@ -10,15 +10,29 @@ sys.path.insert(0, "../spike")
 import blockout as B
 
 N, D = int(os.environ.get("WORLD_VIEWS", "16")), os.environ.get("WORLD_DIR", "chisel")
-objs = json.load(open(f"{D}/boxes.json"))["objects"]
-B.BOXES = [(tuple(b["min"]), tuple(b["max"])) for o in objs for b in o["boxes"]]
-c = np.array([2.0, 0.0, 2.0])
+world = json.load(open(f"{D}/boxes.json"))
+objs = world["objects"]
+RW, RH, RD = world.get("room", [4.0, 2.6, 4.0])
+B.ROOM = ((0, 0, 0), (RW, RH, RD))
+B.PRIMS = [p for o in objs for p in o["prims"]]
+PRIM_OBJ = [oi for oi, o in enumerate(objs) for _ in o["prims"]]     # which object each primitive belongs to
+c = np.array([RW / 2, 0.0, RD / 2])
+EYE = 1.5 if RH < 3.2 else 1.7
+
+def free(eye):
+    """Pull a camera position towards the room's centre until it is not inside (or right against) any shape."""
+    eye = np.array(eye, float)
+    for _ in range(12):
+        if not any(B.inside(eye, p, 0.25) for p in B.PRIMS): break
+        eye[[0, 2]] = c[[0, 2]] + (eye[[0, 2]] - c[[0, 2]]) * 0.85
+    return eye
+
 B.CAMS = {}
 for i in range(N):
     a = 2 * np.pi * i / N
-    off = np.array([np.cos(a), 0, np.sin(a)])
-    eye = c + off * 1.3 + [0, 1.5, 0]
-    B.CAMS[str(i)] = (tuple(eye), tuple(c - off * 1.6 + [0, 0.8, 0]))
+    off = np.array([np.cos(a) * RW, 0, np.sin(a) * RD])               # an ellipse that follows the room's shape
+    eye = free(c + off * 0.325 + [0, EYE, 0])
+    B.CAMS[str(i)] = (tuple(eye), tuple(c - off * 0.4 + [0, 0.8, 0]))
 
 def prep():
     os.makedirs(f"{D}/depth", exist_ok=True)

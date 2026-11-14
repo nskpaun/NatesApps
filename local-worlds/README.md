@@ -96,7 +96,7 @@ To redraw the icon, run `thread/.venv/bin/python make_icon.py` inside `app/`, th
 
 **Prompt to world** (`pipeline.py prompt`, about 22 to 45 minutes depending on detail)
 
-1. Qwen3.5 9B reads the layout sentence and chooses furniture pieces and which wall each goes on. Code turns those choices into boxes: the blockout.
+1. Qwen3.5 9B reads the layout sentence and writes a rough plan: the room's size, plus pieces placed against walls, at points, at the corners, or in rings and arcs. A piece is a box, an upright cylinder, or a named piece of furniture. Code checks the plan (everything is kept inside the room and resting on the floor, rows are thinned so copies do not overlap, an audience is turned to face a stage) and expands it into the blockout.
 2. The blockout is rendered as depth maps from a ring of cameras.
 3. Z-Image Turbo with a depth ControlNet paints each view so it follows the blockout.
 4. Separately painted views disagree with each other, so each wall, the floor and each furniture piece takes its look from one view only. That view is projected onto the blockout and re-rendered from 40 cameras.
@@ -117,7 +117,8 @@ COLMAP, msplat, Open3D, three.js, Spark and Rapier do the rest and have no model
 ## Known limits
 
 - **Invented rooms look like a collage up close.** Seams show where surfaces meet, and furniture is painted onto its box, so it looks right from the front and stretched from the side.
-- **Invented rooms are always 4 m by 4 m**, built from a fixed set of pieces: sofa, armchair, chair, bed, desk, coffee table, dining table, side table, bookshelf, cabinet, floor lamp, plant, window.
+- **Invented spaces are box-shaped rooms** from 3 to 24 m across, filled with boxes, cylinders and a fixed set of furniture. Curved walls, sloped roofs, stairs and tiers are not possible; a tent or dome exists only as painted texture.
+- **The layout model is small and makes spatial mistakes.** Code catches the common ones, but an unusual description can still give an odd arrangement.
 - **Photo meshes have holes** where no photo looked, and their colour is per vertex, so it is blurry. Balls can fall through holes; a flat safety floor catches them.
 - **Invented rooms have no ceiling.** The cameras never look up, so the ceiling shows as dark haze.
 - **Not yet tested with Wi-Fi off.** Nothing calls out after the models are downloaded, but that has not been verified.

@@ -3,7 +3,7 @@
   pipeline.py prompt WORLD_DIR "Name" "LAYOUT" "STYLE"   sentence + style -> blockout -> pictures -> splat
 Each step prints a 'STAGE: ...' line. On success the world is added to scenes.json.
 """
-import sys, os, json, subprocess, shutil, glob, socket, time
+import sys, os, re, json, subprocess, shutil, glob, socket, time
 HERE = os.path.dirname(os.path.abspath(__file__))
 PY = os.path.join(HERE, ".venv/bin/python")                 # splat training, meshing
 PY_IMG = os.path.join(HERE, "../spike/.venv/bin/python")    # image and depth models (mflux)
@@ -76,12 +76,12 @@ def prompt(d, name, layout, style):
             run([PY, "llm_boxes.py", layout, f"{d}/boxes.json"])
         finally:
             if started: started.terminate()            # one model in memory at a time
-        pieces = ", ".join(dict.fromkeys(o["name"].replace("_", " ") for o in json.load(open(f"{d}/boxes.json"))["objects"]))
+        pieces = ", ".join(dict.fromkeys(re.sub(r"[_\d]+", " ", o["name"]).strip() for o in json.load(open(f"{d}/boxes.json"))["objects"]))
         stage("rendering the blockout")
         run([PY, "chisel_ring.py", "prep"], env)
         stage("painting views")
         run([PY_IMG, "chisel_ring.py", "gen", "gen", f"interior photo, {style}, with {pieces}"], env)
-    pieces = ", ".join(dict.fromkeys(o["name"].replace("_", " ") for o in json.load(open(f"{d}/boxes.json"))["objects"]))
+    pieces = ", ".join(dict.fromkeys(re.sub(r"[_\d]+", " ", o["name"]).strip() for o in json.load(open(f"{d}/boxes.json"))["objects"]))
     stage("making the views agree")
     run([PY, "consistent.py", "gen"], env)
     stage("training the splat")
@@ -90,7 +90,7 @@ def prompt(d, name, layout, style):
     run([PY, "blockout_mesh.py", "gen_c"], env)
     s = json.load(open(f"{d}/gen_c/gen_c_scene.json"))
     register({"name": name, "ply": f"{rel}/gen_c/gen_c.ply", "mesh": f"{rel}/gen_c/gen_c_mesh.glb", "collider": f"{rel}/gen_c/gen_c_mesh_collider.glb", "up": s["up"], "center": s["center"],
-              "eye": s["eye"], "forward": s["forward"], "metre": json.load(open(f"{d}/gen_c/gen_c_metre.json"))["metre"], "flat": True, "lamp": 5,
+              "eye": s["eye"], "forward": s["forward"], "metre": json.load(open(f"{d}/gen_c/gen_c_metre.json"))["metre"], "room": json.load(open(f"{d}/gen_c/gen_c_metre.json"))["room"], "flat": True, "lamp": 5,
               "note": f"invented: {layout[:60]}", "kind": "prompt"})
     stage("done")
 

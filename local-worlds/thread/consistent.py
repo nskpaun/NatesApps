@@ -9,22 +9,11 @@ from scipy.spatial.transform import Rotation
 name = sys.argv[1]; sys.argv = [sys.argv[0], "prep"]
 import chisel_ring as C
 B = C.B; W, H = B.W, B.H
-objs = json.load(open(f"{C.D}/boxes.json"))["objects"]
-box_obj = [oi for oi, o in enumerate(objs) for _ in o["boxes"]]
+objs = C.objs
 NS = 6 + len(objs)
 
 def trace(cam):
-    eye, d = B.rays(cam)
-    _, t = B.slab(eye, d, *B.ROOM)
-    P = eye + d * t[..., None]
-    lo, hi = np.array(B.ROOM[0]), np.array(B.ROOM[1])
-    face = np.argmin(np.concatenate([np.abs(P - lo), np.abs(P - hi)], -1), -1)  # 0..5 room faces
-    sid = face.copy()
-    for bi, (blo, bhi) in enumerate(B.BOXES):
-        tn, tf = B.slab(eye, d, blo, bhi)
-        hit = (tn < tf) & (tn > 0) & (tn < t)
-        t = np.where(hit, tn, t); sid = np.where(hit, 6 + box_obj[bi], sid)
-    return t, eye + d * t[..., None], sid
+    return B.trace(cam, C.PRIM_OBJ)
 
 src_cams = dict(B.CAMS)
 src = []
@@ -38,11 +27,11 @@ print("owner view per surface:", {(["x0","floor","z0","x1","ceil","z1"] + [o["na
 
 # target cameras: the original ring plus an inner ring looking outward at two heights
 tgt = [src_cams[str(i)] for i in range(C.N)]
-c = np.array([2.0, 0, 2.0])
-for h, r, look, n in ((1.25, 0.55, 0.9, 12), (1.7, 0.9, 0.5, 12)):
+c = C.c
+for h, r, look, n in ((C.EYE - 0.25, 0.14, 0.55, 12), (C.EYE + 0.2, 0.225, 0.5, 12)):
     for i in range(n):
-        a = 2 * np.pi * (i + 0.5) / n; off = np.array([np.cos(a), 0, np.sin(a)])
-        tgt.append((tuple(c + off * r + [0, h, 0]), tuple(c + off * 2.2 + [0, look, 0])))
+        a = 2 * np.pi * (i + 0.5) / n; off = np.array([np.cos(a) * C.RW, 0, np.sin(a) * C.RD])
+        tgt.append((tuple(C.free(c + off * r + [0, h, 0])), tuple(c + off * 0.55 + [0, look, 0])))
 
 out = f"{C.D}/{name}_c"; os.makedirs(f"{out}/images", exist_ok=True); os.makedirs(f"{out}/sparse/0", exist_ok=True)
 S = np.diag([1.0, 1, -1]); f = W / 2 / np.tan(np.radians(B.FOV) / 2)
