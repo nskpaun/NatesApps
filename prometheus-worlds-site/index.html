@@ -3,581 +3,133 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Prometheus Worlds — a local world-building app</title>
-    <meta
-      name="description"
-      content="Prometheus Worlds turns photos of a room, or a sentence describing one, into a 3D world on your Mac. Orbit it, relight it, and drop balls. Motion and music are coming."
-    />
-    <meta name="theme-color" content="#0c0907" />
+    <title>Prometheus Worlds</title>
+    <meta name="description" content="Type a sentence. Get a world you can walk through. It runs on your Mac and nowhere else." />
+    <meta name="theme-color" content="#0a0a0b" />
     <meta property="og:title" content="Prometheus Worlds" />
-    <meta
-      property="og:description"
-      content="A 3D world from your photos or a sentence. The models stay on your Mac."
-    />
+    <meta property="og:description" content="Type a sentence. Get a world you can walk through. It runs on your Mac." />
     <meta property="og:type" content="website" />
-    <meta property="og:image" content="/media/wizard-study-800.webp" />
+    <meta property="og:image" content="/media/tower-1400.webp" />
     <meta name="twitter:card" content="summary_large_image" />
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32" />
     <link rel="apple-touch-icon" href="/apple-touch.png" />
-    <link rel="preload" as="image" href="/media/wizard-study-800.webp" />
+    <link rel="preload" as="image" href="/media/tower-1400.webp" />
   </head>
-  <body id="top">
-    <a class="skip" href="#main">Skip to content</a>
-    <header class="site-header">
-      <div class="wrap header-inner">
-        <a class="brand" href="#top">
-          <img
-            class="brand-icon"
-            src="/media/app-icon.webp"
-            width="128"
-            height="128"
-            alt=""
-          />
-          <span class="brand-name">Prometheus Worlds</span>
-        </a>
-        <nav id="site-nav" class="site-nav" aria-label="Page">
-          <a href="#worlds">Worlds</a>
-          <a href="#make">Make one</a>
-          <a href="#local">On your Mac</a>
-          <a href="#viewer">In the viewer</a>
-          <a href="#living">Living scenes</a>
-          <a class="nav-build" href="#build">Build it</a>
-        </nav>
-        <div class="header-actions">
-          <a class="button header-cta" href="#build">Build it</a>
-          <button
-            type="button"
-            class="nav-toggle"
-            aria-expanded="false"
-            aria-controls="site-nav"
-          >
-            <span class="nav-toggle-label">Menu</span>
-          </button>
-        </div>
-      </div>
+  <body>
+    <header class="bar">
+      <a class="brand" href="#top">
+        <img src="/media/app-icon.webp" width="36" height="36" alt="" />
+        <span>Prometheus Worlds</span>
+      </a>
+      <nav aria-label="Page">
+        <a href="#worlds">Worlds</a>
+        <a href="#how">How</a>
+        <a href="#truth">Limits</a>
+        <a class="go" href="#build">Build it</a>
+      </nav>
     </header>
 
-    <main id="main">
-      <section class="hero" aria-labelledby="hero-title">
-        <canvas id="embers" aria-hidden="true"></canvas>
-        <div class="wrap hero-grid">
-          <div class="hero-copy">
-            <p class="kicker">
-              <svg class="flame" viewBox="0 0 24 24" aria-hidden="true">
-                <path
-                  fill="currentColor"
-                  d="M12 1.2c.3 3.3 3.5 4.9 4.9 7.5 1.2 2.2 1 5.1-.6 7.1A6.7 6.7 0 0 1 11 18.8c-2.5-.2-4.7-1.8-5.5-4.1-.7-2-.2-4.2.9-5.9.8-1.3 1.2-2.5.9-3.9.6 1.7 1.8 2.5 2.8 2.4.1-2.1-.5-4.2-.7-6.1z"
-                />
-              </svg>
-              World-building, on the machine in front of you
-            </p>
-            <h1 id="hero-title">
-              <span class="line">Prometheus</span>
-              <span class="line em">Worlds</span>
-            </h1>
-            <p class="lede">
-              Photograph a room, or describe one. The app builds a 3D world you
-              can look around, relight, and drop balls into. Every model runs
-              on your Mac. The server listens only there.
-            </p>
-            <p class="former">
-              This is the public name. The Mac app is still titled Nate’s Worlds.
-            </p>
-            <div class="actions">
-              <a class="button" href="#build">Build it on your Mac</a>
-              <a class="button ghost" href="#worlds">See worlds from the app</a>
-            </div>
-          </div>
-          <figure class="hero-figure">
-            <div class="frame">
-              <img
-                src="/media/wizard-study-800.webp"
-                width="800"
-                height="600"
-                alt="The app showing a wizard study built from a prompt. The toolbar reads Splat, Mesh, Collider, Drop balls, Night mode plus lamp, New world, and Stitch worlds."
-                fetchpriority="high"
-                decoding="async"
-              />
-            </div>
-            <figcaption>
-              A wizard study invented from a prompt. That capture took 14.5
-              minutes. A Standard build is now estimated at about 20 minutes.
-            </figcaption>
+    <main id="top">
+      <section class="hero">
+        <img class="hero-shot" src="/media/tower-1400.webp" srcset="/media/tower-800.webp 800w, /media/tower-1400.webp 1400w" sizes="100vw" width="1400" height="875" alt="A wizard's study at night: a brass globe on a desk, bookshelves, a fireplace, and points of light in the air." fetchpriority="high" />
+        <div class="hero-text">
+          <p class="tag">Mac app · runs offline</p>
+          <h1>Steal<br />the fire.</h1>
+          <p class="lede">Type a sentence. Get a world. Walk through it.</p>
+          <p class="lede dim">It runs on your Mac. Nothing leaves the machine.</p>
+          <a class="button" href="#build">Build it</a>
+          <a class="button line" href="#worlds">See the worlds</a>
+        </div>
+        <p class="caption">“A wizard’s tower study at night.” One sentence. 29 minutes.</p>
+      </section>
+
+      <section class="stats" aria-label="Facts">
+        <div><b>0</b><span>cloud calls</span></div>
+        <div><b>4</b><span>local models</span></div>
+        <div><b>~30</b><span>minutes a world</span></div>
+        <div><b>48</b><span>GB memory ceiling</span></div>
+      </section>
+
+      <section id="worlds" class="block">
+        <p class="tag">01 · Worlds</p>
+        <h2>Each one came from a sentence.</h2>
+        <p class="lead">Nobody touched them after. The trees sway. The globe turns. The tram comes through the snow.</p>
+        <div class="grid">
+          <figure class="wide">
+            <img src="/media/snow-1400.webp" srcset="/media/snow-800.webp 800w, /media/snow-1400.webp 1400w" sizes="(max-width: 800px) 100vw, 1100px" width="1400" height="875" loading="lazy" alt="A snowy village square at dusk with a fir tree and lit chalets." />
+            <figcaption><b>Snowy Village Square</b> Snow falls. The fir moves. A tram passes.</figcaption>
+          </figure>
+          <figure>
+            <img src="/media/blossom-800.webp" width="800" height="500" loading="lazy" alt="A garden of pink cherry trees with a red gate." />
+            <figcaption><b>Cherry Blossom Garden</b> Petals come down all day.</figcaption>
+          </figure>
+          <figure>
+            <img src="/media/conservatory-800.webp" width="800" height="500" loading="lazy" alt="A glass conservatory full of palms around a stone fountain." />
+            <figcaption><b>Palm Conservatory</b> The fan turns. The baskets swing.</figcaption>
+          </figure>
+          <figure>
+            <img src="/media/tower-globe-800.webp" width="800" height="500" loading="lazy" alt="A brass globe up close in a dark study, with lights drifting around it." />
+            <figcaption><b>Alchemist’s Tower Study</b> The globe spins. The lantern swings.</figcaption>
+          </figure>
+          <figure>
+            <img src="/media/park-800.webp" width="800" height="500" loading="lazy" alt="A park with trees, a wooden swing frame and a bench." />
+            <figcaption><b>Breezy Park</b> Wind in the trees. A car on the road.</figcaption>
+          </figure>
+          <figure class="wide">
+            <img src="/media/office-splat-1400.webp" srcset="/media/office-splat-800.webp 800w, /media/office-splat-1400.webp 1400w" sizes="(max-width: 800px) 100vw, 1100px" width="1400" height="875" loading="lazy" alt="A real home office rebuilt in 3D: a wooden desk, two monitors, shelves." />
+            <figcaption><b>A real room</b> Twenty phone photos. A few minutes.</figcaption>
           </figure>
         </div>
       </section>
 
-      <section class="band" id="worlds" aria-labelledby="worlds-title">
-        <div class="wrap">
-          <div class="section-head">
-            <p class="kicker">From the running app</p>
-            <h2 id="worlds-title">Rooms it has already made</h2>
-            <p class="section-lead">
-              These are captures from Nate’s Worlds, not illustrations of a
-              future interface. A photo set becomes one kind of room. A
-              sentence becomes another.
-            </p>
-          </div>
-          <div class="sheet">
-            <figure>
-              <div class="frame">
-                <img
-                  src="/media/office-splat-1400.webp"
-                  srcset="/media/office-splat-800.webp 800w, /media/office-splat-1400.webp 1400w"
-                  sizes="(max-width: 800px) 100vw, 58vw"
-                  width="1400"
-                  height="875"
-                  alt="A reconstructed home office: a live-edge wooden desk, two monitors, a keyboard, and shelves with books and headphones."
-                  loading="lazy"
-                  decoding="async"
-                />
-              </div>
-              <figcaption>The office, reconstructed from 20 phone photos.</figcaption>
-            </figure>
-            <figure>
-              <div class="frame">
-                <img
-                  src="/media/cabin-1200.webp"
-                  srcset="/media/cabin-720.webp 720w, /media/cabin-1200.webp 1200w"
-                  sizes="(max-width: 800px) 100vw, 38vw"
-                  width="1200"
-                  height="750"
-                  alt="An invented log cabin with bookshelves, a leather chair, a sofa, and a floor lamp."
-                  loading="lazy"
-                  decoding="async"
-                />
-              </div>
-              <figcaption>A cabin invented from one sentence.</figcaption>
-            </figure>
-            <figure>
-              <div class="frame">
-                <img
-                  src="/media/bedroom-1200.webp"
-                  srcset="/media/bedroom-720.webp 720w, /media/bedroom-1200.webp 1200w"
-                  sizes="(max-width: 800px) 100vw, 50vw"
-                  width="1200"
-                  height="750"
-                  alt="An invented pale bedroom with a bed, a wooden desk, a ladder shelf, and a white door."
-                  loading="lazy"
-                  decoding="async"
-                />
-              </div>
-              <figcaption>A bedroom built from a prompt in the app.</figcaption>
-            </figure>
-            <figure>
-              <div class="frame">
-                <img
-                  src="/media/scifi-1200.webp"
-                  srcset="/media/scifi-720.webp 720w, /media/scifi-1200.webp 1200w"
-                  sizes="(max-width: 800px) 100vw, 50vw"
-                  width="1200"
-                  height="750"
-                  alt="An invented blue science-fiction cabin with a white armchair, built-in seating, and round windows."
-                  loading="lazy"
-                  decoding="async"
-                />
-              </div>
-              <figcaption>
-                A science-fiction room. In the stitch view it is labeled as the
-                same layout with a new style.
-              </figcaption>
-            </figure>
-          </div>
-        </div>
-      </section>
-
-      <section id="make" aria-labelledby="make-title">
-        <div class="wrap">
-          <div class="section-head">
-            <p class="kicker">New world</p>
-            <h2 id="make-title">Two ways in, one world at a time</h2>
-            <p class="section-lead">
-              Choose <strong>New world…</strong>, then <strong>From your photos</strong>
-              or <strong>From a prompt</strong>. A panel in the corner shows
-              progress. You can cancel. A cancelled prompt build resumes from
-              the views already painted.
-            </p>
-          </div>
-          <div class="ways">
-            <article class="way">
-              <p class="num">01</p>
-              <h3>From your photos</h3>
-              <p>
-                Pick 20 to 60 overlapping photos of one room: JPG, PNG, or HEIC.
-                Walk around while you shoot, instead of standing in one spot.
-                It takes a few minutes.
-              </p>
-              <ol class="steps">
-                <li>COLMAP works out where each photo was taken.</li>
-                <li>msplat trains a Gaussian splat on the Mac’s GPU.</li>
-                <li>
-                  Depth Pro estimates a depth for each photo. Those maps are
-                  scaled to the solved points and fused into a coloured mesh.
-                </li>
-              </ol>
-            </article>
-            <article class="way">
-              <p class="num">02</p>
-              <h3>From a prompt</h3>
-              <p>
-                Write a layout sentence and a style sentence. The room can be
-                small or a large hall. Name the big things: furniture, stages,
-                benches, columns. The plan starts from simple solids.
-              </p>
-              <ol class="steps">
-                <li>
-                  Qwen3.5 9B writes a plan: room size, and pieces against walls,
-                  at points, in corners, or in rings and arcs. A piece is a box,
-                  an upright cylinder, or a named piece of furniture. Code keeps
-                  the plan inside the room and on the floor.
-                </li>
-                <li>
-                  If the Hunyuan3D shape model is installed, up to six kinds of
-                  object become a mesh instead of staying a box. Qwen chooses
-                  which kinds deserve one. One picture of each kind is painted
-                  on a plain backdrop, and Hunyuan3D turns it into a mesh fitted
-                  to its block. Each kind adds about a minute. Without the
-                  model, or if a shape fails, that object stays a box.
-                </li>
-                <li>
-                  The blockout, with those shapes in place of their boxes, is
-                  rendered as depth. Z-Image Turbo with a depth ControlNet
-                  paints the views so they follow it. Each view is given the
-                  pixels earlier views already show, so it stays the same room.
-                </li>
-                <li>
-                  msplat trains a splat. The blockout, including any generated
-                  shapes, is the mesh and the collider.
-                </li>
-              </ol>
-              <p class="spec">
-                Detail in the dialog: Quick, about 14 minutes. Standard, about
-                20 minutes. Full, larger pictures, about 40 minutes. Quick and
-                Standard paint at 768×576. Full paints at 1024×768. Copies of a
-                generated kind are identical, and the side the picture did not
-                show is guessed. The Hunyuan3D licence does not cover use in
-                the EU, the UK, or South Korea.
-              </p>
-            </article>
-          </div>
-        </div>
-      </section>
-
-      <section class="band" id="local" aria-labelledby="local-title">
-        <div class="wrap local-grid">
-          <div>
-            <p class="kicker">The fire stays home</p>
-            <h2 id="local-title">Nothing about the world has to leave the Mac that made it.</h2>
-            <p class="lede local-lede">
-              The app is a window. It starts a private server in the project
-              folder and loads the viewer from <span class="mono">127.0.0.1</span>.
-              The server binds to that address only.
-            </p>
-            <p>
-              After the model weights are on disk, the pipelines are built not
-              to call a cloud service. That has not yet been tested with Wi-Fi
-              turned off.
-            </p>
-            <p class="spec">
-              An Apple Silicon Mac, macOS 14 or later. Developed on an M4 Pro
-              with 64 GB. The pipelines stay under about 32 GB by running one
-              model at a time, and one world is built at a time. Painting peaks
-              around 18 GB. The weights take tens of gigabytes on first use.
-            </p>
-          </div>
-          <dl class="models">
-            <div>
-              <dt>Qwen3.5 9B</dt>
-              <dd>Turns the layout sentence into a furniture plan, through Ollama.</dd>
-            </div>
-            <div>
-              <dt>Z-Image Turbo</dt>
-              <dd>
-                Paints the views with Z-Image-Turbo-Fun-Controlnet-Union 2.1,
-                the distilled 8-step file, through mflux.
-              </dd>
-            </div>
-            <div>
-              <dt>Depth Pro</dt>
-              <dd>Depth for each photo, also through mflux.</dd>
-            </div>
-            <div>
-              <dt>Hunyuan3D, optional</dt>
-              <dd>
-                Turns one picture of an object into a mesh, through
-                Hunyuan3D-Swift. About 20 seconds and 5.5 GB for a kind. Skip it
-                and the object stays a box.
-              </dd>
-            </div>
-            <div>
-              <dt>COLMAP, msplat, Open3D</dt>
-              <dd>Cameras, the Gaussian splat, and the fused mesh. No model weights of their own.</dd>
-            </div>
-            <div>
-              <dt>three.js, Spark, Rapier</dt>
-              <dd>The viewer: splats on screen, and balls that fall and bounce.</dd>
-            </div>
-          </dl>
-        </div>
-      </section>
-
-      <section id="viewer" aria-labelledby="viewer-title">
-        <div class="wrap">
-          <div class="section-head">
-            <p class="kicker">In the viewer</p>
-            <h2 id="viewer-title">Look, relight, then join the rooms</h2>
-            <p class="section-lead">
-              The toolbar is small on purpose. Splat, mesh, or collider. Drop
-              balls. Night mode and a lamp. A new world, or several worlds
-              stitched into one.
-            </p>
-          </div>
-
-          <article class="feature">
-            <div class="feature-copy">
-              <p class="num">01</p>
-              <h3>Drop balls</h3>
-              <p>
-                The mesh is a collider. Balls fall, bounce, and come to rest on
-                the desk, the floor, the furniture. In a stitched world they
-                can roll through a doorway into the next room.
-              </p>
-              <p>
-                Photo meshes have holes where no photo looked. A flat safety
-                floor catches a ball that falls through.
-              </p>
-            </div>
-            <figure>
-              <div class="frame">
-                <img
-                  src="/media/office-mesh-balls-1200.webp"
-                  srcset="/media/office-mesh-balls-720.webp 720w, /media/office-mesh-balls-1200.webp 1200w"
-                  sizes="(max-width: 800px) 100vw, 52vw"
-                  width="1200"
-                  height="750"
-                  alt="The office as a reconstructed mesh, seen from above, with coloured balls resting on the desk and the floor."
-                  loading="lazy"
-                  decoding="async"
-                />
-              </div>
-              <figcaption>The office mesh, with balls resting on the desk.</figcaption>
-            </figure>
-          </article>
-
-          <article class="feature reverse">
-            <div class="feature-copy">
-              <p class="num">02</p>
-              <h3>Night mode and a lamp</h3>
-              <p>
-                Tick <strong>Night mode + lamp</strong>. The splat is multiplied
-                by the light that reaches the mesh, so the detail of the room
-                survives the dark. Drag the lamp. It casts shadows on the mesh.
-              </p>
-              <p>
-                There is no export of a relit splat, and no flythrough video
-                from the app. You are in the room, looking.
-              </p>
-            </div>
-            <figure>
-              <div class="frame">
-                <img
-                  src="/media/office-night-1400.webp"
-                  srcset="/media/office-night-800.webp 800w, /media/office-night-1400.webp 1400w"
-                  sizes="(max-width: 800px) 100vw, 52vw"
-                  width="1400"
-                  height="875"
-                  alt="The same office at night. A round lamp control with coloured axes floats over the left monitor, and coloured balls rest on the desk."
-                  loading="lazy"
-                  decoding="async"
-                />
-              </div>
-              <figcaption>
-                Night mode in the photographed office. The round control is the
-                lamp you can drag. The spheres are balls.
-              </figcaption>
-            </figure>
-          </article>
-
-          <article class="feature">
-            <div class="feature-copy">
-              <p class="num">03</p>
-              <h3>Stitch worlds</h3>
-              <p>
-                <strong>Stitch worlds…</strong> shows your worlds from above,
-                ceilings hidden. Tick the ones to include. Click a world, then
-                drag the arrows to move it, or switch to Rotate. Snap moves in
-                25 cm steps and turns in 15° steps. Scroll to zoom.
-              </p>
-              <p>
-                Set a room against another and the walls meet. A green block
-                marks the doorway: 1 metre wide, 2.1 metres tall. Name it and
-                choose <strong>Save as one world</strong>. The stitched world
-                keeps each room and where it sits, and loads the originals side
-                by side.
-              </p>
-              <p>
-                Doorways are cut only between invented rooms whose facing walls
-                touch, through the splat, the mesh, and the collider. A world
-                made from photos can sit in the layout. It does not get a
-                doorway, because its walls are not known exactly. A doorway
-                also cuts whatever is standing there, including furniture.
-              </p>
-            </div>
-            <div class="stack">
-              <figure>
-                <div class="frame">
-                  <img
-                    src="/media/stitch-editor-800.webp"
-                    srcset="/media/stitch-editor-700.webp 700w, /media/stitch-editor-800.webp 800w"
-                    sizes="(max-width: 800px) 100vw, 52vw"
-                    width="800"
-                    height="600"
-                    alt="The stitch editor from above. Cabin, Sci-fi, and Scandinavian bedroom are ticked. Green blocks mark doorways between three rooms, with red and blue move arrows on the selected room."
-                    loading="lazy"
-                    decoding="async"
-                  />
-                </div>
-                <figcaption>
-                  Three invented rooms, snapped together. Green is a doorway.
-                </figcaption>
-              </figure>
-              <figure>
-                <div class="frame">
-                  <img
-                    src="/media/stitch-doorway-800.webp"
-                    srcset="/media/stitch-doorway-700.webp 700w, /media/stitch-doorway-800.webp 800w"
-                    sizes="(max-width: 800px) 100vw, 52vw"
-                    width="800"
-                    height="600"
-                    alt="A view through a rough doorway from a wood-lined room into a blue science-fiction room. The status line reads My first dungeon, 3 worlds stitched, 3 rooms, 2 doorways."
-                    loading="lazy"
-                    decoding="async"
-                  />
-                </div>
-                <figcaption>
-                  Looking through a doorway. The status line calls this world
-                  My first dungeon: 3 worlds, 2 doorways.
-                </figcaption>
-              </figure>
-            </div>
-          </article>
-
-          <aside class="orbit-note">
-            <h3>You orbit. You do not walk yet.</h3>
-            <p>
-              Drag to look, scroll to move. That is an orbit camera. Moving
-              through a dungeon on foot is not built. Invented rooms are boxes
-              from 3 to 24 metres across: no curved walls, sloped roofs, stairs,
-              or tiers. An object without a generated shape is painted onto a
-              simple form, so it reads from the front and looks flatter from
-              the side. Invented ceilings are a plain light colour.
-            </p>
-          </aside>
-        </div>
-      </section>
-
-      <section class="living" id="living" aria-labelledby="living-title">
-        <div class="wrap living-grid">
-          <div class="living-copy">
-            <p class="kicker">Coming soon</p>
-            <h2 id="living-title">Living scenes, with motion and music</h2>
-            <p class="lede">
-              The rooms above are still. What is being added next is the room
-              coming alive: motion, and music with it, still on your machine.
-            </p>
-            <p>
-              It is not in the app yet. There is no score to press play on, and
-              the viewer does not animate a scene.
-            </p>
-            <div class="score" aria-hidden="true">
-              <span></span><span></span><span></span><span></span><span></span>
-              <span></span><span></span><span></span><span></span><span></span>
-              <span></span><span></span>
-            </div>
-            <p class="note">
-              The bars are drawn for this page, as a hint of a score. They are
-              not a control in the app, and this page plays no audio.
-            </p>
-          </div>
-          <figure class="stage-figure">
-            <div class="stage">
-              <img
-                src="/media/cabin-1200.webp"
-                srcset="/media/cabin-720.webp 720w, /media/cabin-1200.webp 1200w"
-                sizes="(max-width: 800px) 100vw, 46vw"
-                width="1200"
-                height="750"
-                alt="The same invented cabin, shown again as a still underneath sparks drawn for this page."
-                loading="lazy"
-                decoding="async"
-              />
-              <div class="sparks" aria-hidden="true">
-                <span></span><span></span><span></span><span></span><span></span>
-                <span></span><span></span><span></span><span></span><span></span>
-                <span></span><span></span>
-              </div>
-            </div>
-            <figcaption>
-              A real still from the app. The drift and the sparks are added
-              here. They are not a screenshot of living scenes.
-            </figcaption>
+      <section id="how" class="block">
+        <p class="tag">02 · How</p>
+        <h2>What it does.</h2>
+        <ol class="steps">
+          <li><b>Write it.</b> Say what is in the place and how it looks. Two sentences will do.</li>
+          <li><b>Wait.</b> The Mac blocks it out, shapes the objects, paints it and trains the world. About half an hour.</li>
+          <li><b>Walk in.</b> W, A, S, D. Drag to look. Or tick Tour and sit back.</li>
+          <li><b>Break it.</b> Drop balls. They bounce off the furniture. Turn the lights out and carry a lamp.</li>
+          <li><b>Listen.</b> Wind, a creak, an engine going past, and slow music. The app makes the sound itself.</li>
+          <li><b>Join them.</b> Push rooms together. Doorways open where the walls meet. That is a dungeon.</li>
+        </ol>
+        <div class="pair">
+          <figure>
+            <img src="/media/office-night-800.webp" width="800" height="500" loading="lazy" alt="The office at night, lit by one warm lamp." />
+            <figcaption>Night mode. One lamp. You move it.</figcaption>
+          </figure>
+          <figure>
+            <img src="/media/stitch-doorway-800.webp" width="800" height="500" loading="lazy" alt="Looking through a doorway from one invented room into another." />
+            <figcaption>Two rooms. One doorway.</figcaption>
           </figure>
         </div>
       </section>
 
-      <section id="build" aria-labelledby="build-title">
-        <div class="wrap build">
-          <p class="kicker">On your Mac</p>
-          <h2 id="build-title">Build the app from the source.</h2>
-          <p class="lede">
-            There is no store listing. From the <span class="mono">local-worlds</span>
-            folder, install the tools, set up the Python environments and the
-            viewer, then run <span class="mono">app/build.sh</span>. That
-            produces Nate’s Worlds.app.
-          </p>
-          <p>
-            The app is signed for the Mac it was built on. It remembers the
-            project folder, so you rebuild it if that folder moves. You can
-            also skip the app and run <span class="mono">thread/server.py</span>,
-            then open the viewer at <span class="mono">127.0.0.1</span>.
-          </p>
-          <div class="actions">
-            <a
-              class="button"
-              href="https://github.com/nskpaun/NatesApps/blob/main/local-worlds/README.md"
-              >Read the build steps</a
-            >
-            <a
-              class="button ghost"
-              href="https://github.com/nskpaun/NatesApps/tree/main/local-worlds"
-              >Source on GitHub</a
-            >
-          </div>
-          <ul class="reqs">
-            <li>Apple Silicon</li>
-            <li>macOS 14 or later</li>
-            <li>Models download on first use</li>
-            <li>One world at a time</li>
-          </ul>
-        </div>
+      <section id="truth" class="block">
+        <p class="tag">03 · Limits</p>
+        <h2>The truth.</h2>
+        <ul class="plain">
+          <li>It is rough up close. From across the room it holds.</li>
+          <li>Trees are solid shapes that bend. Single leaves do not move.</li>
+          <li>The car slides. Its wheels do not turn.</li>
+          <li>The model that lays out the room is small. Sometimes it gets the room wrong. Ask again.</li>
+          <li>Rooms from photos want sixty photos or more. Twenty is thin.</li>
+          <li>You need an Apple Silicon Mac. It was built on an M4 Pro with 64 GB.</li>
+        </ul>
+      </section>
+
+      <section id="build" class="block last">
+        <p class="tag">04 · Build</p>
+        <h2>Get it.</h2>
+        <p class="lead">There is no installer. You build it from source. It takes a few commands and a lot of disk.</p>
+        <a class="button" href="https://github.com/nskpaun/NatesApps/tree/main/local-worlds">Source on GitHub</a>
+        <a class="button line" href="https://github.com/nskpaun/NatesApps/blob/main/local-worlds/README.md">Read the instructions</a>
       </section>
     </main>
 
-    <footer class="site-footer">
-      <div class="wrap footer-inner">
-        <div class="brand footer-brand">
-          <img src="/media/app-icon.webp" width="128" height="128" alt="" />
-          <div>
-            <p class="footer-name">Prometheus Worlds</p>
-            <p class="note">The public name for Nate’s Worlds. Local world-building by Nathan.</p>
-          </div>
-        </div>
-        <p class="note">
-          Screenshots are from the app. Check each model’s licence before using
-          this for anything beyond personal use.
-        </p>
-      </div>
+    <footer>
+      <span>Prometheus Worlds</span>
+      <span>Runs on your Mac. Stays on your Mac.</span>
     </footer>
     <script type="module" src="/src/main.js"></script>
   </body>
