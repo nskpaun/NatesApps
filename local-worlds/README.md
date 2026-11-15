@@ -1,5 +1,7 @@
 # Nate's Worlds
 
+The public name for this app is **Prometheus Worlds**. The Mac app and this folder still use the current title. The marketing site is in [`../prometheus-worlds-site/`](../prometheus-worlds-site/).
+
 Turn photos of a room, or a sentence describing one, into a 3D world you can look around, drop balls in and relight. Everything runs on this Mac with local models: no cloud services are called once the models are downloaded.
 
 ![The office, reconstructed from 20 phone photos](docs/office-splat.jpg)
