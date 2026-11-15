@@ -1,9 +1,10 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><title>Nate's Worlds</title>
+<html lang="en"><head><meta charset="utf-8"><title>Prometheus Worlds</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
 html,body{margin:0;height:100%;background:#111;color:#eee;font:14px system-ui,sans-serif;overflow:hidden}
 #bar{position:fixed;top:10px;left:10px;display:flex;gap:10px;align-items:center;background:#000a;padding:8px 12px;border-radius:8px;flex-wrap:wrap;max-width:calc(100% - 44px)}
+#volume{width:80px}
 button,select{font:inherit;padding:4px 10px;border-radius:6px;border:1px solid #555;background:#222;color:#eee;cursor:pointer}
 label{display:flex;gap:4px;align-items:center;cursor:pointer}
 #bar[hidden],#stitchBar[hidden]{display:none}
@@ -33,7 +34,12 @@ dialog textarea{min-height:64px;resize:vertical} .row{display:flex;justify-conte
   <label><input type="radio" name="mode" value="mesh">Mesh</label>
   <label><input type="radio" name="mode" value="collider">Collider</label>
   <button id="drop">Drop balls</button>
+  <label title="W A S D to move, drag to look, Q and E for down and up, Shift to go faster. Untick to orbit instead."><input type="checkbox" id="walk" checked autocomplete="off">Walk camera</label>
+  <label title="A slow glide round the world by itself. Any key, or a click or drag on the picture, stops it."><input type="checkbox" id="tour" autocomplete="off">Tour</label>
   <label><input type="checkbox" id="night">Night mode + lamp</label>
+  <label title="Let things sway, swing and travel"><input type="checkbox" id="motionOn" checked autocomplete="off">Motion</label>
+  <label title="Soft music and the sounds of the place, made on this computer"><input type="checkbox" id="sound" autocomplete="off">Sound</label>
+  <input type="range" id="volume" min="0" max="1" step="0.05" value="0.6" aria-label="Sound volume" title="Volume">
   <button id="new" class="primary">New world…</button>
   <button id="stitch">Stitch worlds…</button>
 </div>
@@ -57,13 +63,14 @@ dialog textarea{min-height:64px;resize:vertical} .row{display:flex;justify-conte
   </div>
   <label for="wname">Name</label><input type="text" id="wname" placeholder="My living room">
   <div id="panePhotos">
-    <p>Pick 20 to 60 overlapping photos of one room. Walk around while shooting; do not stand in one spot. Takes a few minutes.</p>
+    <p>Pick 20 to 60 overlapping photos of one room or place. Walk around while shooting; do not stand in one spot. Takes a few minutes.</p>
     <label for="files">Photos (JPG, PNG or HEIC)</label><input type="file" id="files" multiple accept="image/*,.heic,.HEIC">
   </div>
   <div id="panePrompt" hidden>
-    <p>Describe the space and what goes where, then how it should look. It can be a small room or a large hall. The layout is built from simple solid shapes, so name the big things: furniture, stages, benches, columns.</p>
+    <p>Describe the place and what goes where, then how it should look. It can be a room, a large hall, or somewhere outdoors like a garden, a park or a street. The layout is built from simple solid shapes, so name the big things: furniture, benches, columns, trees, fences. Say what moves, for example trees in the wind, a swing, a car driving past, bees round the flowers, and it will.</p>
     <label for="layout">Layout</label><textarea id="layout" placeholder="A bedroom: bed on the back wall, desk by the window on the left wall, bookshelf on the right wall, a plant in the back right corner"></textarea>
     <label for="style">Style</label><textarea id="style" placeholder="a bright Scandinavian bedroom, pale wood, white linen, morning light"></textarea>
+    <label for="setting">Indoors or outdoors</label><select id="setting"><option value="" selected>Auto: decide from the description</option><option value="indoor">Indoors</option><option value="outdoor">Outdoors</option></select>
     <label for="views">Detail</label><select id="views"><option value="8">Quick: about 14 minutes</option><option value="12" selected>Standard: about 20 minutes</option><option value="16">Full, larger pictures: about 40 minutes</option></select>
   </div>
   <div id="err" role="alert"></div>

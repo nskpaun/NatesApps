@@ -1,0 +1,207 @@
+{
+ "setting": "outdoor",
+ "room": {
+  "width": 14,
+  "depth": 12,
+  "height": 8
+ },
+ "pieces": [
+  {
+   "label": "tree left",
+   "shape": "cylinder",
+   "size": [
+    2.5,
+    7
+   ],
+   "base": 0,
+   "place": {
+    "wall": "back",
+    "along": 0.3
+   },
+   "motion": {
+    "type": "sway",
+    "amount": 0.6
+   }
+  },
+  {
+   "label": "tree right",
+   "shape": "cylinder",
+   "size": [
+    2.5,
+    7
+   ],
+   "base": 0,
+   "place": {
+    "wall": "back",
+    "along": 0.7
+   },
+   "motion": {
+    "type": "sway",
+    "amount": 0.6
+   }
+  },
+  {
+   "label": "swing frame",
+   "shape": "arch",
+   "size": [
+    2.5,
+    3,
+    0.4
+   ],
+   "base": 0,
+   "place": {
+    "at": [
+     0.5,
+     0.5
+    ]
+   }
+  },
+  {
+   "label": "swing seat",
+   "shape": "box",
+   "size": [
+    0.6,
+    0.15,
+    0.3
+   ],
+   "base": 0,
+   "place": {
+    "on": "swing frame"
+   },
+   "motion": {
+    "type": "swing",
+    "pivot": 2.8,
+    "rope": 2.5,
+    "axis": "depth",
+    "angle": 15
+   }
+  },
+  {
+   "label": "flower bed",
+   "shape": "box",
+   "size": [
+    3,
+    2,
+    0.3
+   ],
+   "base": 0,
+   "place": {
+    "wall": "left",
+    "along": 0.5
+   }
+  },
+  {
+   "label": "bench",
+   "shape": "box",
+   "size": [
+    2,
+    0.6,
+    1
+   ],
+   "base": 0,
+   "place": {
+    "wall": "right",
+    "along": 0.5
+   }
+  },
+  {
+   "label": "road",
+   "shape": "ground",
+   "size": [
+    14,
+    2
+   ],
+   "base": 0,
+   "place": {
+    "wall": "front",
+    "along": 0.5
+   }
+  },
+  {
+   "label": "car",
+   "shape": "box",
+   "size": [
+    1.8,
+    1.4,
+    4.2
+   ],
+   "base": 0,
+   "place": {
+    "at": [
+     0.5,
+     0.05
+    ]
+   },
+   "motion": {
+    "type": "path",
+    "points": [
+     [
+      0.5,
+      0.05
+     ],
+     [
+      0.95,
+      0.05
+     ]
+    ],
+    "speed": 6,
+    "mode": "loop",
+    "pause": 3
+   }
+  }
+ ],
+ "mood": {
+  "feel": "playful",
+  "energy": 0.7,
+  "time": "day"
+ },
+ "surround": "open fields and distant houses beyond the park edge",
+ "wind": {
+  "strength": 0.5,
+  "from": 270
+ },
+ "effects": [
+  {
+   "type": "wander",
+   "label": "bees",
+   "at": [
+    0.15,
+    0.4
+   ],
+   "radius": 1.5,
+   "height": [
+    0.3,
+    2.5
+   ],
+   "count": 25,
+   "size": 0.08,
+   "speed": 1.2,
+   "colours": [
+    "#f4d03f",
+    "#e67e22"
+   ],
+   "sound": "buzz"
+  },
+  {
+   "type": "drift",
+   "label": "leaves",
+   "at": [
+    0.5,
+    0.8
+   ],
+   "radius": 5,
+   "height": [
+    0,
+    7
+   ],
+   "count": 150,
+   "size": 0.06,
+   "fall": 0.4,
+   "colours": [
+    "#27ae60",
+    "#8e44ad"
+   ],
+   "sound": "rustle"
+  }
+ ]
+}

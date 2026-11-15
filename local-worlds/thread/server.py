@@ -2,7 +2,8 @@
   server.py PORT
   GET  /api/status                      current or last job
   POST /api/upload?job=ID&name=FILE     raw photo bytes (call once per photo, before starting a photos job)
-  POST /api/jobs                        JSON {type:"photos", id, name} or {type:"prompt", name, layout, style, views}
+  POST /api/jobs                        JSON {type:"photos", id, name} or {type:"prompt", name, layout, style, views, setting}
+                                        (setting: "indoor" or "outdoor" overrides the layout model's own choice)
   POST /api/cancel
   POST /api/stitch                      JSON {name, parts:[{ref, x, z, rot}]}: save several worlds placed side by side as one
 One job runs at a time, so only one large model is in memory at once. A cancelled job stays busy ("cancelling": true in
@@ -97,6 +98,8 @@ class H(SimpleHTTPRequestHandler):
             with lock:
                 scenes = json.load(open(path)); single = {s["name"] for s in scenes if "parts" not in s}
                 parts = [{"ref": p["ref"], "x": float(p["x"]), "z": float(p["z"]), "rot": float(p["rot"])} for p in body.get("parts", []) if p.get("ref") in single]
+                if {p["ref"] for p in parts} & {s["name"] for s in scenes if s.get("setting") == "outdoor"}:     # its ground and far surround would run through the rooms beside it
+                    return self.send_json({"error": "Outdoor worlds cannot be stitched to others yet"}, 400)
                 if len(parts) < 2: return self.send_json({"error": "Pick at least two worlds to stitch"}, 400)
                 name = (body.get("name") or "").strip()[:60] or "Stitched world"; base, k = name, 2
                 while name in {s["name"] for s in scenes}: name, k = f"{base} {k}", k + 1
@@ -119,6 +122,8 @@ class H(SimpleHTTPRequestHandler):
                     if not body.get("layout", "").strip() or not body.get("style", "").strip(): return self.send_json({"error": "Describe both the layout and the style"}, 400)
                     jid = f"{slug(name)}-{secrets.token_hex(3)}"; args = ["prompt", os.path.join(WORLDS, jid), name, body["layout"].strip()[:600], body["style"].strip()[:600]]
                     env["WORLD_VIEWS"] = str(max(8, min(16, int(body.get("views", 12)))))
+                    if body.get("setting") in ("indoor", "outdoor"): env["WORLD_SETTING"] = body["setting"]
+                    else: env.pop("WORLD_SETTING", None)             # anything else leaves the choice to the layout model
                 else: return self.send_json({"error": "unknown job type"}, 400)
                 job = {"state": "running", "id": jid, "name": name, "type": body["type"]}      # a fresh record per run
                 threading.Thread(target=run_job, args=(args, job, env), daemon=True).start()

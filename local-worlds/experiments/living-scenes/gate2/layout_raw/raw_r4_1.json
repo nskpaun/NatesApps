@@ -1,0 +1,205 @@
+{
+ "setting": "outdoor",
+ "room": {
+  "width": 14,
+  "depth": 12,
+  "height": 8
+ },
+ "pieces": [
+  {
+   "label": "tree left",
+   "shape": "cylinder",
+   "size": [
+    2.5,
+    7
+   ],
+   "base": 0,
+   "place": {
+    "wall": "back",
+    "along": 0.3
+   },
+   "motion": {
+    "type": "sway",
+    "amount": 0.6
+   }
+  },
+  {
+   "label": "tree right",
+   "shape": "cylinder",
+   "size": [
+    2.5,
+    7
+   ],
+   "base": 0,
+   "place": {
+    "wall": "back",
+    "along": 0.7
+   },
+   "motion": {
+    "type": "sway",
+    "amount": 0.6
+   }
+  },
+  {
+   "label": "swing frame",
+   "shape": "arch",
+   "size": [
+    2.5,
+    3,
+    0.3
+   ],
+   "base": 0,
+   "place": {
+    "at": [
+     0.5,
+     0.6
+    ]
+   }
+  },
+  {
+   "label": "swing seat",
+   "shape": "box",
+   "size": [
+    0.8,
+    0.1,
+    0.4
+   ],
+   "place": {
+    "on": "swing frame"
+   },
+   "motion": {
+    "type": "swing",
+    "pivot": 2.5,
+    "rope": 1.8,
+    "axis": "depth",
+    "angle": 25
+   }
+  },
+  {
+   "label": "flower bed",
+   "shape": "box",
+   "size": [
+    3,
+    2,
+    0.3
+   ],
+   "base": 0,
+   "place": {
+    "wall": "left",
+    "along": 0.5
+   }
+  },
+  {
+   "label": "bench",
+   "shape": "box",
+   "size": [
+    2,
+    0.6,
+    0.8
+   ],
+   "base": 0,
+   "place": {
+    "wall": "right",
+    "along": 0.5
+   }
+  },
+  {
+   "label": "road",
+   "shape": "ground",
+   "size": [
+    14,
+    2
+   ],
+   "place": {
+    "wall": "front",
+    "along": 0.5
+   }
+  },
+  {
+   "label": "car",
+   "shape": "box",
+   "size": [
+    1.8,
+    1.4,
+    4.2
+   ],
+   "base": 0,
+   "place": {
+    "at": [
+     0.5,
+     0.1
+    ]
+   },
+   "motion": {
+    "type": "path",
+    "points": [
+     [
+      0.5,
+      0.1
+     ],
+     [
+      0.5,
+      0.9
+     ]
+    ],
+    "speed": 6,
+    "mode": "loop",
+    "pause": 3
+   }
+  }
+ ],
+ "mood": {
+  "feel": "playful",
+  "energy": 0.6,
+  "time": "day"
+ },
+ "surround": "open sky and distant fence line",
+ "wind": {
+  "strength": 0.7,
+  "from": 270
+ },
+ "effects": [
+  {
+   "type": "drift",
+   "label": "leaves",
+   "at": [
+    0.5,
+    0.8
+   ],
+   "radius": 4,
+   "height": [
+    0,
+    6
+   ],
+   "count": 150,
+   "size": 0.08,
+   "fall": 0.8,
+   "colours": [
+    "#2d4a22",
+    "#5c7a3e"
+   ],
+   "sound": "rustle"
+  },
+  {
+   "type": "wander",
+   "label": "bees",
+   "at": [
+    0.15,
+    0.5
+   ],
+   "radius": 1.2,
+   "height": [
+    0.3,
+    1.5
+   ],
+   "count": 24,
+   "size": 0.03,
+   "speed": 2,
+   "colours": [
+    "#ffcc00",
+    "#e6b800"
+   ],
+   "sound": "buzz"
+  }
+ ]
+}

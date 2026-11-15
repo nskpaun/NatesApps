@@ -1,7 +1,7 @@
 import Cocoa
 import WebKit
 
-// Nate's Worlds: a window around the viewer page. Starts the project's private local server
+// Prometheus Worlds: a window around the viewer page. Starts the project's private local server
 // (thread/server.py, path stored in Resources/root.txt), shows the page, stops the server on quit.
 final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKUIDelegate {
     var window: NSWindow!
@@ -25,7 +25,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
         let root = try! String(contentsOf: rootFile, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines)
         window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1280, height: 820),
                           styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
-        window.title = "Nate\u{2019}s Worlds"; window.center()
+        window.title = "Prometheus Worlds"; window.center()
         web = WKWebView(frame: window.contentView!.bounds); web.autoresizingMask = [.width, .height]; web.navigationDelegate = self; web.uiDelegate = self
         window.contentView!.addSubview(web); window.makeKeyAndOrderFront(nil); NSApp.activate(ignoringOtherApps: true)
         guard FileManager.default.fileExists(atPath: root + "/viewer/index.html"), FileManager.default.fileExists(atPath: root + "/.venv/bin/python") else {
@@ -62,5 +62,5 @@ let delegate = AppDelegate()
 app.delegate = delegate
 app.setActivationPolicy(.regular)
 let menu = NSMenu(); let item = NSMenuItem(); menu.addItem(item); let sub = NSMenu()
-sub.addItem(NSMenuItem(title: "Quit Nate\u{2019}s Worlds", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")); item.submenu = sub; app.mainMenu = menu
+sub.addItem(NSMenuItem(title: "Quit Prometheus Worlds", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")); item.submenu = sub; app.mainMenu = menu
 app.run()

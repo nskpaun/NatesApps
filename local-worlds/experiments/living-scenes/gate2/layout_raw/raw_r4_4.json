@@ -1,0 +1,81 @@
+{
+ "setting": "indoor",
+ "room": {
+  "width": 4,
+  "depth": 5,
+  "height": 2.6
+ },
+ "pieces": [
+  {
+   "label": "sofa",
+   "shape": "sofa",
+   "place": {
+    "wall": "back",
+    "along": 0.5
+   }
+  },
+  {
+   "label": "coffee table",
+   "shape": "coffee_table",
+   "place": {
+    "at": [
+     0.5,
+     0.6
+    ]
+   }
+  },
+  {
+   "label": "window",
+   "shape": "window",
+   "place": {
+    "wall": "front",
+    "along": 0.5
+   }
+  },
+  {
+   "label": "curtains",
+   "shape": "box",
+   "size": [
+    0.2,
+    2.6,
+    1.8
+   ],
+   "base": 0,
+   "place": {
+    "wall": "front",
+    "along": 0.5
+   },
+   "motion": {
+    "type": "sway",
+    "amount": 0.4
+   },
+   "sound": "rustle"
+  },
+  {
+   "label": "fan blade",
+   "shape": "box",
+   "size": [
+    1.2,
+    0.05,
+    1.2
+   ],
+   "base": 2.3,
+   "place": {
+    "at": [
+     0.5,
+     0.5
+    ]
+   },
+   "motion": {
+    "type": "spin",
+    "axis": "up",
+    "period": 4
+   }
+  }
+ ],
+ "mood": {
+  "feel": "calm",
+  "energy": 0.3,
+  "time": "day"
+ }
+}

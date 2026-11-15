@@ -1,0 +1,130 @@
+[
+ {
+  "i": 1,
+  "name": "car_corner_fr",
+  "splats": 9549,
+  "yaw": 0.0,
+  "object_lo": [
+   9.45,
+   0.0,
+   0.0
+  ],
+  "object_hi": [
+   11.95,
+   0.905,
+   1.151
+  ],
+  "splat_lo": [
+   9.415,
+   0.02,
+   -0.023
+  ],
+  "splat_hi": [
+   11.997,
+   0.935,
+   1.179
+  ],
+  "splat_p1": [
+   9.468,
+   0.031,
+   0.02
+  ],
+  "splat_p99": [
+   11.856,
+   0.897,
+   1.145
+  ],
+  "mesh_lo": [
+   9.45,
+   0.001,
+   0.001
+  ],
+  "mesh_hi": [
+   11.95,
+   0.905,
+   1.15
+  ],
+  "mesh_faces": 20000,
+  "mesh_volume_file_units": 0.02253,
+  "collider_lo": [
+   9.456,
+   0.018,
+   0.015
+  ],
+  "collider_hi": [
+   11.941,
+   0.894,
+   1.14
+  ],
+  "collider_faces": 500,
+  "max_overshoot_m": 0.047,
+  "mean_opacity": 0.644,
+  "left_in_box_not_lifted": 1680,
+  "in_box_total": 11083,
+  "splats_per_m2": 772.2
+ },
+ {
+  "i": 4,
+  "name": "car_center",
+  "splats": 47080,
+  "yaw": 0.0,
+  "object_lo": [
+   4.75,
+   0.6,
+   4.424
+  ],
+  "object_hi": [
+   7.25,
+   1.505,
+   5.576
+  ],
+  "splat_lo": [
+   4.74,
+   0.604,
+   4.426
+  ],
+  "splat_hi": [
+   7.264,
+   1.499,
+   5.571
+  ],
+  "splat_p1": [
+   4.767,
+   0.632,
+   4.441
+  ],
+  "splat_p99": [
+   7.228,
+   1.473,
+   5.556
+  ],
+  "mesh_lo": [
+   4.75,
+   0.601,
+   4.425
+  ],
+  "mesh_hi": [
+   7.25,
+   1.505,
+   5.575
+  ],
+  "mesh_faces": 20000,
+  "mesh_volume_file_units": 0.02253,
+  "collider_lo": [
+   4.758,
+   0.618,
+   4.435
+  ],
+  "collider_hi": [
+   7.249,
+   1.497,
+   5.566
+  ],
+  "collider_faces": 500,
+  "max_overshoot_m": 0.014,
+  "mean_opacity": 0.717,
+  "left_in_box_not_lifted": 3694,
+  "in_box_total": 50767,
+  "splats_per_m2": 3807.4
+ }
+]

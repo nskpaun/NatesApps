@@ -64,8 +64,23 @@ def port_open(p):
     with socket.socket() as k:
         k.settimeout(0.3); return k.connect_ex(("127.0.0.1", p)) == 0
 
+def prompt_entry(d, name, layout, style, room="gen_c"):
+    """The scenes.json entry of a world built from a sentence, whose splat and mesh are in the folder `room` of d."""
+    rel = "/" + os.path.relpath(d, HERE) + "/" + room
+    s, m = json.load(open(f"{d}/{room}/{room}_scene.json")), json.load(open(f"{d}/{room}/{room}_metre.json"))
+    entry = {"name": name, "ply": f"{rel}/{room}.ply", "mesh": f"{rel}/{room}_mesh.glb", "collider": f"{rel}/{room}_mesh_collider.glb", "up": s["up"], "center": s["center"],
+             "eye": s["eye"], "forward": s["forward"], "metre": m["metre"], "room": m["room"], "flat": True, "lamp": 5, "note": f"invented: {layout[:60]}", "kind": "prompt"}
+    entry.update({k: m[k] for k in ("centre", "floor") if k in m})          # exact room placement for the viewer
+    entry.update({k: s[k] for k in ("focal", "width") if k in s})           # lets the viewer match the trainer's blur
+    entry.update({k: m[k] for k in ("up", "eye", "forward") if k in m})     # the room's exact up; a start view that looks at the scene, not at a post
+    entry["style"] = style
+    # only worlds that have them: where room metres lie in the splat, outdoors and its sky, wind, mood, effects
+    entry.update({k: m[k] for k in ("fromRoom", "setting", "sky", "surround", "wind", "mood", "effects") if k in m})
+    # the things that move; the files of those with a splat of their own become paths the viewer can fetch
+    if m.get("movers"): entry["movers"] = [{**v, **{k: f"{rel}/{v[k]}" for k in ("ply", "mesh", "collider") if k in v}} for v in m["movers"]]
+    return entry
+
 def prompt(d, name, layout, style):
-    rel = "/" + os.path.relpath(d, HERE)
     os.makedirs(d, exist_ok=True)
     n_views = int(os.environ.get("WORLD_VIEWS", "12"))
     # the full detail level paints at 1024x768; the others at 768x576, which is about twice as fast per view
@@ -115,15 +130,25 @@ def prompt(d, name, layout, style):
     run([PY, "consistent.py", "gen"], env)
     stage("training the splat")
     # painted rooms have no view-dependent shine, so low-order colour is enough: the file is about 2.4x smaller
-    run([PY, "train_scene.py", f"{d}/gen_c", f"{d}/gen_c/gen_c", "10000", "--sh", "1"])
+    train = lambda n, soft=False: run([PY, "train_scene.py", f"{d}/{n}", f"{d}/{n}/{n}", "10000", "--sh", "1"], soft=soft)
+    train("gen_c")
+    for old in glob.glob(f"{d}/gen_c/mover_*") + glob.glob(f"{d}/gen_c/movers.json") + glob.glob(f"{d}/gen_m/gen_m*"): os.remove(old)   # an earlier build's
+    try: lifted = json.load(open(f"{d}/gen_c/lifted.json"))
+    except (OSError, ValueError): lifted = []
+    room = "gen_c"
+    if lifted:
+        # things that move away from their spot: gen_c was trained without them, gen_m is the same views with them. Each
+        # is cut out of gen_m's splat. If that fails, gen_m becomes the world, where they are in place and stay still
+        stage("lifting out the moving things")
+        if not (train("gen_m", True) and run([PY, "movers.py", "gen_c", "gen_m"], env, soft=True)):
+            if os.path.exists(f"{d}/gen_m/gen_m.ply"): room = "gen_m"; print("The moving things could not be lifted out: they stay still in this world.", flush=True)
+            else:
+                try: objs = json.load(open(f"{d}/boxes.json"))["objects"]; names = ", ".join(str(objs[i].get("name", i)) for i in lifted)
+                except (OSError, ValueError, KeyError, IndexError, TypeError, AttributeError): names = f"{len(lifted)} things"
+                print(f"The moving things could not be made: this world is built without them. Missing: {names}.", flush=True)
     stage("building the mesh and collider")
-    run([PY, "blockout_mesh.py", "gen_c"], env)
-    s, m = json.load(open(f"{d}/gen_c/gen_c_scene.json")), json.load(open(f"{d}/gen_c/gen_c_metre.json"))
-    entry = {"name": name, "ply": f"{rel}/gen_c/gen_c.ply", "mesh": f"{rel}/gen_c/gen_c_mesh.glb", "collider": f"{rel}/gen_c/gen_c_mesh_collider.glb", "up": s["up"], "center": s["center"],
-             "eye": s["eye"], "forward": s["forward"], "metre": m["metre"], "room": m["room"], "flat": True, "lamp": 5, "note": f"invented: {layout[:60]}", "kind": "prompt"}
-    entry.update({k: m[k] for k in ("centre", "floor") if k in m})          # exact room placement for the viewer
-    entry.update({k: s[k] for k in ("focal", "width") if k in s})           # lets the viewer match the trainer's blur
-    register(entry)
+    run([PY, "blockout_mesh.py", room], env)
+    register(prompt_entry(d, name, layout, style, room))
     stage("done")
 
 if __name__ == "__main__":

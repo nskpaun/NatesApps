@@ -4,8 +4,11 @@ import { TransformControls } from "three/addons/controls/TransformControls.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { SplatMesh, SparkRenderer, SplatEdit, SplatEditSdf, SplatEditSdfType, SplatEditRgbaBlendMode } from "@sparkjsdev/spark";
 import RAPIER from "rapier";
+import { createAudio, gust, hash } from "./audio.js";
+import { createFly } from "./fly.js";
+import { setupMotion, stepMotion, disposeMotion, setMotionVisible } from "./motion.js";
 
-const $ = (s) => document.querySelector(s);
+const $ = (s) => document.querySelector(s), clamp = (x, a, b) => Math.min(b, Math.max(a, x));
 const status = (t) => ($("#status").textContent = t);
 const S = { parts: [], balls: [] }; // current world
 const E = { on: false, parts: new Map(), sel: null, markers: [], seq: 0 };   // stitch editor (further down)
@@ -19,6 +22,9 @@ const camera = new THREE.PerspectiveCamera(65, innerWidth / innerHeight, 0.01, 1
 // The trainer (msplat) adds 0.3 px² to every splat's screen footprint with no opacity change; Spark's default (blurAmount) dims small splats instead.
 const spark = new SparkRenderer({ renderer, preBlurAmount: 0.3, blurAmount: 0 }); scene.add(spark);
 const orbit = new OrbitControls(camera, renderer.domElement);
+const fly = createFly(camera, renderer.domElement, orbit);
+const setFly = () => fly.setEnabled($("#walk").checked && !E.on);        // walking camera everywhere but the stitch editor
+setFly();
 // Training focal length in pixels: stored by newer builds; invented rooms are painted 1024 px wide at 65° across; unknown for old photo worlds.
 const trainFocal = (def) => def.focal > 0 ? def.focal : def.kind === "prompt" || def.flat ? (def.width > 0 ? def.width : 1024) / 2 / Math.tan(THREE.MathUtils.degToRad(32.5)) : null;
 // Scale the 0.3 from training pixels to screen pixels (area, so focal ratio squared); 0.3 as is when no part's focal is known.
@@ -31,7 +37,7 @@ addEventListener("resize", () => { renderer.setPixelRatio(Math.min(devicePixelRa
 
 await RAPIER.init();
 const gltf = new GLTFLoader();
-window.S = S; window.THREE = THREE; window.camera = camera; window.orbit = orbit; window.scene = scene; window.renderer = renderer;
+window.S = S; window.THREE = THREE; window.camera = camera; window.orbit = orbit; window.scene = scene; window.renderer = renderer; window.fly = fly;
 
 const lamp = new THREE.PointLight(0xffc27a, 1, 0, 2);
 lamp.castShadow = true; lamp.shadow.mapSize.set(1024, 1024); lamp.shadow.bias = -0.004; lamp.shadow.normalBias = 0.06; lamp.shadow.radius = 4;
@@ -46,6 +52,12 @@ const dragHelper = drag.getHelper(); dragHelper.visible = false; drag.enabled = 
 const back = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 16), new THREE.MeshBasicMaterial({ color: 0x1a1d2b, side: THREE.BackSide, transparent: true,
   depthWrite: false, blending: THREE.CustomBlending, blendEquation: THREE.AddEquation, blendSrc: THREE.DstColorFactor, blendDst: THREE.ZeroFactor }));
 back.renderOrder = 9.5; back.frustumCulled = false; back.visible = false; scene.add(back);
+// outdoors: one sky colour behind everything, so a gap in the splats shows sky and not black
+const sky = new THREE.Mesh(back.geometry, new THREE.MeshBasicMaterial({ side: THREE.BackSide, depthWrite: false, depthTest: false, fog: false }));
+sky.renderOrder = -10; sky.frustumCulled = false; sky.visible = false; scene.add(sky);
+// Motion and sound. T is the world's own clock in seconds (Spark's stays at 0 here); everything that moves is a function of it.
+const audio = createAudio({ volume: +$("#volume").value });
+const clock = { T: 0, paused: false, last: performance.now(), w: 0, fps: 0, frames: 0, sorts: 0, sortsPerSec: 0, lastSort: 0, since: performance.now(), windAt: 0 };
 
 const DOOR = { w: 1.0, h: 2.1 };
 
@@ -111,6 +123,7 @@ async function loadPart(def) {
   const pos = colGeo.attributes.position, v = new THREE.Vector3(), xs = [], ys = [], zs = [];
   for (let i = 0; i < pos.count; i++) { v.fromBufferAttribute(pos, i).applyQuaternion(q); xs.push(v.x); ys.push(v.y); zs.push(v.z); }
   const isRoom = def.kind === "prompt" || def.flat;          // exact box room from a blockout
+  const open = isRoom && def.setting === "outdoor";          // a patch of ground under the sky: no walls, no doorways
   const pct = (arr, f) => arr.slice().sort((a, b) => a - b)[Math.floor((arr.length - 1) * f)];
   const lo = isRoom ? 0 : 0.04, hi = isRoom ? 1 : 0.96;
   // Newer builds store the floor height and the footprint centre [x, z] in file units; older worlds get an estimate from the collider.
@@ -121,9 +134,9 @@ async function loadPart(def) {
   inner.quaternion.copy(q); inner.scale.setScalar(1 / metre); inner.position.set(-cx / metre, -floorY / metre, -cz / metre);
   // footprint in metres: exact for invented rooms, estimated for photo worlds
   const roomW = isRoom ? (def.room?.[0] ?? 4) : (pct(xs, hi) - pct(xs, lo)) / metre, roomD = isRoom ? (def.room?.[2] ?? 4) : (pct(zs, hi) - pct(zs, lo)) / metre;
-  if (isRoom) { visGeo = colGeo = geometryFrom(tessellate(colGeo, (roomW * roomD > 60 ? 0.5 : 0.25) * metre)); }
+  if (isRoom) { visGeo = colGeo = geometryFrom(tessellate(colGeo, (open ? 1 : roomW * roomD > 60 ? 0.5 : 0.25) * metre)); }
   else visGeo.computeVertexNormals();
-  return { def, outer, inner, splat, visGeo, colGeo, isRoom, roomW, roomD, metre };
+  return { def, outer, inner, splat, visGeo, colGeo, isRoom, open, roomW, roomD, metre };
 }
 
 // Meshes for a part: flat view, collider wireframe, and the night-mode pair (depth prepass + lit pass multiplied over the splat).
@@ -157,7 +170,7 @@ function facing(a, b) {
   return { gap, lo, hi };
 }
 function findDoors(parts) {
-  const doors = [], rooms = parts.filter((p) => p.isRoom);
+  const doors = [], rooms = parts.filter((p) => p.isRoom && !p.open);
   for (let i = 0; i < rooms.length; i++) for (let j = i + 1; j < rooms.length; j++)
     for (const a of wallsOf(rooms[i])) for (const b of wallsOf(rooms[j])) {
       const f = facing(a, b);
@@ -228,6 +241,7 @@ function eraseBox(centre, yaw, halfX, halfY, halfZ, softEdge = 0.03) {     // hi
 
 // Take a part out of the scene and release its splat data, geometries (visGeo and colGeo can be the same one) and materials.
 function disposePart(p) {
+  disposeMotion(p);
   scene.remove(p.outer); p.splat.dispose();
   for (const g of new Set([p.visGeo, p.colGeo])) g.dispose();
   for (const k of ["flat", "wire", "pre", "lit", "outline"]) p[k]?.material.dispose();
@@ -238,6 +252,7 @@ function clearWorld() {
   for (const b of S.balls) { scene.remove(b.mesh); b.mesh.material.dispose(); }      // the sphere geometry is shared, keep it
   S.phys?.free();                                                                   // Rapier's memory is not garbage collected
   clearEdits(); S.parts = []; S.balls = []; S.phys = null; S.net = null; S.world = null; S.ready = false;
+  S.wind = null; S.bound = null; S.zones = null; S.sky = false; tour.path = null; S.emitters = 0; sky.visible = false; orbit.maxDistance = Infinity; audio.detachAll();
 }
 
 // Balls no longer bump on the seams between triangles of a flat surface. The two-sided variant keeps contacts on the back of a triangle,
@@ -272,8 +287,21 @@ async function load(def) {
   }
   doors.forEach(eraseDoor);
   // safety net: a flat floor just under the real one, for holes in reconstructed meshes
+  // outdoors it is also the ground around the slab: a ball that rolls off lands on it and is counted. Its top is 5 cm down, so a ball resting on the ground does not touch it
+  const out = S.parts.find((p) => p.open);
   const net = phys.createCollider(RAPIER.ColliderDesc.cuboid(1000, 0.05, 1000).setTranslation(0, -0.1, 0));
   Object.assign(S, { def, world: S.parts[0].outer, phys, net, metre: 1, floorY: 0 });
+  if (out) {     // keep the eye near the play area: the far surround is a flat painting
+    S.bound = { x: out.outer.position.x, z: out.outer.position.z, hx: out.roomW / 2 + 3, hz: out.roomD / 2 + 3, hy: Math.max(3, out.def.room?.[1] ?? 6) }; orbit.maxDistance = 8;
+    const c = out.def.sky; S.sky = Array.isArray(c) && c.length === 3 && c.every(Number.isFinite);
+    if (S.sky) sky.material.color.setRGB(c[0], c[1], c[2], THREE.SRGBColorSpace);
+  }
+  else if (S.parts.every((p) => p.isRoom && Array.isArray(p.def.room) && p.def.room.length === 3 && p.def.room.every((v) => v > 0))) {
+    // invented rooms: where a walking eye may be. Each room's box, 0.25 m in from walls and ceiling, and a short box through each doorway
+    S.zones = [...S.parts.map((p) => ({ x: p.outer.position.x, z: p.outer.position.z, yaw: p.outer.rotation.y, hx: Math.max(0.05, p.roomW / 2 - 0.25), hz: Math.max(0.05, p.roomD / 2 - 0.25), y0: Math.min(0.3, p.def.room[1] / 2), y1: Math.max(p.def.room[1] / 2, p.def.room[1] - 0.25) })),
+      ...doors.map((d) => ({ x: d.centre.x, z: d.centre.z, yaw: d.yaw, hx: DOOR.w / 2 - 0.2, hz: d.depth / 2 + 0.45, y0: 0.3, y1: DOOR.h - 0.25 }))];
+    for (const z of S.zones) { z.cos = Math.cos(z.yaw); z.sin = Math.sin(z.yaw); }
+  }
   // start where the first part's photos were taken (or its first generated view)
   const p0 = S.parts[0], d0 = p0.def;
   const c = new THREE.Vector3(...(d0.eye ?? d0.center)).applyMatrix4(p0.inner.matrixWorld);
@@ -285,11 +313,23 @@ async function load(def) {
   try { await Promise.all(parts.map((p) => p.splat.initialized)); }
   catch (e) { if (my === loadSeq) { clearWorld(); status(`${def.name} could not be loaded`); console.error(e); } return; }
   if (my !== loadSeq) return;               // a newer load has already cleared this world
+  // moving things and sound. Both are optional extras: a failure here leaves a still, silent world
+  await Promise.all(parts.map((p) => setupMotion(p, { RAPIER, phys, gltf, T: clock.T }).catch((e) => console.warn("motion: skipped for", p.def.name, e))));
+  if (my !== loadSeq) return;
+  const wd = parts.find((p) => p.def.wind)?.def.wind, sways = parts.some((p) => p.motion?.stats.sway);
+  S.wind = { seed: hash(def.name), strength: Math.min(1, Math.max(0, Number.isFinite(+wd?.strength) ? +wd.strength : out ? 0.35 : sways ? 0.2 : 0)) };
+  audio.setMood({ ...d0.mood, name: def.name, style: d0.style, setting: out ? "outdoor" : "indoor", night: $("#night").checked || undefined });   // undefined: let the mood's own time of day decide
+  // at most 12 sounds: everything that travels or flies first, then the largest swaying things (6 at most)
+  const sounds = parts.flatMap((p) => p.motion?.sounds ?? []), big = (a, b) => b.size - a.size;
+  const picked = [...sounds.filter((s) => s.type !== "sway").sort(big).slice(0, 12), ...sounds.filter((s) => s.type === "sway").sort(big).slice(0, 6)].slice(0, 12);
+  for (const s of picked) audio.attach(s.obj, s.kind);
+  S.emitters = picked.length;
+  if ($("#sound").checked && !audio.running) audio.start();
   apply();
   S.ready = true;
   const doorNote = def.parts ? ` | ${S.parts.length} rooms, ${doors.length} doorway${doors.length === 1 ? "" : "s"}` : "";
-  status(`${def.name}: ${def.note ?? ""}${doorNote} | drag to look, scroll to move`);
-  document.title = "Nate’s Worlds";
+  status(`${def.name}: ${def.note ?? ""}${doorNote} | ${fly.enabled ? "W A S D to move, drag to look" : "drag to orbit, scroll to zoom"}`);
+  document.title = "Prometheus Worlds";
 }
 
 function apply() {
@@ -299,17 +339,22 @@ function apply() {
     p.splat.visible = mode === "splat"; p.flat.visible = mode === "mesh" && !night; p.wire.visible = mode === "collider";
     p.lit.material.vertexColors = mode === "mesh"; p.lit.material.blending = mode === "mesh" ? THREE.NormalBlending : THREE.CustomBlending; p.lit.material.needsUpdate = true;
     p.pre.visible = p.lit.visible = night && mode !== "collider";
+    setMotionVisible(p, mode, night);
   }
+  sky.visible = !!S.sky && mode === "splat";
   ambient.visible = night; back.visible = night && mode === "splat"; lamp.visible = night; dragHelper.visible = night; drag.enabled = night;
 }
 document.querySelectorAll("input[name=mode]").forEach((r) => r.addEventListener("change", apply));
-$("#night").addEventListener("change", apply);
+$("#night").addEventListener("change", () => { apply(); audio.setNight($("#night").checked || undefined); });
+// ticking Sound is the click the browser needs before it lets a page play anything
+$("#sound").addEventListener("change", (e) => (e.target.checked ? audio.start() : audio.stop()));
+$("#volume").addEventListener("input", (e) => audio.setVolume(+e.target.value));
 
 const ballGeo = new THREE.SphereGeometry(1, 20, 14);
 const ray = new THREE.Raycaster();
 function drop(n = 25) {
   if (!S.world) return 0;
-  let made = 0; const wires = S.parts.map((p) => p.wire);
+  let made = 0; const wires = S.parts.flatMap((p) => [p.wire, ...(p.motion?.wires ?? [])]);
   for (let tries = 0; made < n && tries < n * 8; tries++) {
     // aim at a random point in the lower middle of the view and spawn just above the surface found there
     ray.setFromCamera(new THREE.Vector2((Math.random() - 0.5) * 1.2, (Math.random() - 0.75) * 0.9), camera);
@@ -330,8 +375,24 @@ window.drop = drop;
 
 // test hook: how many balls there are and how many fell through the collider onto the safety net (a ball counts once it has touched the net)
 Object.defineProperty(window, "ballStats", { get: () => ({ n: S.balls.length, onNet: S.balls.filter((b) => b.onNet).length }) });
+// test hooks: motion.set(t) shows the world at time t and holds it there; motion.pause(false) lets time run again
+window.motion = {
+  set(t) { clock.T = Number.isFinite(+t) ? +t : 0; clock.paused = true; },
+  pause(b = true) { clock.paused = !!b; },
+  get stats() {
+    return { t: clock.T, paused: clock.paused || !$("#motionOn").checked, wind: clock.w, fps: Math.round(clock.fps), sorts: clock.sortsPerSec, sound: audio.running, emitters: S.emitters ?? 0,
+      parts: S.parts.map((p) => (p.motion ? { name: p.def.name, ...p.motion.stats } : null)) };
+  },
+};
 renderer.setAnimationLoop(() => {
   if (document.hidden) return;              // nothing to show: leave the GPU alone
+  const now = performance.now(), dt = Math.min(0.1, (now - clock.last) / 1000); clock.last = now;
+  if (!clock.paused && $("#motionOn").checked) clock.T += dt;
+  clock.frames++; if (spark.lastSortTime !== clock.lastSort) { clock.lastSort = spark.lastSortTime; clock.sorts++; }
+  if (now - clock.since >= 1000) { const k = 1000 / (now - clock.since); clock.fps = clock.frames * k; clock.sortsPerSec = Math.round(clock.sorts * k); clock.frames = clock.sorts = 0; clock.since = now; }
+  // one wind value for the swaying and for the wind sound
+  const w = clock.w = S.wind?.strength > 0 ? gust(clock.T, S.wind.seed, S.wind.strength) : 0;
+  for (const p of S.parts) if (p.motion) try { stepMotion(p, clock.T, w); } catch (e) { console.warn("motion: stopped for", p.def.name, e); disposeMotion(p); }
   if (S.phys) {
     S.phys.step();
     for (const b of S.balls) {
@@ -339,10 +400,125 @@ renderer.setAnimationLoop(() => {
       if (!b.onNet) S.phys.contactPair(S.net, b.col, (m) => { if (m.numContacts() > 0) b.onNet = true; });
     }
   }
+  if ($("#tour").checked && S.ready && !E.on) tourStep(dt);
+  else { fly.update(dt); if (!E.on) keepIn(dt); }
   orbit.update();
   back.position.copy(camera.position); back.scale.setScalar(camera.far * 0.5);
+  sky.position.copy(camera.position); sky.scale.setScalar(camera.far * 0.5);
   renderer.render(scene, camera);
+  if (audio.running) {
+    if (now - clock.windAt > 100) { clock.windAt = now; audio.setWind(w); }      // ten times a second is plenty for a slow curve
+    audio.update(camera);
+  }
 });
+
+// Keep the eye in the world. Walking outdoors: inside the play area, at least 0.3 m above the ground. Walking in invented rooms: inside the
+// rooms (S.zones), so W A S D cannot pass a wall into the void. Both are soft: the eye is eased back, most of the way each frame, and is never
+// left more than 0.2 m out. Orbiting outdoors: the point orbited stays in the play area, and the eye above the ground.
+const zv = new THREE.Vector3(), zb = new THREE.Vector3();
+function nearestInside(zones, e, out) {
+  let best = Infinity;
+  for (const z of zones) {
+    const dx = e.x - z.x, dz = e.z - z.z, u = clamp(dx * z.cos - dz * z.sin, -z.hx, z.hx), v = clamp(dx * z.sin + dz * z.cos, -z.hz, z.hz);   // in the zone's own axes
+    zv.set(z.x + u * z.cos + v * z.sin, clamp(e.y, z.y0, z.y1), z.z - u * z.sin + v * z.cos);
+    const d = zv.distanceToSquared(e); if (d < best) { best = d; out.copy(zv); }
+  }
+  return out;
+}
+function keepIn(dt) {
+  const b = S.bound, e = camera.position, t = orbit.target, soft = 1 - Math.exp(-dt * 30);
+  if (fly.enabled && (b || S.zones)) {
+    if (b) zb.set(clamp(e.x, b.x - b.hx, b.x + b.hx), clamp(e.y, 0.4, Math.max(0.4, b.hy)), clamp(e.z, b.z - b.hz, b.z + b.hz)); else nearestInside(S.zones, e, zb);
+    const d = zb.distanceTo(e); if (d < 1e-5) return;
+    zb.sub(e).multiplyScalar(Math.max(soft, 1 - 0.2 / d)); if (b && e.y + zb.y < 0.3) zb.y = 0.3 - e.y;      // the ground itself is firm
+    e.add(zb); t.add(zb);
+  } else if (b) {
+    const x = clamp(t.x, b.x - b.hx, b.x + b.hx), y = clamp(t.y, 0, b.hy), z = clamp(t.z, b.z - b.hz, b.z + b.hz);
+    if (x !== t.x || y !== t.y || z !== t.z) { e.x += x - t.x; e.y += y - t.y; e.z += z - t.z; t.set(x, y, z); }
+    if (e.y < 0.3) e.y += (0.3 - e.y) * soft;
+  }
+}
+
+// Tour: a slow glide round one part of the world at eye height, looking at its middle. Any key, or a click, drag or scroll on the picture, hands the camera back.
+const tour = { path: null };
+const stopTour = () => { if ($("#tour").checked) { $("#tour").checked = false; tour.path = null; } };
+function tourPlan() {
+  const far = (p) => p.outer.position.distanceToSquared(camera.position), tv = new THREE.Vector3();
+  const holds = (p) => { p.outer.updateMatrixWorld(true); tv.copy(camera.position).applyMatrix4(p.outer.matrixWorld.clone().invert()); return Math.abs(tv.x) <= p.roomW / 2 && Math.abs(tv.z) <= p.roomD / 2; };
+  const p = S.parts.find(holds) ?? S.parts.reduce((a, b) => (far(b) < far(a) ? b : a));   // the part the eye is in, or else the nearest
+  p.outer.updateMatrixWorld(true);
+  const room = p.isRoom && Array.isArray(p.def.room) ? p.def.room : null, closed = room && !p.open, hx = p.roomW / 2, hz = p.roomD / 2, margin = p.open ? 0.5 : 0.7;
+  const eye = new THREE.Vector3(...(p.def.eye ?? p.def.center ?? [0, 0, 0])).applyMatrix4(p.inner.matrixWorld).y - p.outer.position.y;
+  const y = Math.min(clamp(Number.isFinite(eye) ? eye : 1.5, 1.1, 1.8), closed ? Math.max(0.4, room[1] - 0.5) : 9), toWorld = p.outer.matrixWorld;
+  let cx = 0, cz = 0, ex = hx, ez = hz;      // the ring's middle and half-size in the part's frame: the room's, unless something travels through its middle
+  const at = (a, f, out) => out.set(cx + Math.max(0.15 * ex, Math.min(f * ex, ex - margin)) * Math.cos(a), y, cz + Math.max(0.15 * ez, Math.min(f * ez, ez - margin)) * Math.sin(a)).applyMatrix4(toWorld);
+  const look = new THREE.Vector3(0, Math.max(0.3, y - 0.3), 0).applyMatrix4(toWorld);
+  // is there room for an eye here? Look straight down from above (from under the ceiling in an invented room): what is found first must be well
+  // below the eye. Nothing may stand within 1.5 m between the eye and the middle, so no piece fills the picture (or has the eye inside it),
+  // nor within 0.5 m behind it or to either side
+  const top = p.open ? y + 12 : closed ? room[1] - 0.06 : y + 0.4, skip = RAPIER.QueryFilterFlags.EXCLUDE_KINEMATIC | RAPIER.QueryFilterFlags.EXCLUDE_DYNAMIC, v = new THREE.Vector3(), d = new THREE.Vector3();
+  const lanes = S.parts.flatMap((q) => (q.motion?.lanes ?? []).map((l) => ({ r2: l.r * l.r, pts: l.pts.map((x) => x.clone().applyMatrix4(q.outer.matrixWorld)) })));   // and it keeps off the strips where things travel or swing
+  const inLane = (v) => lanes.some((l) => l.pts.some((x) => (x.x - v.x) ** 2 + (x.z - v.z) ** 2 < l.r2));
+  const N = 72, TAU = Math.PI * 2, rings = [0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2];
+  // a lane near the middle (a road down a street) leaves no ring round the middle that stays off it: the tour then goes round the middle
+  // of the largest stretch of floor no lane crosses, and looks at that
+  if (lanes.length && Array.from({ length: N }, (_, k) => rings.every((r) => inLane(at(k * TAU / N, r, v)))).filter(Boolean).length > N / 12) {
+    const G = 32, cell = (i, j, out) => out.set((i + 0.5) / G * 2 * hx - hx, y, (j + 0.5) / G * 2 * hz - hz), free = [], seen = new Uint8Array(G * G); let best = [];
+    for (let j = 0; j < G; j++) for (let i = 0; i < G; i++) free.push(!inLane(cell(i, j, v).applyMatrix4(toWorld)));
+    for (let s = 0; s < G * G; s++) {
+      if (!free[s] || seen[s]) continue;
+      const grp = [], todo = [s]; seen[s] = 1;
+      while (todo.length) { const q = todo.pop(), i = q % G, j = (q - i) / G; grp.push(q);
+        for (const [a, b] of [[i - 1, j], [i + 1, j], [i, j - 1], [i, j + 1]]) { const n = b * G + a; if (a >= 0 && a < G && b >= 0 && b < G && free[n] && !seen[n]) { seen[n] = 1; todo.push(n); } } }
+      if (grp.length > best.length) best = grp;
+    }
+    if (best.length) {
+      const sum = best.reduce((o, q) => { cell(q % G, Math.floor(q / G), v); o.x += v.x; o.z += v.z; return o; }, { x: 0, z: 0 });
+      cx = sum.x / best.length; cz = sum.z / best.length; ex = Math.max(0.5, hx - Math.abs(cx)); ez = Math.max(0.5, hz - Math.abs(cz));
+      look.set(cx, Math.max(0.3, y - 0.3), cz).applyMatrix4(toWorld);
+    }
+  }
+  const clear = (a, f) => {
+    at(a, f, v); if (inLane(v)) return false;
+    const far = d.subVectors(look, v).length(); d.divideScalar(far || 1);
+    if (far > 0.3 && S.phys.castRay(new RAPIER.Ray(v, d), Math.min(1.5, 0.6 * far), true, skip)) return false;
+    d.setY(0).normalize(); for (const [x, z] of [[-d.x, -d.z], [-d.z, d.x], [d.z, -d.x]]) if (S.phys.castRay(new RAPIER.Ray(v, { x, y: 0, z }), 0.5, true, skip)) return false;
+    v.y += top - y;
+    const hit = S.phys.castRay(new RAPIER.Ray(v, { x: 0, y: -1, z: 0 }), top + 1, true, skip);
+    return !hit || (hit.timeOfImpact ?? hit.toi) > top - y + 0.4;
+  };
+  // per direction, the widest ring that is clear (and still clear a little further in); then smoothed, never outwards, so the glide has no corners
+  let f = Array.from({ length: N }, () => 0.7);
+  try { f = f.map((_, k) => rings.find((r) => clear(k * TAU / N, r) && clear(k * TAU / N, r - 0.06)) ?? 0.2); } catch (e) { console.warn("tour: could not look for a clear way round", e); }
+  if (f.filter((r) => r > 0.2).length < N / 4) f = f.map(() => 0.6);       // next to nothing clear: more likely the test than the world
+  const near = (g, k, fn) => fn(...[-3, -2, -1, 0, 1, 2, 3].map((j) => g[(k + j + N) % N]));
+  f = f.map((_, k) => near(f, k, Math.min)); f = f.map((_, k) => near(f, k, (...q) => q.reduce((a, b) => a + b) / q.length));
+  const local = camera.position.clone().applyMatrix4(toWorld.clone().invert()), a0 = Math.atan2((local.z - cz) / ez, (local.x - cx) / ex), a = Number.isFinite(a0) ? a0 : 0;
+  // where the ring is at angle a: between the two nearest directions
+  const ring = (a, out) => { const q = ((a / TAU) % 1 + 1) % 1 * N, k = Math.floor(q) % N; return at(a, f[k] + (f[(k + 1) % N] - f[k]) * (q - Math.floor(q)), out); };
+  const dir = camera.getWorldDirection(new THREE.Vector3()), start = ring(a, new THREE.Vector3()), turn = dir.angleTo(v.subVectors(look, start));   // how far the eye has to turn to face the middle
+  const yaw = Math.atan2(dir.x, dir.z);
+  return { ring, look, a, w: TAU / 50, t: 0, blend: Math.max(2.5 + 2.5 * turn / Math.PI, 2 * start.distanceTo(camera.position)), from: camera.position.clone(), yaw0: yaw, yaw1: yaw, pitch0: Math.asin(clamp(dir.y, -1, 1)), at: start };
+}
+const tp = new THREE.Vector3(), tl = new THREE.Vector3();
+function tourStep(dt) {
+  const P = tour.path ??= tourPlan(); P.t += dt;
+  // once round in 50 s, and never faster than 0.4 m/s where the ring is wide or changes width
+  const da = P.w * dt, step = P.ring(P.a + da, tp).distanceTo(P.at); P.a += da * Math.min(1, 0.4 * dt / Math.max(step, 1e-6)); P.ring(P.a, P.at);
+  const s = clamp(P.t / P.blend, 0, 1), ease = s * s * (3 - 2 * s);    // the first seconds: from where the eye was, and the way it faced, into the glide
+  camera.position.lerpVectors(P.from, P.at, ease);
+  tl.subVectors(P.look, P.at).normalize();                             // the way the glide looks from here
+  if (ease < 1) {                                                      // turn to it as bearing and tilt, the bearing followed round so it never jumps
+    const turn = Math.atan2(tl.x, tl.z) - P.yaw1; P.yaw1 += turn - Math.PI * 2 * Math.round(turn / (Math.PI * 2));
+    const yaw = P.yaw0 + (P.yaw1 - P.yaw0) * ease, pitch = P.pitch0 + (Math.asin(clamp(tl.y, -1, 1)) - P.pitch0) * ease;
+    tl.set(Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), Math.cos(yaw) * Math.cos(pitch));
+  }
+  orbit.target.copy(camera.position).addScaledVector(tl, 2);           // orbit.update() turns the camera to it
+}
+$("#tour").addEventListener("change", (e) => { tour.path = null; e.target.blur(); });
+addEventListener("keydown", (e) => { if (!e.metaKey && !e.ctrlKey && !e.altKey && !["Shift", "Meta", "Control", "Alt", "CapsLock"].includes(e.key)) stopTour(); });
+renderer.domElement.addEventListener("pointerdown", stopTour);
+renderer.domElement.addEventListener("wheel", stopTour, { passive: true });
 
 let defs = [];
 async function refreshScenes(select) {
@@ -355,11 +531,14 @@ async function refreshScenes(select) {
   return defs.find((d) => d.name === sel.value);
 }
 $("#scene").addEventListener("change", (e) => load(defs.find((d) => d.name === e.target.value)));
-await load(await refreshScenes(new URLSearchParams(location.search).get("scene")));
+const asked = new URLSearchParams(location.search);     // ?scene=Name opens that world, &tour=1 starts the tour: a link that shows a world hands-free
+if (asked.get("tour") === "1") $("#tour").checked = true;
+await load(await refreshScenes(asked.get("scene")));
 
 // ---- New world: upload photos or send a prompt, then follow the job
 const dlg = $("#dlg"); let tab = "photos";
 function setTab(t) { tab = t; $("#tabPhotos").setAttribute("aria-selected", t === "photos"); $("#tabPrompt").setAttribute("aria-selected", t === "prompt"); $("#panePhotos").hidden = t !== "photos"; $("#panePrompt").hidden = t !== "prompt"; $("#err").textContent = ""; }
+$("#walk").addEventListener("change", setFly); setFly();
 $("#tabPhotos").addEventListener("click", () => setTab("photos")); $("#tabPrompt").addEventListener("click", () => setTab("prompt"));
 $("#new").addEventListener("click", () => { $("#err").textContent = ""; dlg.showModal(); });
 $("#dlgCancel").addEventListener("click", () => dlg.close());
@@ -374,7 +553,7 @@ $("#dlgGo").addEventListener("click", async () => {
       for (const [i, f] of files.entries()) { $("#err").textContent = `Copying photo ${i + 1} of ${files.length}…`; await post(`/api/upload?job=${id}&name=${encodeURIComponent(f.name)}`, f, true); }
       await post("/api/jobs", { type: "photos", id, name: name || "My photos" });
     } else {
-      await post("/api/jobs", { type: "prompt", name: name || "Invented room", layout: $("#layout").value, style: $("#style").value, views: +$("#views").value });
+      await post("/api/jobs", { type: "prompt", name: name || "Invented world", layout: $("#layout").value, style: $("#style").value, views: +$("#views").value, setting: $("#setting").value || undefined });
     }
     dlg.close(); poll();
   } catch (e) { $("#err").textContent = e.message; }
@@ -387,9 +566,9 @@ const mover = new TransformControls(camera, renderer.domElement);
 mover.addEventListener("dragging-changed", (e) => { orbit.enabled = !e.value; if (!e.value && E.sel) { snapFlush(E.sel); showDoors(); } });
 // when a room is dropped with a wall close to another room's wall, slide it so the two walls meet exactly
 function snapFlush(p) {
-  if (!p.isRoom) return;
+  if (!p.isRoom || p.open) return;
   let best = null;
-  for (const q of E.parts.values()) if (q !== p && q.isRoom) for (const a of wallsOf(p)) for (const b of wallsOf(q)) {
+  for (const q of E.parts.values()) if (q !== p && q.isRoom && !q.open) for (const a of wallsOf(p)) for (const b of wallsOf(q)) {
     const f = facing(a, b);
     if (f && Math.abs(f.gap) < 0.9 && f.hi - f.lo > DOOR.w + 0.4 && (!best || Math.abs(f.gap) < Math.abs(best.gap))) best = { gap: f.gap, n: a.n };
   }
@@ -439,8 +618,8 @@ async function togglePart(def, box) {
   E.parts.set(def.name, p); setBlur(); select(p); showDoors(); status("Stitch: click a world to select it, then drag the arrows. Scroll to zoom.");
 }
 function enterStitch() {
-  loadSeq++; clearWorld(); E.on = true; E.seq++; $("#bar").hidden = true; $("#stitchBar").hidden = false; $("#night").checked = false; apply(); lamp.visible = false; dragHelper.visible = false; drag.enabled = false; back.visible = false; ambient.visible = false;
-  $("#stitchList").replaceChildren(...defs.filter((d) => !d.parts).map((d) => {
+  loadSeq++; clearWorld(); audio.stop(); E.on = true; $("#tour").checked = false; setFly(); E.seq++; $("#bar").hidden = true; $("#stitchBar").hidden = false; $("#night").checked = false; apply(); lamp.visible = false; dragHelper.visible = false; drag.enabled = false; back.visible = false; ambient.visible = false;
+  $("#stitchList").replaceChildren(...defs.filter((d) => !d.parts && d.setting !== "outdoor").map((d) => {     // outdoor worlds cannot be stitched yet
     const l = document.createElement("label"), c = document.createElement("input"); c.type = "checkbox";
     c.addEventListener("change", () => togglePart(d, c)); l.append(c, d.name); return l;
   }));
@@ -452,7 +631,7 @@ function exitStitch() {
   select(null);                              // let go of the selected part before the parts are disposed
   for (const p of E.parts.values()) disposePart(p);
   for (const mk of E.markers) { scene.remove(mk); mk.geometry.dispose(); mk.material.dispose(); }
-  E.parts.clear(); E.markers = []; E.on = false; E.seq++; clearEdits();
+  E.parts.clear(); E.markers = []; E.on = false; setFly(); E.seq++; clearEdits();
   $("#bar").hidden = false; $("#stitchBar").hidden = true;
 }
 let downAt = null;

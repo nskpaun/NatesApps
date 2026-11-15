@@ -1,0 +1,53 @@
+{
+ "setting": "indoor",
+ "room": {
+  "width": 4,
+  "depth": 4,
+  "height": 2.6
+ },
+ "pieces": [
+  {
+   "label": "bed",
+   "shape": "bed",
+   "base": 0,
+   "place": {
+    "wall": "back",
+    "along": 0.5
+   }
+  },
+  {
+   "label": "wardrobe",
+   "shape": "cabinet",
+   "base": 0,
+   "place": {
+    "wall": "left",
+    "along": 0.5
+   }
+  },
+  {
+   "label": "desk",
+   "shape": "desk",
+   "base": 0,
+   "place": {
+    "wall": "right",
+    "along": 0.5
+   }
+  },
+  {
+   "label": "chair",
+   "shape": "chair",
+   "base": 0,
+   "place": {
+    "at": [
+     0.75,
+     0.6
+    ]
+   }
+  }
+ ],
+ "mood": {
+  "feel": "calm",
+  "energy": 0.1,
+  "time": "day"
+ }
+}

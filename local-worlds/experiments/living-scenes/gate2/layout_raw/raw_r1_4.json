@@ -1,0 +1,98 @@
+{
+ "setting": "indoor",
+ "room": {
+  "width": 4.5,
+  "depth": 5.0,
+  "height": 2.8
+ },
+ "pieces": [
+  {
+   "label": "sofa",
+   "shape": "sofa",
+   "place": {
+    "wall": "back",
+    "along": 0.5
+   }
+  },
+  {
+   "label": "coffee_table",
+   "shape": "coffee_table",
+   "place": {
+    "at": [
+     0.5,
+     0.4
+    ]
+   }
+  },
+  {
+   "label": "window",
+   "shape": "window",
+   "place": {
+    "wall": "front",
+    "along": 0.5
+   }
+  },
+  {
+   "label": "curtains",
+   "shape": "box",
+   "size": [
+    1.2,
+    2.8,
+    0.1
+   ],
+   "base": 0,
+   "place": {
+    "wall": "front",
+    "along": 0.5
+   },
+   "motion": {
+    "type": "sway",
+    "amount": 0.4
+   },
+   "sound": "rustle"
+  },
+  {
+   "label": "fan_mount",
+   "shape": "box",
+   "size": [
+    0.3,
+    2.8,
+    0.3
+   ],
+   "base": 2.75,
+   "place": {
+    "at": [
+     0.5,
+     0.5
+    ]
+   }
+  },
+  {
+   "label": "fan_blades",
+   "shape": "box",
+   "size": [
+    1.2,
+    0.3,
+    1.2
+   ],
+   "base": 2.75,
+   "place": {
+    "at": [
+     0.5,
+     0.5
+    ]
+   },
+   "motion": {
+    "type": "spin",
+    "axis": "up",
+    "period": 4
+   },
+   "sound": "hum"
+  }
+ ],
+ "mood": {
+  "feel": "calm",
+  "energy": 0.3,
+  "time": "day"
+ }
+}

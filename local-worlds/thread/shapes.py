@@ -165,15 +165,17 @@ def plan(style):
     if not have_model(): return print(NO_MODEL)
     os.makedirs(S, exist_ok=True)
     carriers = {support(objs, i)[1] for i in range(len(objs))}
+    moving = {m.get("i") for m in (world.get("motions") if isinstance(world.get("motions"), list) else []) if isinstance(m, dict)}
     cands = []
     for g in kinds_of(objs):
         w, h, d = g["size"]
         if min(w, h, d) < THIN: continue                         # too thin to be worth a mesh
-        g["objects"] = [i for i in g["objects"] if i not in carriers]     # what something stands on must keep its flat top
+        g["objects"] = [i for i in g["objects"] if i not in carriers and not objs[i].get("open")]     # what something stands on must keep its flat top; posts with a beam stay posts
         if not g["objects"]: continue
         g["score"] = len(g["objects"]) * (w * h + d * h + w * d)
+        g["moves"] = any(i in moving for i in g["objects"])
         cands.append(g)
-    cands = sorted(cands, key=lambda g: -g["score"])[:16]        # keeps the question short
+    cands = sorted(cands, key=lambda g: (not g["moves"], -g["score"]))[:16]        # keeps the question short; what moves is looked at most, so it goes first
     head = {"style": style, "layout": stamp(world)}
     if not cands: save_json({**head, "kinds": {}, "objects": {}}, path); return print("no objects need a shape")
     words = lambda g: " ".join(g["words"]) or "object"
@@ -211,7 +213,7 @@ def plan(style):
         if len(look) < 3: look = f"a {words(g)}, {style}"[:120]
         print(f"{g['name']}: {'shape' if shaped else 'box'}, {len(g['objects'])} x {w:.2f} x {h:.2f} x {d:.2f} m, {look}")
         if shaped: chosen.append((g, look))
-    chosen = chosen[:limit()]                                     # already ordered by size x count
+    chosen = chosen[:limit()]                                     # already ordered: what moves, then by size x count
     save_json({**head, "kinds": {g["name"]: {"look": look, "objects": g["objects"]} for g, look in chosen},
                "objects": {str(i): {"kind": g["name"], "look": look} for g, look in chosen for i in g["objects"]}}, path)
 

@@ -1,0 +1,118 @@
+{
+ "setting": "outdoor",
+ "room": {
+  "width": 12,
+  "depth": 10,
+  "height": 4
+ },
+ "pieces": [
+  {
+   "label": "stone fountain",
+   "shape": "cylinder",
+   "size": [
+    1.5,
+    2
+   ],
+   "base": 0,
+   "place": {
+    "at": [
+     0.5,
+     0.5
+    ]
+   }
+  },
+  {
+   "label": "flower bed",
+   "shape": "ground",
+   "size": [
+    4,
+    3
+   ],
+   "base": 0,
+   "place": {
+    "wall": "back",
+    "along": 0.5
+   }
+  },
+  {
+   "label": "wooden bench",
+   "shape": "box",
+   "size": [
+    2,
+    0.6,
+    1
+   ],
+   "base": 0,
+   "place": {
+    "at": [
+     0.5,
+     0.8
+    ]
+   }
+  },
+  {
+   "label": "windmill tower",
+   "shape": "cylinder",
+   "size": [
+    1,
+    3
+   ],
+   "base": 0,
+   "place": {
+    "wall": "left",
+    "along": 0.2
+   }
+  },
+  {
+   "label": "windmill sails",
+   "shape": "box",
+   "size": [
+    1.5,
+    0.3,
+    0.3
+   ],
+   "base": 2.7,
+   "place": {
+    "on": "windmill tower"
+   },
+   "motion": {
+    "type": "spin",
+    "axis": "depth",
+    "period": 8
+   }
+  }
+ ],
+ "effects": [
+  {
+   "type": "wander",
+   "label": "butterflies",
+   "at": [
+    0.5,
+    0.6
+   ],
+   "radius": 2,
+   "height": [
+    0.8,
+    2.5
+   ],
+   "count": 12,
+   "size": 0.15,
+   "speed": 0.8,
+   "colours": [
+    "#f4d03f",
+    "#e67e22"
+   ],
+   "sound": "chirp"
+  }
+ ],
+ "mood": {
+  "feel": "dreamy",
+  "energy": 0.4,
+  "time": "day"
+ },
+ "surround": "green hedges and distant trees",
+ "wind": {
+  "strength": 0.3,
+  "from": 270
+ }
+}
