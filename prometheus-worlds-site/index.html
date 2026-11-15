@@ -101,8 +101,8 @@
               />
             </div>
             <figcaption>
-              A wizard study invented from a prompt. A 12-view build of a room
-              like this measured 14.5 minutes on an M4 Pro.
+              A wizard study invented from a prompt. That capture took 14.5
+              minutes. A Standard build is now estimated at about 20 minutes.
             </figcaption>
           </figure>
         </div>
@@ -222,9 +222,8 @@
               <h3>From a prompt</h3>
               <p>
                 Write a layout sentence and a style sentence. The room can be
-                small or a large hall. The layout is built from simple solid
-                shapes, so name the big things: furniture, stages, benches,
-                columns.
+                small or a large hall. Name the big things: furniture, stages,
+                benches, columns. The plan starts from simple solids.
               </p>
               <ol class="steps">
                 <li>
@@ -234,18 +233,31 @@
                   the plan inside the room and on the floor.
                 </li>
                 <li>
-                  The blockout is rendered as depth, then Z-Image Turbo with a
-                  depth ControlNet paints the views so they follow it. Each
-                  view is given the pixels earlier views already show, so it
-                  stays the same room.
+                  If the Hunyuan3D shape model is installed, up to six kinds of
+                  object become a mesh instead of staying a box. Qwen chooses
+                  which kinds deserve one. One picture of each kind is painted
+                  on a plain backdrop, and Hunyuan3D turns it into a mesh fitted
+                  to its block. Each kind adds about a minute. Without the
+                  model, or if a shape fails, that object stays a box.
                 </li>
-                <li>msplat trains a splat. The blockout is the mesh and the collider.</li>
+                <li>
+                  The blockout, with those shapes in place of their boxes, is
+                  rendered as depth. Z-Image Turbo with a depth ControlNet
+                  paints the views so they follow it. Each view is given the
+                  pixels earlier views already show, so it stays the same room.
+                </li>
+                <li>
+                  msplat trains a splat. The blockout, including any generated
+                  shapes, is the mesh and the collider.
+                </li>
               </ol>
               <p class="spec">
-                Detail in the dialog: Quick, 8 views, about 8 minutes. Standard,
-                12 views, about 14 minutes. Full, 16 larger views, about 30
-                minutes. Quick and Standard paint at 768×576. Full paints at
-                1024×768.
+                Detail in the dialog: Quick, about 14 minutes. Standard, about
+                20 minutes. Full, larger pictures, about 40 minutes. Quick and
+                Standard paint at 768×576. Full paints at 1024×768. Copies of a
+                generated kind are identical, and the side the picture did not
+                show is guessed. The Hunyuan3D licence does not cover use in
+                the EU, the UK, or South Korea.
               </p>
             </article>
           </div>
@@ -289,6 +301,14 @@
             <div>
               <dt>Depth Pro</dt>
               <dd>Depth for each photo, also through mflux.</dd>
+            </div>
+            <div>
+              <dt>Hunyuan3D, optional</dt>
+              <dd>
+                Turns one picture of an object into a mesh, through
+                Hunyuan3D-Swift. About 20 seconds and 5.5 GB for a kind. Skip it
+                and the object stays a box.
+              </dd>
             </div>
             <div>
               <dt>COLMAP, msplat, Open3D</dt>
@@ -449,9 +469,9 @@
               Drag to look, scroll to move. That is an orbit camera. Moving
               through a dungeon on foot is not built. Invented rooms are boxes
               from 3 to 24 metres across: no curved walls, sloped roofs, stairs,
-              or tiers. Furniture in those rooms is painted onto simple shapes,
-              so it reads from the front and looks flatter from the side.
-              Invented ceilings are a plain light colour.
+              or tiers. An object without a generated shape is painted onto a
+              simple form, so it reads from the front and looks flatter from
+              the side. Invented ceilings are a plain light colour.
             </p>
           </aside>
         </div>
