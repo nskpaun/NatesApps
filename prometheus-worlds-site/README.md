@@ -1,6 +1,6 @@
 # Prometheus Worlds
 
-Marketing site for the local world-building app in [`local-worlds/`](../local-worlds/).
+Marketing site for the local world-building app at [nskpaun/prometheus-worlds](https://github.com/nskpaun/prometheus-worlds).
 
 The page is one screen of the real product: photos or a prompt become a world you can orbit, relight, and drop balls into, on your own Mac. Living scenes with motion and music are marked as coming soon. Screenshots are captures from the app, exported smaller as WebP. The sparks, the slow drift, and the bars on the living-scenes panel are drawn for this page. They are not a picture of a feature in the app.
 
