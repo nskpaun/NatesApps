@@ -127,7 +127,7 @@ private fun SetupScreen(setup: FastChat.Setup, onDownload: () -> Unit, onRetry: 
         Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
     ) {
-        Text("FastChat Glasses", style = MaterialTheme.typography.displaySmall)
+        Text("QuickTalk Glasses", style = MaterialTheme.typography.displaySmall)
         when (setup) {
             is FastChat.Setup.NeedsDownload -> {
                 Text(

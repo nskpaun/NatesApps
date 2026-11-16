@@ -94,7 +94,7 @@ class FastChat(private val app: Application) {
             glasses.closedOnGlasses.collect {
                 if (_conversation.value.phase != Phase.Off) {
                     dispatch(Event.Stop)
-                    dispatch(Event.Problem("Paused, because FastChat was closed on the glasses."))
+                    dispatch(Event.Problem("Paused, because QuickTalk was closed on the glasses."))
                 }
             }
         }

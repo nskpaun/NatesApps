@@ -42,7 +42,7 @@ An open source world builder that runs entirely on a 64 GB Mac: a sentence or ph
 - **App:** moved to its own repository, [nskpaun/prometheus-worlds](https://github.com/nskpaun/prometheus-worlds). Clone it, open the Xcode project and press Run.
 - **Site:** [`prometheus-worlds-site/`](prometheus-worlds-site/) stays here and deploys on Vercel with that folder as the root directory.
 
-### [FastChat Glasses](fastchat-glasses/)
+### [QuickTalk Glasses](fastchat-glasses/)
 
 An AAC app for people who cannot speak, for **Meta Ray-Ban Display** glasses and the Neural Band. The person you are talking with speaks to your phone, a local language model writes four replies onto your glasses, and a d-pad swipe on the band says the one you pick.
 

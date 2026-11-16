@@ -1,4 +1,4 @@
-# FastChat Glasses
+# QuickTalk Glasses
 
 An AAC (augmentative and alternative communication) app for people who cannot speak, built for **Meta Ray-Ban Display** glasses and the **Meta Neural Band**.
 
@@ -42,7 +42,7 @@ The phone is a quiet turn-taking sign: warm cream, cocoa text, and a gently anim
 | Reply highlighted | Light underline; animated pinch cue | Sam's turn |
 | Speaking | Spoken words and animated speaker cue | Sam's turn |
 | Link unavailable | Nothing can be drawn until it returns | One moment · Reconnecting |
-| Paused | FastChat releases the display | Resume, volume and setup controls |
+| Paused | QuickTalk releases the display | Resume, volume and setup controls |
 
 The name comes from Settings; without a name the wait cue is **Please wait**. The active phone shows no private suggestions, transcript, volume slider or connection diagnostics. Use **Android Back** to pause and reach volume and Settings. Leaving the app also pauses it; folding or rotating the phone preserves the conversation.
 
@@ -191,9 +191,9 @@ The phone warms up under continuous use and drops towards 35 tokens per second.
 
 The voice has its own volume slider (on the paused screen and in Settings), because the phone's volume keys move the glasses' volume while they are connected and cannot reach the loudspeaker. To make that work the voice plays on Android's alarm channel: the app turns that channel up for the length of each sentence and puts it back afterwards, and silent mode does not mute it.
 
-## When FastChat is on the glasses
+## When QuickTalk is on the glasses
 
-Only while a conversation is running. Pressing **Start** opens it on the glasses and **Android Back** pauses and takes it off again, so a paused or backgrounded app never pushes itself in front of whatever else the wearer is doing. If FastChat is closed on the glasses themselves while a conversation is running, the phone pauses the conversation rather than reopening it. If the Bluetooth link drops mid-conversation, it comes back on its own when the glasses return.
+Only while a conversation is running. Pressing **Start** opens it on the glasses and **Android Back** pauses and takes it off again, so a paused or backgrounded app never pushes itself in front of whatever else the wearer is doing. If QuickTalk is closed on the glasses themselves while a conversation is running, the phone pauses the conversation rather than reopening it. If the Bluetooth link drops mid-conversation, it comes back on its own when the glasses return.
 
 ## Limits
 

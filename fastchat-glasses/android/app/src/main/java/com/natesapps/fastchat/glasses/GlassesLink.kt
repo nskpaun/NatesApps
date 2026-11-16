@@ -131,7 +131,7 @@ class GlassesLink(private val appContext: Context, private val scope: CoroutineS
     /** When a drag that turned the dial was let go, to tell its release from a deliberate tap. */
     private var dialReleasedAt = 0L
 
-    private val screen = MutableStateFlow<GlassesScreen>(GlassesScreen.Status("FastChat"))
+    private val screen = MutableStateFlow<GlassesScreen>(GlassesScreen.Status("QuickTalk"))
     private val renderer = GlassesRenderer()
     private val display = MutableStateFlow<Display?>(null)
     private val displayStarted = MutableStateFlow(false)
@@ -270,10 +270,10 @@ class GlassesLink(private val appContext: Context, private val scope: CoroutineS
             // The list can be ahead of the per-device state; let the toolkit decide then.
             devices.isEmpty() && Wearables.devices.value.isNotEmpty() -> null
             devices.isEmpty() ->
-                "Meta AI has not shared any glasses with FastChat. In the Meta AI app, check that the glasses " +
+                "Meta AI has not shared any glasses with QuickTalk. In the Meta AI app, check that the glasses " +
                     "are connected and that the Device Access Toolkit is installed on them (Dev Mode)."
             displays.isEmpty() ->
-                "FastChat needs Meta Ray-Ban Display glasses. Meta AI only shared: ${devices.joinToString { it.name }}."
+                "QuickTalk needs Meta Ray-Ban Display glasses. Meta AI only shared: ${devices.joinToString { it.name }}."
             displays.any { it.compatibility == DeviceCompatibility.DEVICE_UPDATE_REQUIRED } ->
                 "${displays.first().name} needs a firmware update in the Meta AI app."
             displays.none { it.linkState == LinkState.CONNECTED } ->
