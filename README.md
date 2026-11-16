@@ -35,12 +35,12 @@ A concept desk battle station you can explore: two 27" QHD monitors in one titan
 - **Build it yourself:** a verified, priced [shopping list](night-array/kit/BOM.md) of real parts (screens, dock, power, keyboard, mouse, wireless chargers, steel), also in the app.
 - **Install:** download [`night-array/NightArray.apk`](night-array/NightArray.apk) on an Android phone and open it.
 
-### [Prometheus Worlds](prometheus-worlds-site/)
+### [Prometheus Worlds](https://github.com/nskpaun/prometheus-worlds)
 
-A marketing site for the local world-building app in [`local-worlds/`](local-worlds/). The Mac app is still titled Nate’s Worlds. Photos of a room, or a sentence describing one, become a 3D world you can orbit, relight, and drop balls into. Everything runs on your Mac. Living scenes with motion and music are marked as coming soon.
+An open source world builder that runs entirely on a 64 GB Mac: a sentence or photos become a 3D world with visuals, colliders, sound and motion.
 
-- **Site:** [`prometheus-worlds-site/`](prometheus-worlds-site/), ready to deploy on Vercel with that folder as the root directory.
-- **App:** build it from [`local-worlds/`](local-worlds/). Apple Silicon, macOS 14 or later.
+- **App:** moved to its own repository, [nskpaun/prometheus-worlds](https://github.com/nskpaun/prometheus-worlds). Clone it, open the Xcode project and press Run.
+- **Site:** [`prometheus-worlds-site/`](prometheus-worlds-site/) stays here and deploys on Vercel with that folder as the root directory.
 
 ### [FastChat Glasses](fastchat-glasses/)
 
@@ -57,7 +57,7 @@ An AAC app for people who cannot speak, for **Meta Ray-Ban Display** glasses and
   README.md          what it is, how to install, how to build
   ...                source, assets, prebuilt artifacts
 web/<app-name>/      browser port of that app, deployed on its own
-prometheus-worlds-site/  marketing site for local-worlds, deployed on its own
+prometheus-worlds-site/  marketing site for Prometheus Worlds, deployed on its own
 ```
 
 To add an app, create a new top-level directory with its own README, then add an entry under **Apps** above.
