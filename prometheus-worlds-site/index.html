@@ -4,10 +4,10 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Prometheus Worlds</title>
-    <meta name="description" content="Type a sentence. Get a world you can walk through. It runs on your Mac and nowhere else." />
+    <meta name="description" content="An open source world builder that runs 100% locally on a Mac with 64 GB of memory. Help push how good a locally generated world can be." />
     <meta name="theme-color" content="#0a0a0b" />
     <meta property="og:title" content="Prometheus Worlds" />
-    <meta property="og:description" content="Type a sentence. Get a world you can walk through. It runs on your Mac." />
+    <meta property="og:description" content="The frontier of locally generated worlds." />
     <meta property="og:type" content="website" />
     <meta property="og:image" content="/media/tower-1400.webp" />
     <meta name="twitter:card" content="summary_large_image" />
@@ -22,10 +22,11 @@
         <span>Prometheus Worlds</span>
       </a>
       <nav aria-label="Page">
-        <a href="#worlds">Worlds</a>
-        <a href="#how">How</a>
-        <a href="#truth">Limits</a>
-        <a class="go" href="#build">Build it</a>
+        <a href="#what">What</a>
+        <a href="#status">Status</a>
+        <a href="#rules">Rules</a>
+        <a href="#help">Help</a>
+        <a class="go" href="https://github.com/nskpaun/NatesApps/tree/main/local-worlds">Source</a>
       </nav>
     </header>
 
@@ -33,103 +34,85 @@
       <section class="hero">
         <img class="hero-shot" src="/media/tower-1400.webp" srcset="/media/tower-800.webp 800w, /media/tower-1400.webp 1400w" sizes="100vw" width="1400" height="875" alt="A wizard's study at night: a brass globe on a desk, bookshelves, a fireplace, and points of light in the air." fetchpriority="high" />
         <div class="hero-text">
-          <p class="tag">Mac app · runs offline</p>
-          <h1>Steal<br />the fire.</h1>
-          <p class="lede">Type a sentence. Get a world. Walk through it.</p>
-          <p class="lede dim">It runs on your Mac. Nothing leaves the machine.</p>
-          <a class="button" href="#build">Build it</a>
-          <a class="button line" href="#worlds">See the worlds</a>
+          <h1>The frontier of locally generated worlds.</h1>
+          <p class="lede">This project aims to be on the frontier of how high quality of a world you can generate on a 64GB mac<i>. Please contribute!</i></p>
         </div>
-        <p class="caption">“A wizard’s tower study at night.” One sentence. 29 minutes.</p>
+        <p class="caption">“A wizard’s tower study at night.” -29 minutes</p>
       </section>
 
-      <section class="stats" aria-label="Facts">
-        <div><b>0</b><span>cloud calls</span></div>
-        <div><b>4</b><span>local models</span></div>
-        <div><b>~30</b><span>minutes a world</span></div>
-        <div><b>48</b><span>GB memory ceiling</span></div>
+      <section id="what" class="block">
+        <p class="tag">01 · What</p>
+        <h2>What is Prometheus Worlds?</h2>
+        <p class="lead">An open source world builder. A world has visuals, sound and motion. Today it does four things.</p>
+        <ol class="steps four">
+          <li><b>Sentence to world.</b> Generate a world from a natural language description.</li>
+          <li><b>Photos to world.</b> Digitally recreate a real world space from a photograph.</li>
+          <li><b>Stitching.</b> Put worlds side by side and interpolate the connection between the two.</li>
+          <li><b>Export to Game Engine.</b></li>
+        </ol>
+        <p class="note">The key restriction is it needs to be able to run 100% locally on reasonable consumer hardware: specifically a Mac with 64GB of memory.</p>
       </section>
 
-      <section id="worlds" class="block">
-        <p class="tag">01 · Worlds</p>
-        <h2>Each one came from a sentence.</h2>
-        <p class="lead">Nobody touched them after. The trees sway. The globe turns. The tram comes through the snow.</p>
+      <section id="status" class="block">
+        <p class="tag">02 · Status</p>
+        <h2>Where it stands.</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th></th><th>Visuals</th><th>Colliders</th><th>Sound</th><th>Motion</th></tr>
+            </thead>
+            <tbody>
+              <tr><th>Sentence to world</th><td class="rough">Rough up close</td><td class="ok">Works</td><td class="ok">Works</td><td class="rough">Works, rigid</td></tr>
+              <tr><th>Photos to world</th><td class="rough">Rough, needs 60+ photos</td><td class="rough">Works, some holes</td><td class="no">Missing</td><td class="no">Missing</td></tr>
+              <tr><th>Stitching</th><td class="ok">Works</td><td class="ok">Works</td><td class="rough">Untested</td><td class="rough">Untested</td></tr>
+              <tr><th>Export</th><td class="no">Missing</td><td class="no">Missing</td><td class="no">Missing</td><td class="no">Missing</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="note">Every “rough” and “missing” is a place to help.</p>
+
         <div class="grid">
           <figure class="wide">
             <img src="/media/snow-1400.webp" srcset="/media/snow-800.webp 800w, /media/snow-1400.webp 1400w" sizes="(max-width: 800px) 100vw, 1100px" width="1400" height="875" loading="lazy" alt="A snowy village square at dusk with a fir tree and lit chalets." />
-            <figcaption><b>Snowy Village Square</b> Snow falls. The fir moves. A tram passes.</figcaption>
-          </figure>
-          <figure>
-            <img src="/media/blossom-800.webp" width="800" height="500" loading="lazy" alt="A garden of pink cherry trees with a red gate." />
-            <figcaption><b>Cherry Blossom Garden</b> Petals come down all day.</figcaption>
-          </figure>
-          <figure>
-            <img src="/media/conservatory-800.webp" width="800" height="500" loading="lazy" alt="A glass conservatory full of palms around a stone fountain." />
-            <figcaption><b>Palm Conservatory</b> The fan turns. The baskets swing.</figcaption>
+            <figcaption><b>Sentence to world · Snowy Village Square</b> Snow falls. The fir moves. A tram passes.</figcaption>
           </figure>
           <figure>
             <img src="/media/tower-globe-800.webp" width="800" height="500" loading="lazy" alt="A brass globe up close in a dark study, with lights drifting around it." />
-            <figcaption><b>Alchemist’s Tower Study</b> The globe spins. The lantern swings.</figcaption>
+            <figcaption><b>Sentence to world · Alchemist’s Tower Study</b> The globe spins. The lantern swings.</figcaption>
           </figure>
           <figure>
-            <img src="/media/park-800.webp" width="800" height="500" loading="lazy" alt="A park with trees, a wooden swing frame and a bench." />
-            <figcaption><b>Breezy Park</b> Wind in the trees. A car on the road.</figcaption>
-          </figure>
-          <figure class="wide">
-            <img src="/media/office-splat-1400.webp" srcset="/media/office-splat-800.webp 800w, /media/office-splat-1400.webp 1400w" sizes="(max-width: 800px) 100vw, 1100px" width="1400" height="875" loading="lazy" alt="A real home office rebuilt in 3D: a wooden desk, two monitors, shelves." />
-            <figcaption><b>A real room</b> Twenty phone photos. A few minutes.</figcaption>
-          </figure>
-        </div>
-      </section>
-
-      <section id="how" class="block">
-        <p class="tag">02 · How</p>
-        <h2>What it does.</h2>
-        <ol class="steps">
-          <li><b>Write it.</b> Say what is in the place and how it looks. Two sentences will do.</li>
-          <li><b>Wait.</b> The Mac blocks it out, shapes the objects, paints it and trains the world. About half an hour.</li>
-          <li><b>Walk in.</b> W, A, S, D. Drag to look. Or tick Tour and sit back.</li>
-          <li><b>Break it.</b> Drop balls. They bounce off the furniture. Turn the lights out and carry a lamp.</li>
-          <li><b>Listen.</b> Wind, a creak, an engine going past, and slow music. The app makes the sound itself.</li>
-          <li><b>Join them.</b> Push rooms together. Doorways open where the walls meet. That is a dungeon.</li>
-        </ol>
-        <div class="pair">
-          <figure>
-            <img src="/media/office-night-800.webp" width="800" height="500" loading="lazy" alt="The office at night, lit by one warm lamp." />
-            <figcaption>Night mode. One lamp. You move it.</figcaption>
+            <img src="/media/office-splat-800.webp" width="800" height="500" loading="lazy" alt="A real home office rebuilt in 3D: a wooden desk, two monitors, shelves." />
+            <figcaption><b>Photos to world · The office</b> From 20 phone photos.</figcaption>
           </figure>
           <figure>
             <img src="/media/stitch-doorway-800.webp" width="800" height="500" loading="lazy" alt="Looking through a doorway from one invented room into another." />
-            <figcaption>Two rooms. One doorway.</figcaption>
+            <figcaption><b>Stitching · My First Dungeon</b> Three rooms. Two doorways.</figcaption>
+          </figure>
+          <figure class="empty">
+            <div class="blank"><span>Not built yet</span></div>
+            <figcaption><b>Export · Godot</b> Nothing to show. This is the next pillar.</figcaption>
           </figure>
         </div>
       </section>
 
-      <section id="truth" class="block">
-        <p class="tag">03 · Limits</p>
-        <h2>The truth.</h2>
+      <section id="rules" class="block">
+        <p class="tag">03 · Rules</p>
         <ul class="plain">
-          <li>It is rough up close. From across the room it holds.</li>
-          <li>Trees are solid shapes that bend. Single leaves do not move.</li>
-          <li>The car slides. Its wheels do not turn.</li>
-          <li>The model that lays out the room is small. Sometimes it gets the room wrong. Ask again.</li>
-          <li>Rooms from photos want sixty photos or more. Twenty is thin.</li>
-          <li>You need an Apple Silicon Mac. It was built on an M4 Pro with 64 GB.</li>
+          <li>One machine, 64 GB of memory max.</li>
+          <li>Open models only.</li>
+          <li>No accounts, no cloud, no analytics, no external apis.</li>
         </ul>
       </section>
 
-      <section id="build" class="block last">
-        <p class="tag">04 · Build</p>
-        <h2>Get it.</h2>
-        <p class="lead">There is no installer. You build it from source. It takes a few commands and a lot of disk.</p>
-        <a class="button" href="https://github.com/nskpaun/NatesApps/tree/main/local-worlds">Source on GitHub</a>
-        <a class="button line" href="https://github.com/nskpaun/NatesApps/blob/main/local-worlds/README.md">Read the instructions</a>
+      <section id="help" class="block last">
+        <p class="tag">04 · How to Help</p>
+        <p class="lead">The whole project is open source. You can contribute PRs or you can fork it and send us a link to your fork for us to pull in your improvements</p>
       </section>
     </main>
 
     <footer>
       <span>Prometheus Worlds</span>
-      <span>Runs on your Mac. Stays on your Mac.</span>
+      <span>One Mac. 64 GB. No cloud.</span>
     </footer>
     <script type="module" src="/src/main.js"></script>
   </body>
