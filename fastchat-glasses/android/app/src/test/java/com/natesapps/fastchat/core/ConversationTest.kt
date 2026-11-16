@@ -265,7 +265,7 @@ class ConversationTest {
     @Test
     fun `the glasses screen follows the phase and carries the highlight`() {
         assertEquals(
-            GlassesScreen.Status("Listening…", offersQuickPhrases = true),
+            GlassesScreen.Status("Listening", offersQuickPhrases = true, activity = GlassesCue.LISTENING),
             screenFor(run(Event.Start).first),
         )
 
@@ -279,7 +279,7 @@ class ConversationTest {
         assertEquals(Dpad.RIGHT, (screenFor(highlighted) as GlassesScreen.Choices).focus)
 
         val speaking = run(tap, from = highlighted).first
-        assertEquals(GlassesScreen.Status("Saying", four[1].text), screenFor(speaking))
+        assertEquals(GlassesScreen.Status("Speaking", four[1].text, activity = GlassesCue.SPEAKING), screenFor(speaking))
     }
 
     @Test

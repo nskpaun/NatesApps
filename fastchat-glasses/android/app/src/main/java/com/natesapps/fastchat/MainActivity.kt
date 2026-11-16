@@ -7,10 +7,14 @@ import android.content.pm.PackageManager
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions
 import androidx.core.content.ContextCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
@@ -39,7 +43,10 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT),
+        )
         setContent {
             FastChatTheme {
                 FastChatScreen(
@@ -57,6 +64,11 @@ class MainActivity : ComponentActivity() {
                 fastChat.conversation.map { it.phase != Phase.Off }.distinctUntilChanged().collect { running ->
                     if (running) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                     else window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                    WindowCompat.getInsetsController(window, window.decorView).apply {
+                        systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                        if (running) hide(WindowInsetsCompat.Type.systemBars())
+                        else show(WindowInsetsCompat.Type.systemBars())
+                    }
                 }
             }
         }
@@ -69,6 +81,11 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         handleRegistration(intent)
         handleDebugExtras(intent)
+    }
+
+    override fun onStop() {
+        super.onStop()
+        if (!isChangingConfigurations && fastChat.conversation.value.phase != Phase.Off) fastChat.stop()
     }
 
     /**
@@ -97,7 +114,7 @@ class MainActivity : ComponentActivity() {
             "left" -> GlassesInput.Highlight(Dpad.LEFT)
             "cw" -> GlassesInput.Turn(clockwise = true)
             "ccw" -> GlassesInput.Turn(clockwise = false)
-            "tap" -> GlassesInput.Confirm
+            "pinch", "tap" -> GlassesInput.Confirm
             "back" -> GlassesInput.Back
             else -> null
         }

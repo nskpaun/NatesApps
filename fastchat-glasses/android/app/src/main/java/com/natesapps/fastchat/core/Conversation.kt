@@ -20,7 +20,7 @@ enum class Dpad {
     fun turned(clockwise: Boolean): Dpad = entries[(ordinal + (if (clockwise) 1 else entries.size - 1)) % entries.size]
 }
 
-/** What the wearer can do from the glasses. Nothing is said until a highlighted reply is tapped. */
+/** Nothing is said until a highlighted reply is confirmed with a thumb/index pinch (or temple tap). */
 sealed interface GlassesInput {
     /** A swipe: highlight the reply in that direction. */
     data class Highlight(val direction: Dpad) : GlassesInput
@@ -29,7 +29,7 @@ sealed interface GlassesInput {
     data class Turn(val clockwise: Boolean) : GlassesInput
 
     /**
-     * A finger tap: say the highlighted reply. With nothing highlighted it asks for other replies
+     * A thumb/index pinch: say the highlighted reply. With nothing highlighted it asks for other replies
      * while choosing, and opens the quick phrases while listening.
      */
     data object Confirm : GlassesInput

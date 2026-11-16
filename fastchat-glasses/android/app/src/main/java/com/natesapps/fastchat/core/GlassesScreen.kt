@@ -7,6 +7,7 @@ sealed interface GlassesScreen {
         val title: String,
         val detail: String? = null,
         val offersQuickPhrases: Boolean = false,
+        val activity: GlassesCue = GlassesCue.QUIET,
     ) : GlassesScreen
 
     /**
@@ -26,10 +27,14 @@ sealed interface GlassesScreen {
 /** Longest stretch of the partner's words echoed above the replies. */
 private const val HEARD_PREVIEW_CHARS = 70
 
-fun screenFor(state: State): GlassesScreen = when (val phase = state.phase) {
-    Phase.Off -> GlassesScreen.Status("FastChat", "Paused")
+fun screenFor(state: State, hearingSpeech: Boolean = false): GlassesScreen = when (val phase = state.phase) {
+    Phase.Off -> GlassesScreen.Status("Paused")
 
-    Phase.Listening -> GlassesScreen.Status("Listening…", offersQuickPhrases = true)
+    Phase.Listening -> GlassesScreen.Status(
+        "Listening",
+        offersQuickPhrases = true,
+        activity = if (hearingSpeech) GlassesCue.HEARING else GlassesCue.LISTENING,
+    )
 
     is Phase.Choosing -> GlassesScreen.Choices(
         heard = phase.heard?.let(::preview),
@@ -39,8 +44,21 @@ fun screenFor(state: State): GlassesScreen = when (val phase = state.phase) {
         focus = phase.focus,
     )
 
-    is Phase.Speaking -> GlassesScreen.Status("Saying", phase.text)
+    is Phase.Speaking -> GlassesScreen.Status("Speaking", phase.text, activity = GlassesCue.SPEAKING)
 }
+
+enum class GlassesCue { QUIET, LISTENING, HEARING, GENERATING, SWIPE_THUMB, PINCH, SPEAKING }
+
+/** The first completed reply is enough to start choosing; the other slots can still be empty. */
+val GlassesScreen.cue: GlassesCue
+    get() = when (this) {
+        is GlassesScreen.Status -> activity
+        is GlassesScreen.Choices -> when {
+            focus != null -> GlassesCue.PINCH
+            replies.any { it != null } -> GlassesCue.SWIPE_THUMB
+            else -> GlassesCue.GENERATING
+        }
+    }
 
 /** The end of a long utterance matters most: it is usually the question. */
 private fun preview(heard: String): String =

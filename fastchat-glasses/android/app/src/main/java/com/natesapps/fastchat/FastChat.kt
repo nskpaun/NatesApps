@@ -145,7 +145,12 @@ class FastChat(private val app: Application) {
             try {
                 _setup.value = Setup.Loading("Speech recognition")
                 val loadedEars = withContext(Dispatchers.Default) { Ears(app, models) }
-                scope.launch { loadedEars.hearingSpeech.collect { _hearingSpeech.value = it } }
+                scope.launch {
+                    loadedEars.hearingSpeech.collect {
+                        _hearingSpeech.value = it
+                        glasses.show(screenFor(_conversation.value, hearingSpeech = it))
+                    }
+                }
 
                 _setup.value = Setup.Loading("Voice")
                 val loadedVoice = withContext(Dispatchers.Default) { Voice(app, models) }
@@ -215,7 +220,7 @@ class FastChat(private val app: Application) {
         }
         // FastChat is on the glasses only while a conversation is running.
         glasses.setWanted(step.state.phase != Phase.Off)
-        glasses.show(screenFor(step.state))
+        glasses.show(screenFor(step.state, hearingSpeech = _hearingSpeech.value))
         step.effects.forEach(::perform)
     }
 
@@ -281,7 +286,9 @@ class FastChat(private val app: Application) {
                         throw e // stopped on purpose: the state machine has already moved on
                     } catch (e: Exception) {
                         Log.e(TAG, "speaking failed", e)
+                        dispatch(Event.Stop)
                         dispatch(Event.Problem(e.message ?: "The voice failed"))
+                        return@launch
                     }
                     dispatch(Event.SpeechFinished)
                 }

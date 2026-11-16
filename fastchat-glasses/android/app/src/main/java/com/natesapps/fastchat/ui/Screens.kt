@@ -1,13 +1,12 @@
 package com.natesapps.fastchat.ui
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -30,7 +29,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.VolumeOff
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
-import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -47,6 +45,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
@@ -55,18 +54,21 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.semantics
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.natesapps.fastchat.FastChat
 import com.natesapps.fastchat.Settings
 import com.natesapps.fastchat.core.Dpad
 import com.natesapps.fastchat.core.GlassesInput
 import com.natesapps.fastchat.core.Phase
-import com.natesapps.fastchat.core.State
+import com.natesapps.fastchat.core.partnerTurn
 import com.natesapps.fastchat.glasses.GlassesLink
 import java.util.Locale
 import kotlin.math.roundToInt
@@ -84,7 +86,7 @@ fun FastChatScreen(
     var showSettings by rememberSaveable { mutableStateOf(false) }
     BackHandler(enabled = showSettings) { showSettings = false }
 
-    Surface(color = Ink, modifier = Modifier.fillMaxSize()) {
+    Surface(color = Cream, modifier = Modifier.fillMaxSize()) {
         BoxWithConstraints(Modifier.fillMaxSize().safeDrawingPadding(), contentAlignment = Alignment.TopCenter) {
             // On a wide screen (landscape, or the Fold opened) the simulated glasses sit beside
             // the conversation instead of squeezing it.
@@ -191,41 +193,55 @@ private fun TalkScreen(
     onSettings: () -> Unit,
 ) {
     val conversation by fastChat.conversation.collectAsStateWithLifecycle()
-    val hearing by fastChat.hearingSpeech.collectAsStateWithLifecycle()
     val running = conversation.phase != Phase.Off
+    var hasStarted by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(running) { if (running) hasStarted = true }
+    BackHandler(enabled = running) { fastChat.stop() }
 
     Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(24.dp)) {
         Column(Modifier.weight(1f).fillMaxHeight()) {
-            Row(
-                Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                GlassesChip(glasses, onClick = onSettings, modifier = Modifier.weight(1f, fill = false))
-                IconButton(onClick = onSettings) {
-                    Icon(Icons.Default.Settings, contentDescription = "Settings", tint = Muted)
+            if (running) {
+                PartnerView(
+                    turn = partnerTurn(conversation.phase, glasses.stage == GlassesLink.Stage.READY),
+                    name = name,
+                    modifier = Modifier.weight(1f).semantics {
+                        customActions = listOf(CustomAccessibilityAction("Pause conversation") { fastChat.stop(); true })
+                    },
+                )
+            } else {
+                Row(
+                    Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    GlassesChip(glasses, onClick = onSettings, modifier = Modifier.weight(1f, fill = false))
+                    IconButton(onClick = onSettings) {
+                        Icon(Icons.Default.Settings, contentDescription = "Settings", tint = Muted)
+                    }
                 }
-            }
-
-            Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                PhaseView(conversation, name, hearing)
-            }
-
-            conversation.problem?.let {
-                Text(it, color = Alert, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(bottom = 12.dp))
-            }
-            (glasses.hint ?: glasses.problem.takeIf { glasses.stage != GlassesLink.Stage.READY })?.let {
-                Text(it, color = Alert, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(bottom = 12.dp))
+                Column(
+                    Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(vertical = 24.dp),
+                    verticalArrangement = Arrangement.spacedBy(20.dp, Alignment.CenterVertically),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text(if (hasStarted) "Paused" else "Ready to talk", style = MaterialTheme.typography.displaySmall, textAlign = TextAlign.Center)
+                    Text(
+                        "Hand this phone to your conversation partner. The arrow will remind them to look toward you.",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = Muted,
+                        textAlign = TextAlign.Center,
+                    )
+                    conversation.problem?.let { Text(it, color = Alert, style = MaterialTheme.typography.bodyMedium) }
+                    (glasses.hint ?: glasses.problem)?.let { Text(it, color = Alert, style = MaterialTheme.typography.bodyMedium) }
+                }
             }
             if (glasses.simulated && !sideBySide) SimulatedGlasses(fastChat, Modifier.fillMaxWidth().padding(bottom = 16.dp))
-            VolumeControl(fastChat, Modifier.padding(bottom = 8.dp))
-
-            if (running) {
-                OutlinedButton(onClick = fastChat::stop, modifier = Modifier.fillMaxWidth().height(56.dp)) { Text("Pause") }
-            } else {
+            if (!running) {
+                VolumeControl(fastChat, Modifier.padding(bottom = 8.dp))
                 Button(onClick = onStart, modifier = Modifier.fillMaxWidth().height(64.dp)) {
-                    Text("Start conversation", style = MaterialTheme.typography.titleLarge)
+                    Text(if (hasStarted) "Resume conversation" else "Start conversation", style = MaterialTheme.typography.titleLarge)
                 }
+                Text("Use Android Back to pause while talking.", color = Muted, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 12.dp))
             }
         }
         if (sideBySide) SimulatedGlasses(fastChat, Modifier.width(340.dp).align(Alignment.CenterVertically))
@@ -233,87 +249,15 @@ private fun TalkScreen(
 }
 
 @Composable
-private fun PhaseView(conversation: State, name: String, hearing: Boolean) {
-    val who = name.ifEmpty { "I" }
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(20.dp),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        when (val phase = conversation.phase) {
-            Phase.Off -> {
-                Text("FastChat", style = MaterialTheme.typography.displaySmall)
-                Text(
-                    "Press Start, then hand this phone to the person you are talking with.",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = Muted,
-                    textAlign = TextAlign.Center,
-                )
-            }
-
-            Phase.Listening -> {
-                MicOrb(hearing)
-                Text(
-                    if (name.isEmpty()) "Go ahead, I'm listening" else "Talk to $name",
-                    style = MaterialTheme.typography.displaySmall,
-                    textAlign = TextAlign.Center,
-                )
-                Text(
-                    "Speak normally. $who will answer through this phone.",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = Muted,
-                    textAlign = TextAlign.Center,
-                )
-            }
-
-            is Phase.Choosing -> {
-                phase.heard?.let {
-                    Text("“$it”", style = MaterialTheme.typography.bodyLarge, color = Muted, textAlign = TextAlign.Center)
-                }
-                Text(
-                    if (name.isEmpty()) "Choosing a reply…" else "$name is choosing a reply…",
-                    style = MaterialTheme.typography.headlineMedium,
-                    textAlign = TextAlign.Center,
-                )
-            }
-
-            is Phase.Speaking -> Text(
-                phase.text,
-                style = MaterialTheme.typography.displaySmall,
-                color = Signal,
-                textAlign = TextAlign.Center,
-            )
-        }
-    }
-}
-
-@Composable
-private fun MicOrb(hearing: Boolean) {
-    val scale by animateFloatAsState(if (hearing) 1.15f else 1f, label = "mic")
-    Box(
-        Modifier.size(112.dp).scale(scale).clip(CircleShape).background(if (hearing) Signal else Panel)
-            .border(2.dp, if (hearing) Signal else Line, CircleShape),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            Icons.Default.Mic,
-            contentDescription = if (hearing) "Hearing speech" else "Waiting for speech",
-            tint = if (hearing) Ink else Muted,
-            modifier = Modifier.size(48.dp),
-        )
-    }
-}
-
-@Composable
 private fun GlassesChip(glasses: GlassesLink.Status, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val ready = glasses.stage == GlassesLink.Stage.READY || glasses.stage == GlassesLink.Stage.STANDING_BY
     Row(
-        modifier.clip(RoundedCornerShape(50)).background(Panel).clickable(onClick = onClick)
+        modifier.clip(RoundedCornerShape(50)).background(Linen).clickable(onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Box(Modifier.size(10.dp).clip(CircleShape).background(if (ready) Signal else Alert))
+        Box(Modifier.size(10.dp).clip(CircleShape).background(if (ready) Terracotta else Alert))
         Text(glassesSummary(glasses), style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
@@ -331,14 +275,15 @@ private fun glassesSummary(glasses: GlassesLink.Status): String {
 
 /** The simulated glasses: what their display shows, and buttons standing in for the band. */
 @Composable
+@OptIn(ExperimentalLayoutApi::class)
 private fun SimulatedGlasses(fastChat: FastChat, modifier: Modifier = Modifier) {
     val mock by fastChat.glasses.mockGlasses.collectAsStateWithLifecycle()
-    Row(
-        modifier.clip(RoundedCornerShape(20.dp)).background(Panel).padding(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    Column(
+        modifier.clip(RoundedCornerShape(20.dp)).background(Linen).verticalScroll(rememberScrollState()).padding(12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Box(Modifier.size(170.dp).clip(RoundedCornerShape(12.dp)).background(Ink)) {
+        Box(Modifier.widthIn(max = 280.dp).fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(12.dp)).background(androidx.compose.ui.graphics.Color.Black)) {
             mock?.let { glasses ->
                 key(glasses) {
                     AndroidView(
@@ -348,26 +293,22 @@ private fun SimulatedGlasses(fastChat: FastChat, modifier: Modifier = Modifier) 
                 }
             }
         }
-        Column(
-            Modifier.weight(1f),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             val swipe = { direction: Dpad -> fastChat.glasses.simulate(GlassesInput.Highlight(direction)) }
             PadKey("▲", "Swipe up") { swipe(Dpad.UP) }
-            Row(horizontalArrangement = Arrangement.spacedBy(40.dp)) {
-                PadKey("◀", "Swipe left") { swipe(Dpad.LEFT) }
-                PadKey("▶", "Swipe right") { swipe(Dpad.RIGHT) }
-            }
+            PadKey("▶", "Swipe right") { swipe(Dpad.RIGHT) }
             PadKey("▼", "Swipe down") { swipe(Dpad.DOWN) }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                TextButton(onClick = { fastChat.glasses.simulate(GlassesInput.Turn(clockwise = false)) }) { Text("⟲") }
-                TextButton(onClick = { fastChat.glasses.simulate(GlassesInput.Confirm) }) { Text("Tap") }
-                TextButton(onClick = { fastChat.glasses.simulate(GlassesInput.Turn(clockwise = true)) }) { Text("⟳") }
+            PadKey("◀", "Swipe left") { swipe(Dpad.LEFT) }
+        }
+        FlowRow(horizontalArrangement = Arrangement.Center) {
+            TextButton(onClick = { fastChat.glasses.simulate(GlassesInput.Turn(clockwise = false)) }) {
+                Text("⟲", modifier = Modifier.semantics { contentDescription = "Turn counterclockwise" })
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                TextButton(onClick = { fastChat.glasses.simulate(GlassesInput.Back) }) { Text("Back") }
+            TextButton(onClick = { fastChat.glasses.simulate(GlassesInput.Confirm) }) { Text("Pinch") }
+            TextButton(onClick = { fastChat.glasses.simulate(GlassesInput.Turn(clockwise = true)) }) {
+                Text("⟳", modifier = Modifier.semantics { contentDescription = "Turn clockwise" })
             }
+            TextButton(onClick = { fastChat.glasses.simulate(GlassesInput.Back) }) { Text("Back") }
         }
     }
 }
@@ -377,7 +318,7 @@ private fun PadKey(glyph: String, description: String, onClick: () -> Unit) {
     Box(
         Modifier.size(44.dp).clip(CircleShape).background(Line).clickable(onClickLabel = description, onClick = onClick),
         contentAlignment = Alignment.Center,
-    ) { Text(glyph, color = Paper) }
+    ) { Text(glyph, color = Cocoa) }
 }
 
 // ---- Settings --------------------------------------------------------------------------------
@@ -523,7 +464,7 @@ private fun VolumeControl(fastChat: FastChat, modifier: Modifier = Modifier, pla
 
 @Composable
 private fun Section(title: String) {
-    Text(title, style = MaterialTheme.typography.labelLarge, color = Signal, modifier = Modifier.padding(top = 16.dp))
+    Text(title, style = MaterialTheme.typography.labelLarge, color = Terracotta, modifier = Modifier.padding(top = 16.dp))
 }
 
 private fun gigabytes(bytes: Long): String = String.format(Locale.US, "%.1f GB", bytes / 1e9)

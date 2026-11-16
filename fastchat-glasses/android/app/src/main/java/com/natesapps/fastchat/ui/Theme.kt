@@ -2,37 +2,36 @@ package com.natesapps.fastchat.ui
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
-import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
-val Ink = Color(0xFF0E1116)
-val Panel = Color(0xFF181D25)
-val Line = Color(0xFF2A313C)
-val Signal = Color(0xFF5BE49B)
-val Paper = Color(0xFFF2F4F7)
-val Muted = Color(0xFF9AA4B2)
-val Alert = Color(0xFFFFB454)
+val Cream = Color(0xFFFFF3DF)
+val Linen = Color(0xFFF7E8D2)
+val Line = Color(0xFFD9C4AB)
+val Terracotta = Color(0xFFA94F30)
+val Cocoa = Color(0xFF432C22)
+val Muted = Color(0xFF785E50)
+val Alert = Color(0xFF9A3A26)
 
-private val colors = darkColorScheme(
-    primary = Signal,
-    onPrimary = Ink,
-    secondary = Signal,
-    background = Ink,
-    onBackground = Paper,
-    surface = Panel,
-    onSurface = Paper,
-    surfaceVariant = Panel,
+private val colors = lightColorScheme(
+    primary = Terracotta,
+    onPrimary = Cream,
+    secondary = Terracotta,
+    background = Cream,
+    onBackground = Cocoa,
+    surface = Cream,
+    onSurface = Cocoa,
+    surfaceVariant = Linen,
     onSurfaceVariant = Muted,
     outline = Line,
     error = Alert,
 )
 
-// One dark, high-contrast look: the phone is read at arm's length by someone who has never seen
-// the app, so the type is large and there is very little of it.
+// Warm paper and cocoa, with large quiet type that can be read at arm's length.
 private val type = Typography().run {
     copy(
         displaySmall = TextStyle(fontSize = 40.sp, lineHeight = 46.sp, fontWeight = FontWeight.SemiBold),

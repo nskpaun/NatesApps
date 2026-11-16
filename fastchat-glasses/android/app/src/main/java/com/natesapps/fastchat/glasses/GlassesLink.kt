@@ -1,6 +1,7 @@
 package com.natesapps.fastchat.glasses
 
 import android.app.Activity
+import android.animation.ValueAnimator
 import android.content.Context
 import android.content.pm.ApplicationInfo
 import android.os.SystemClock
@@ -20,14 +21,9 @@ import com.meta.wearable.dat.display.Display
 import com.meta.wearable.dat.display.addDisplay
 import com.meta.wearable.dat.display.removeDisplay
 import com.meta.wearable.dat.display.types.DisplayState
-import com.meta.wearable.dat.display.views.Alignment
 import com.meta.wearable.dat.display.views.ContentScope
 import com.meta.wearable.dat.display.views.Direction
-import com.meta.wearable.dat.display.views.FlexBoxBackground
-import com.meta.wearable.dat.display.views.FlexBoxScope
-import com.meta.wearable.dat.display.views.IconName
-import com.meta.wearable.dat.display.views.TextColor
-import com.meta.wearable.dat.display.views.TextStyle
+import com.meta.wearable.dat.display.views.ImageSize
 import com.meta.wearable.dat.inputs.addInputs
 import com.meta.wearable.dat.inputs.removeInputs
 import com.meta.wearable.dat.inputs.types.DragAction
@@ -44,7 +40,8 @@ import com.natesapps.fastchat.core.Dial
 import com.natesapps.fastchat.core.Dpad
 import com.natesapps.fastchat.core.GlassesInput
 import com.natesapps.fastchat.core.GlassesScreen
-import com.natesapps.fastchat.core.Reply
+import com.natesapps.fastchat.core.GlassesCue
+import com.natesapps.fastchat.core.cue
 import kotlin.math.abs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -56,10 +53,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.conflate
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.isActive
 
 private const val TAG = "FastChatGlasses"
 
@@ -68,9 +66,6 @@ private const val TAP_AFTER_DIAL_MS = 500L
 
 /** How far the simulated pinch-and-drag travels: a little over one dial step. */
 private const val SIMULATED_TURN = Dial.DEFAULT_STEP * 1.2f
-
-/** How far the top and bottom replies are inset from the sides, so they sit in the middle. */
-private const val SIDE_INSET = 90
 
 /** How often to try again while registered glasses exist but no session is open. */
 private const val RETRY_MS = 5_000L
@@ -137,6 +132,7 @@ class GlassesLink(private val appContext: Context, private val scope: CoroutineS
     private var dialReleasedAt = 0L
 
     private val screen = MutableStateFlow<GlassesScreen>(GlassesScreen.Status("FastChat"))
+    private val renderer = GlassesRenderer()
     private val display = MutableStateFlow<Display?>(null)
     private val displayStarted = MutableStateFlow(false)
 
@@ -221,11 +217,24 @@ class GlassesLink(private val appContext: Context, private val scope: CoroutineS
         scope.launch {
             combine(screen, display, displayStarted, status) { screen, display, up, status ->
                 Triple(screen, display.takeIf { up }, status.dpad)
-            }.distinctUntilChanged().conflate().collect { (screen, display, dpad) ->
-                display ?: return@collect
-                display.sendContent { render(screen, dpad) }.onFailure { error, _ ->
-                    Log.w(TAG, "sendContent failed: ${error.description}")
-                }
+            }.distinctUntilChanged().collectLatest { (screen, display, dpad) ->
+                display ?: return@collectLatest
+                // Replacing native focus targets every frame would reset tap-mode navigation.
+                // D-pad input has its own stable state and can safely animate custom light layers.
+                val animated = dpad && screen.cue != GlassesCue.QUIET && ValueAnimator.areAnimatorsEnabled()
+                val began = SystemClock.elapsedRealtime()
+                var previousFrame = -1
+                do {
+                    val frame = if (animated) GlassesRenderer.animationFrame(SystemClock.elapsedRealtime() - began) else 0
+                    if (frame != previousFrame) {
+                        display.sendContent { render(screen, dpad, frame) }.onFailure { error, _ ->
+                            Log.w(TAG, "sendContent failed: ${error.description}")
+                        }
+                        previousFrame = frame
+                    }
+                    if (!animated) break
+                    delay(120)
+                } while (isActive)
             }
         }
     }
@@ -532,95 +541,48 @@ class GlassesLink(private val appContext: Context, private val scope: CoroutineS
 
     // ---- Drawing -----------------------------------------------------------------------------
 
-    private fun ContentScope.render(screen: GlassesScreen, dpad: Boolean) {
-        when (screen) {
-            is GlassesScreen.Status -> flexBox(
-                direction = Direction.COLUMN,
-                gap = 12,
-                alignment = Alignment.CENTER,
-                crossAlignment = Alignment.CENTER,
-                padding = 24,
-            ) {
-                text(screen.title, style = TextStyle.HEADING)
-                screen.detail?.let { text(it, style = TextStyle.BODY) }
-                if (screen.offersQuickPhrases) {
-                    if (dpad) {
-                        text("Tap for quick phrases", style = TextStyle.META, color = TextColor.SECONDARY)
-                    } else {
-                        button("Quick phrases", onClick = { _inputs.tryEmit(GlassesInput.Confirm) })
+    private fun ContentScope.render(screen: GlassesScreen, dpad: Boolean, frame: Int) {
+        val bitmap = renderer.render(screen, frame)
+        if (dpad || screen !is GlassesScreen.Choices) {
+            val action: (() -> Unit)? = if (!dpad && screen is GlassesScreen.Status && screen.offersQuickPhrases) {
+                { _inputs.tryEmit(GlassesInput.Confirm); Unit }
+            } else null
+            flexBox(padding = 0, onClick = action) { image(bitmap = bitmap, sizePreset = ImageSize.FILL) }
+            return
+        }
+        // The same transparent image, divided into focusable tiles for the SDK's fallback input.
+        // Empty tiles stay in place to reserve geometry, but cannot receive focus or be spoken.
+        flexBox(direction = Direction.COLUMN, gap = 0, padding = 0) {
+            repeat(3) { row ->
+                flexBox(direction = Direction.ROW, gap = 0, padding = 0) {
+                    repeat(3) { column ->
+                        val direction = when (row to column) {
+                            0 to 1 -> Dpad.UP
+                            1 to 2 -> Dpad.RIGHT
+                            2 to 1 -> Dpad.DOWN
+                            1 to 0 -> Dpad.LEFT
+                            else -> null
+                        }
+                        val action: (() -> Unit)? = when {
+                            direction != null && screen.replies.getOrNull(direction.ordinal) != null -> ({
+                                _inputs.tryEmit(GlassesInput.Highlight(direction))
+                                _inputs.tryEmit(GlassesInput.Confirm)
+                                Unit
+                            })
+                            row == 1 && column == 1 && screen.done -> ({
+                                _inputs.tryEmit(GlassesInput.Confirm)
+                                Unit
+                            })
+                            else -> null
+                        }
+                        flexBox(padding = 0, onClick = action, flexGrow = 1f, flexShrink = 1f) {
+                            image(
+                                bitmap = if (row == 1 && column == 1) renderer.tapCentre(screen)
+                                    else android.graphics.Bitmap.createBitmap(bitmap, column * 200, row * 200, 200, 200),
+                                sizePreset = ImageSize.FILL,
+                            )
+                        }
                     }
-                }
-            }
-
-            // The four replies sit where their swipe points: up, right, down and left, around a
-            // small centre that says what a tap will do.
-            is GlassesScreen.Choices -> flexBox(direction = Direction.COLUMN, gap = 6, padding = 8) {
-                flexBox(direction = Direction.ROW, alignment = Alignment.CENTER, paddingStart = SIDE_INSET, paddingEnd = SIDE_INSET) {
-                    slot(screen, Dpad.UP, dpad)
-                }
-                flexBox(direction = Direction.ROW, gap = 6, crossAlignment = Alignment.CENTER) {
-                    slot(screen, Dpad.LEFT, dpad)
-                    centre(screen, dpad)
-                    slot(screen, Dpad.RIGHT, dpad)
-                }
-                flexBox(direction = Direction.ROW, alignment = Alignment.CENTER, paddingStart = SIDE_INSET, paddingEnd = SIDE_INSET) {
-                    slot(screen, Dpad.DOWN, dpad)
-                }
-            }
-        }
-    }
-
-    /**
-     * One reply: its emoji large, its words below. The highlighted one gets a card behind it and
-     * the others dim. In tap mode (no d-pad) touching a reply says it straight away.
-     */
-    private fun FlexBoxScope.slot(screen: GlassesScreen.Choices, position: Dpad, dpad: Boolean) {
-        val reply = screen.replies[position.ordinal]
-        val focused = screen.focus == position
-        val say: (() -> Unit)? = if (dpad || reply == null) null else {
-            {
-                _inputs.tryEmit(GlassesInput.Highlight(position))
-                _inputs.tryEmit(GlassesInput.Confirm)
-            }
-        }
-        flexBox(
-            direction = Direction.COLUMN,
-            gap = 2,
-            alignment = Alignment.CENTER,
-            crossAlignment = Alignment.CENTER,
-            padding = 10,
-            background = if (focused) FlexBoxBackground.CARD else FlexBoxBackground.NONE,
-            onClick = say,
-            flexGrow = 1f,
-            flexShrink = 1f,
-        ) {
-            text(reply?.emoji?.ifEmpty { "•" } ?: "…", style = TextStyle.HEADING, alignSelf = Alignment.CENTER)
-            if (reply != null) {
-                text(
-                    reply.text,
-                    style = TextStyle.BODY,
-                    color = if (screen.focus == null || focused) TextColor.PRIMARY else TextColor.SECONDARY,
-                    alignSelf = Alignment.CENTER,
-                )
-            }
-        }
-    }
-
-    /** The middle of the cross: what a tap does right now. */
-    private fun FlexBoxScope.centre(screen: GlassesScreen.Choices, dpad: Boolean) {
-        val other = if (screen.quick) "back" else "more"
-        flexBox(direction = Direction.COLUMN, alignment = Alignment.CENTER, crossAlignment = Alignment.CENTER, padding = 4) {
-            when {
-                !dpad && screen.done -> button(other.replaceFirstChar(Char::uppercase), onClick = { _inputs.tryEmit(GlassesInput.Confirm) })
-                !dpad -> text("…", style = TextStyle.META, color = TextColor.SECONDARY)
-                screen.focus != null -> {
-                    text("Tap", style = TextStyle.META, color = TextColor.SECONDARY)
-                    text("to say", style = TextStyle.META, color = TextColor.SECONDARY)
-                }
-                !screen.done -> text("…", style = TextStyle.META, color = TextColor.SECONDARY)
-                else -> {
-                    text("Tap:", style = TextStyle.META, color = TextColor.SECONDARY)
-                    text(other, style = TextStyle.META, color = TextColor.SECONDARY)
                 }
             }
         }

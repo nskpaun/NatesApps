@@ -4,8 +4,8 @@ An AAC (augmentative and alternative communication) app for people who cannot sp
 
 1. The person you are talking with holds your phone and speaks to it.
 2. The phone transcribes what they said and a local language model writes four possible replies.
-3. The replies appear on your glasses, laid out up, right, down and left, each with an emoji so it can be read at a glance.
-4. You swipe towards one on the Neural Band to highlight it and tap to confirm, and the phone says it aloud.
+3. Replies appear **one at a time**, in fixed up, right, down and left positions, each with an emoji. You can pick the first reply before the other three arrive.
+4. With your fingers closed into a relaxed fist, move your thumb over the index finger's first joint like a tiny joystick to highlight a reply. Pinch your thumb and index finger to confirm; the phone says that reply aloud.
 
 Everything in a conversation happens on the phone: speech recognition, the language model and the voice. Nothing that is said or written leaves it. The internet is used only to download the models once and to register with the Meta AI app.
 
@@ -18,16 +18,35 @@ Everything in a conversation happens on the phone: speech recognition, the langu
 
 ## Gestures
 
-The four replies sit where their swipe points: up, right, down and left. Nothing is said until you tap.
+The four replies sit where their thumb swipe points: up, right, down and left. An animated closed-fist thumb cue says **Swipe thumb** while nothing is selected. Selecting a reply gives it a warm light underline and changes the cue to an animated **Pinch to say** hand. Nothing is said until you confirm. Other replies remain fully visible while new replies arrive.
 
 | Gesture | While listening | While choosing | While speaking |
 |---|---|---|---|
 | Swipe up / right / down / left | | Highlight that reply | |
 | Pinch and turn | | Move the highlight round to the next reply | |
-| Tap | Quick phrases: Yes, No, Thank you, Please give me a moment | Say the highlighted reply. With nothing highlighted: four different replies | |
+| Thumb/index pinch | Quick phrases: Yes, No, Thank you, Please give me a moment | Say the highlighted reply. With nothing highlighted: four different replies | |
 | Back | | Clear the highlight. With nothing highlighted: drop the replies and listen again | Stop talking |
 
 The temple touchpad on the glasses does the same things as the band.
+
+## Conversation screens
+
+The phone is a quiet turn-taking sign: warm cream, cocoa text, and a gently animated terracotta arrow that invites the partner to look up at the wearer.
+
+| Conversation | Glasses | Phone |
+|---|---|---|
+| Waiting for speech | Listening cue | Your turn |
+| Partner talking | Listening cue with moving sound strokes | Your turn |
+| No replies yet | Moving dots and Finding replies | Sam's turn |
+| Replies arriving or ready | Fixed cardinal emoji replies; animated closed-fist thumb cue | Sam's turn |
+| Reply highlighted | Light underline; animated pinch cue | Sam's turn |
+| Speaking | Spoken words and animated speaker cue | Sam's turn |
+| Link unavailable | Nothing can be drawn until it returns | One moment · Reconnecting |
+| Paused | FastChat releases the display | Resume, volume and setup controls |
+
+The name comes from Settings; without a name the wait cue is **Please wait**. The active phone shows no private suggestions, transcript, volume slider or connection diagnostics. Use **Android Back** to pause and reach volume and Settings. Leaving the app also pauses it; folding or rotating the phone preserves the conversation.
+
+Glasses graphics are transparent bitmaps of warm luminous strokes and emoji, with no panel fills, tinted overlays or dimming of other choices. Animations have a brief movement followed by a rest, and respect Android's disabled-animation setting. In the toolkit's fallback focus-and-tap mode, cues stay still so animation updates cannot reset native focus.
 
 **How the pinch-and-turn works.** The toolkit has no "turn" event. It reports a pinch-and-drag stream, and the dial is built on that. Measured on a real band, the position starts at 0 when the pinch goes down and x tops out at about 0.2 however far the wrist turns one way, so the dial steps every 0.047: one full turn is four steps, enough to reach any reply without letting go. After a step the wrist has to come a whole step back before the highlight moves back, so it cannot flicker between two replies. Debug builds log every drag sample (`adb logcat -s FastChatGlasses`) for further tuning.
 
@@ -61,7 +80,7 @@ Requires JDK 21, the Android SDK (platform 36, build-tools 36, NDK 28.2, CMake 3
 
 ```bash
 cd fastchat-glasses/android
-./gradlew testDebugUnitTest   # the conversation state machine, prompt, parser and downloader
+./gradlew testDebugUnitTest   # conversation, streaming, gestures, transparent rendering, phone layout and downloader
 ./gradlew assembleDebug       # → app/build/outputs/apk/debug/app-debug.apk
 ```
 
@@ -98,6 +117,7 @@ A="adb shell am start -n com.natesapps.fastchat/.MainActivity"
 $A --ez start true                              # press Start
 $A --es heard "Do you want to get lunch?"       # as if the partner had said this
 $A --es gesture down                            # up | right | down | left | cw | ccw | tap | back
+$A --es gesture pinch                           # confirm; the older "tap" alias still works
 $A --ez simulated true                          # switch the simulated glasses on or off
 $A --ez reset true                              # forget the conversation so far
 $A --es name Sam --es about "I have a dog."      # set the wearer's details
@@ -169,11 +189,11 @@ The phone warms up under continuous use and drops towards 35 tokens per second.
 
 ## Volume
 
-The voice has its own volume slider (on the talk screen and in Settings), because the phone's volume keys move the glasses' volume while they are connected and cannot reach the loudspeaker. To make that work the voice plays on Android's alarm channel: the app turns that channel up for the length of each sentence and puts it back afterwards, and silent mode does not mute it.
+The voice has its own volume slider (on the paused screen and in Settings), because the phone's volume keys move the glasses' volume while they are connected and cannot reach the loudspeaker. To make that work the voice plays on Android's alarm channel: the app turns that channel up for the length of each sentence and puts it back afterwards, and silent mode does not mute it.
 
 ## When FastChat is on the glasses
 
-Only while a conversation is running. Pressing **Start** opens it on the glasses and **Pause** takes it off again, so a paused or backgrounded app never pushes itself in front of whatever else the wearer is doing. If FastChat is closed on the glasses themselves while a conversation is running, the phone pauses the conversation rather than reopening it. If the Bluetooth link drops mid-conversation, it comes back on its own when the glasses return.
+Only while a conversation is running. Pressing **Start** opens it on the glasses and **Android Back** pauses and takes it off again, so a paused or backgrounded app never pushes itself in front of whatever else the wearer is doing. If FastChat is closed on the glasses themselves while a conversation is running, the phone pauses the conversation rather than reopening it. If the Bluetooth link drops mid-conversation, it comes back on its own when the glasses return.
 
 ## Limits
 
