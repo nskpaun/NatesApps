@@ -1,5 +1,4 @@
 # XcodeGen spec for the iPhone app: `brew install xcodegen && xcodegen` writes QuickTalk.xcodeproj.
-# Not yet generated or built: this was written on Linux. See README.md for status.
 name: QuickTalk
 options:
   bundleIdPrefix: com.natesapps
@@ -10,7 +9,7 @@ packages:
     path: QuickTalkCore
   MWDAT:
     url: https://github.com/meta/meta-wearables-dat-ios
-    from: 1.1.0
+    exactVersion: 1.1.0
 targets:
   QuickTalk:
     type: application
@@ -26,13 +25,19 @@ targets:
         product: MWDATInputs
       - package: MWDAT
         product: MWDATMockDevice
-      # Built by scripts/build-llm.sh.
       - framework: Frameworks/QuickTalkLLMC.xcframework
+        embed: false
+      - framework: Frameworks/QuickTalkSpeechC.xcframework
+        embed: false
       - sdk: Accelerate.framework
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.natesapps.quicktalk
         SWIFT_VERSION: "6.0"
+        SWIFT_INCLUDE_PATHS: "$(BUILT_PRODUCTS_DIR)/include/QuickTalkSpeechC"
+        MARKETING_VERSION: "0.1"
+        CURRENT_PROJECT_VERSION: "1"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         TARGETED_DEVICE_FAMILY: "1"
         # The models need about 1.9 GB of memory.
         CODE_SIGN_ENTITLEMENTS: QuickTalk/QuickTalk.entitlements
@@ -43,11 +48,16 @@ targets:
       path: QuickTalk/Info.plist
       properties:
         CFBundleDisplayName: QuickTalk
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         UILaunchScreen: {}
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         NSMicrophoneUsageDescription: QuickTalk listens to the person you are talking with, on this phone only, to suggest replies.
         NSBluetoothAlwaysUsageDescription: QuickTalk connects to your Meta glasses to show replies on them.
-        UIBackgroundModes: [bluetooth-central, audio]
+        UIBackgroundModes: [processing, bluetooth-central, bluetooth-peripheral]
+        LSApplicationQueriesSchemes: [fb-viewapp]
+        NSLocalNetworkUsageDescription: QuickTalk uses the local network to connect to your glasses.
+        NSBonjourServices: ["_bonjour._tcp"]
         # Developer Mode registration returns through this custom scheme.
         CFBundleURLTypes:
           - CFBundleURLSchemes: [quicktalk]
@@ -58,3 +68,27 @@ targets:
           TeamID: $(DEVELOPMENT_TEAM)
           Analytics:
             OptOut: true
+  QuickTalkDeviceTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [QuickTalkDeviceTests]
+    dependencies:
+      - target: QuickTalk
+      - package: QuickTalkCore
+      - package: MWDAT
+        product: MWDATCore
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        SWIFT_INCLUDE_PATHS: "$(BUILT_PRODUCTS_DIR)/include/QuickTalkSpeechC"
+        PRODUCT_BUNDLE_IDENTIFIER: com.natesapps.quicktalk.tests
+        SWIFT_VERSION: "6.0"
+        TARGETED_DEVICE_FAMILY: "1"
+schemes:
+  QuickTalk:
+    build:
+      targets:
+        QuickTalk: all
+    test:
+      targets:
+        - QuickTalkDeviceTests

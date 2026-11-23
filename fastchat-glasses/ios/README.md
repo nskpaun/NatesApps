@@ -1,61 +1,40 @@
 # QuickTalk Glasses for iPhone
 
-A port of the Android app in [`../android`](../android) to iPhone. The conversation logic, prompt, gestures and reply engine are the same; the platform pieces are being rewritten in Swift.
+QuickTalk helps someone who cannot speak choose a reply with Meta Ray-Ban Display glasses and a Meta Neural Band. A conversation partner speaks to the iPhone. Silero and Parakeet transcribe the utterance, LFM3 suggests replies, and Supertonic speaks the selected reply through the iPhone speaker. Inference runs on the phone. The first setup downloads 1.9 GB of model files. Registration with the glasses uses Meta AI.
 
-**Status: in progress.** The parts that don't need a Mac are written and tested. The app itself has not been built in Xcode yet.
+## Build and install
 
-| Piece | Status |
-|---|---|
-| Conversation state machine, dial, glasses screen, partner turn (`QuickTalkCore`) | ✅ Ported test for test from Android, all passing |
-| Reply prompt, grammar and parser | ✅ Ported; prompt strings match Android's byte for byte |
-| Reply writer (streaming, repeats dropped, retries, persona check) | ✅ Ported and tested against a scripted model |
-| Effect runner (`ConversationRunner`, from `FastChat.kt`) | ✅ Ported and tested with fake ears, voice, writer and glasses |
-| Language model bridge (`llm_c_api` + `LlamaEngine.swift`) | ✅ Same `llm_engine.cpp` as Android. Run from Swift against the real LFM3 model on Linux; the iOS build script has not been run yet |
-| Xcode project (`project.yml`), Info.plist, entitlements | ⏳ Written from Meta's docs, not generated or built yet |
-| Model download (`ModelStore`) | ⏳ To do |
-| Hearing (Silero VAD + Parakeet) and voice (Supertonic 3) via sherpa-onnx | ⏳ To do, needs the sherpa-onnx iOS xcframework |
-| Glasses link: registration, session, display, Neural Band inputs, simulated glasses | ⏳ To do, needs Xcode and the toolkit |
-| Glasses renderer (transparent bitmaps → `Image(image: UIImage)`) and tick sound | ⏳ To do |
-| Phone screens and Settings (SwiftUI) | ⏳ To do |
+Use Xcode 26.4 or later, CMake, and XcodeGen on a Mac. The native build scripts create arm64 slices for iPhone and Apple Silicon Simulator.
 
-## Layout
-
-```
-ios/
-  QuickTalkCore/      Swift package: everything without UIKit or the toolkit. `swift test` runs on macOS or Linux.
-  QuickTalk/          The app target (SwiftUI). So far: LLM/LlamaEngine.swift.
-  scripts/build-llm.sh  Builds llama.cpp + the engine as Frameworks/QuickTalkLLMC.xcframework.
-  project.yml         XcodeGen spec for QuickTalk.xcodeproj.
+```bash
+cd fastchat-glasses/ios
+scripts/build-llm.sh
+scripts/build-speech.sh
+xcodegen generate
+open QuickTalk.xcodeproj
 ```
 
-The engine's C++ stays in `android/app/src/main/cpp/` so both apps build the same file; `llm_c_api.{h,cpp}` there is the plain C interface Swift imports.
+Select your Apple Developer team for the QuickTalk target and run it on an iPhone. The models target 8 GB devices such as iPhone 15 Pro or iPhone 16. The app uses the increased-memory-limit entitlement.
 
-## Test the core
+1. Download the models in QuickTalk. Verified files are reused if you pause the download or retry.
+2. Pair and update the glasses in Meta AI. Enable Developer Mode in Meta AI for local builds, then choose **Connect through Meta AI** in QuickTalk. For a registered integration, supply `META_APP_ID`, `CLIENT_TOKEN`, and the matching Apple signing team when building.
+3. Optionally set your name, personal details, and voice under **Settings**.
+4. Wear the glasses, start a conversation, and speak a question into the phone. Swipe to highlight a reply and pinch to speak it. If Inputs is unavailable, move focus to a reply card and tap it.
+5. Tap **Pause** to release the display and microphone, or to adjust the voice volume. QuickTalk also pauses when it goes to the background.
+
+Debug builds offer **Simulated glasses** in Settings. This uses Meta’s Mock Device Kit to exercise the same display and input paths and shows their preview and controls on the phone.
+
+## Test
 
 ```bash
 cd fastchat-glasses/ios/QuickTalkCore
 swift test
 ```
 
-## Build the app (on a Mac)
+After downloading the models on an iPhone, run the **QuickTalk** scheme’s `OfflineTurnTests` on the same phone. The test uses a synthetic sample to exercise Supertonic, Silero, Parakeet, the real LFM3 model, the reply state machine, and the glasses renderer. A second test connects the Meta mock display and checks swipe, pinch, and pinch-and-turn events. For the accessory check, use the paired glasses and Neural Band to confirm that a spoken question produces reply choices, that swipe and pinch select and speak the intended reply, and that Pause releases the display.
 
-Requires Xcode 26.4 or later (the toolkit asks for iOS 17.2+ and Swift 6), CMake and XcodeGen.
+## Distribution
 
-```bash
-brew install cmake xcodegen
-```
+Use Meta’s Wearables Developer Center to confirm production publishing eligibility and which capabilities the release channel permits. The app includes a focus-and-tap control path for channels where Neural Band Inputs is unavailable. [Meta publishing and discovery](https://developers.meta.com/wearables/faq/)
 
-```bash
-cd fastchat-glasses/ios
-scripts/build-llm.sh
-xcodegen
-open QuickTalk.xcodeproj
-```
-
-## Differences from Android to know about
-
-- **Memory.** The three models need about 1.9 GB. The app asks for Apple's increased memory limit; an iPhone 15 Pro or newer (8 GB) is the target.
-- **Model thread.** Model calls run on one thread with an 8 MB stack. A dispatch queue's 512 KB stack overflows inside llama.cpp.
-- **CPU, like Android.** llama.cpp is built for the CPU (ARMv8.2 with dot-product), matching how the prompt was tuned and measured. Metal is worth trying later.
-- **Analytics.** The toolkit's analytics are switched off (`MWDAT > Analytics > OptOut`), in keeping with nothing from a conversation leaving the phone. The Android app sets the same (`ANALYTICS_OPT_OUT` and `CRASH_REPORTING_OPT_OUT` in its manifest).
-- **Distribution.** Meta's docs say apps using the toolkit cannot go on the App Store yet, and the Inputs (d-pad) capability is experimental. Install it from Xcode.
+The model sources, external libraries, and licenses are listed in the [QuickTalk project README](../README.md).

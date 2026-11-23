@@ -30,6 +30,18 @@ public final class LlamaEngine: TextModel, @unchecked Sendable {
         self.handle = handle
     }
 
+    static func load(path: String) async throws -> LlamaEngine {
+        try await withCheckedThrowingContinuation { (result: CheckedContinuation<LlamaEngine, Error>) in
+            let loader = Thread {
+                do { result.resume(returning: try LlamaEngine(path: path)) }
+                catch { result.resume(throwing: error) }
+            }
+            loader.name = "quicktalk-load-llm"
+            loader.stackSize = 8 * 1024 * 1024
+            loader.start()
+        }
+    }
+
     deinit { qt_engine_free(handle) }
 
     /// Leave two cores for audio and the UI; more than six threads stops paying off.
