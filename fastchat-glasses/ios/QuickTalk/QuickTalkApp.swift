@@ -12,6 +12,10 @@ struct QuickTalkApp: App {
         WindowGroup {
             QuickTalkView(app: app, glasses: app.glasses)
                 .onOpenURL { url in Task { await app.glasses.handle(url) } }
+                .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
+                    guard let url = activity.webpageURL else { return }
+                    Task { await app.glasses.handle(url) }
+                }
                 .onChange(of: scenePhase) { _, phase in
                     if phase == .background { app.pause() }
                 }

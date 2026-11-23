@@ -15,6 +15,8 @@ targets:
     type: application
     platform: iOS
     sources: [QuickTalk]
+    configFiles:
+      Release: QuickTalkRelease.xcconfig
     dependencies:
       - package: QuickTalkCore
       - package: MWDAT
@@ -39,11 +41,12 @@ targets:
         CURRENT_PROJECT_VERSION: "1"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         TARGETED_DEVICE_FAMILY: "1"
-        # The models need about 1.9 GB of memory.
-        CODE_SIGN_ENTITLEMENTS: QuickTalk/QuickTalk.entitlements
-        # Wearables Developer Center credentials; leave as 0 for Developer Mode.
-        META_APP_ID: "0"
-        CLIENT_TOKEN: "0"
+      configs:
+        Debug:
+          CODE_SIGN_ENTITLEMENTS: QuickTalk/QuickTalk.entitlements
+          META_APP_ID: "0"
+          CLIENT_TOKEN: "0"
+          MWDAT_CALLBACK_URL: "quicktalk://"
     info:
       path: QuickTalk/Info.plist
       properties:
@@ -62,7 +65,7 @@ targets:
         CFBundleURLTypes:
           - CFBundleURLSchemes: [quicktalk]
         MWDAT:
-          AppLinkURLScheme: "quicktalk://"
+          AppLinkURLScheme: $(MWDAT_CALLBACK_URL)
           MetaAppID: $(META_APP_ID)
           ClientToken: $(CLIENT_TOKEN)
           TeamID: $(DEVELOPMENT_TEAM)

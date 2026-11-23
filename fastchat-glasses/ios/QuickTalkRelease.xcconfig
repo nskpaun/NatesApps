@@ -1,0 +1,6 @@
+CODE_SIGN_ENTITLEMENTS = QuickTalk/QuickTalk.entitlements
+META_APP_ID = 0
+CLIENT_TOKEN = 0
+MWDAT_CALLBACK_URL = quicktalk:/$()/
+
+#include? "QuickTalkBeta.local.xcconfig"

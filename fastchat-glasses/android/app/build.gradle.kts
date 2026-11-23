@@ -11,6 +11,14 @@ val localProperties = Properties().apply {
     if (file.exists()) file.inputStream().use { load(it) }
 }
 
+val uploadStore = localProperties.getProperty("quicktalk_upload_store")?.takeIf { it.isNotBlank() }
+val uploadSigningKeys = listOf("quicktalk_upload_store_password", "quicktalk_upload_alias", "quicktalk_upload_key_password")
+val uploadSigningValues = uploadSigningKeys.map { localProperties.getProperty(it)?.takeIf(String::isNotBlank) }
+check((uploadStore == null && uploadSigningValues.all { it == null }) ||
+    (uploadStore != null && uploadSigningValues.all { it != null })) {
+    "Provide all four quicktalk_upload_* properties together in local.properties."
+}
+
 android {
     namespace = "com.natesapps.fastchat"
     compileSdk = 36
@@ -25,8 +33,7 @@ android {
 
         // Meta Wearables Device Access Toolkit credentials. "0" is what Developer Mode expects;
         // put real values from the Wearables Developer Center in local.properties to ship.
-        manifestPlaceholders["mwdat_application_id"] =
-            localProperties.getProperty("mwdat_application_id", "0")
+        resValue("string", "mwdat_application_id", localProperties.getProperty("mwdat_application_id", "0"))
         manifestPlaceholders["mwdat_client_token"] =
             localProperties.getProperty("mwdat_client_token", "0")
 
@@ -47,10 +54,18 @@ android {
         }
     }
 
+    if (uploadStore != null) {
+        signingConfigs.create("upload") {
+            storeFile = rootProject.file(uploadStore)
+            storePassword = uploadSigningValues[0]
+            keyAlias = uploadSigningValues[1]
+            keyPassword = uploadSigningValues[2]
+        }
+    }
     buildTypes {
         release {
             isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.findByName("upload")
         }
     }
     compileOptions {

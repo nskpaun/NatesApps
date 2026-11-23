@@ -38,3 +38,34 @@ After downloading the models on an iPhone, run the **QuickTalk** scheme’s `Off
 Use Meta’s Wearables Developer Center to confirm production publishing eligibility and which capabilities the release channel permits. The app includes a focus-and-tap control path for channels where Neural Band Inputs is unavailable. [Meta publishing and discovery](https://developers.meta.com/wearables/faq/)
 
 The model sources, external libraries, and licenses are listed in the [QuickTalk project README](../README.md).
+
+### Private beta
+
+Configure the iOS integration in the Wearables Developer Center with bundle ID `com.natesapps.quicktalk`, the Apple signing team, and a full HTTPS Universal Link. Use the same URL in the integration version and the app build.
+
+Create `QuickTalkBeta.local.xcconfig` next to `project.yml` with the values for that integration. Xcode includes this ignored file only in Release builds.
+
+```xcconfig
+META_APP_ID = <Wearables Developer Center app ID>
+CLIENT_TOKEN = <Wearables Developer Center client token>
+QUICKTALK_CALLBACK_HOST = <your HTTPS hostname>
+MWDAT_CALLBACK_URL = https:/$()/$(QUICKTALK_CALLBACK_HOST)/quicktalk/connect
+CODE_SIGN_ENTITLEMENTS = QuickTalk/QuickTalkBeta.entitlements
+```
+
+Serve `/.well-known/apple-app-site-association` on that hostname over HTTPS, without a redirect, with `Content-Type: application/json`. Match the application identifier from your signed build.
+
+```json
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["<Application Identifier Prefix>.com.natesapps.quicktalk"],
+        "components": [{ "/": "/quicktalk/connect" }]
+      }
+    ]
+  }
+}
+```
+
+Regenerate the project, archive it as Release using the same Apple team, and upload it to TestFlight. Enable Display and Inputs in the Wearables Developer Center, assign an integration version to a private Beta channel, and invite the tester's Meta account. Verify the invite has been accepted and test registration and one full conversation with Developer Mode off.
