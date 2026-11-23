@@ -57,5 +57,5 @@ open QuickTalk.xcodeproj
 - **Memory.** The three models need about 1.9 GB. The app asks for Apple's increased memory limit; an iPhone 15 Pro or newer (8 GB) is the target.
 - **Model thread.** Model calls run on one thread with an 8 MB stack. A dispatch queue's 512 KB stack overflows inside llama.cpp.
 - **CPU, like Android.** llama.cpp is built for the CPU (ARMv8.2 with dot-product), matching how the prompt was tuned and measured. Metal is worth trying later.
-- **Analytics.** The toolkit's analytics are switched off (`MWDAT > Analytics > OptOut`), in keeping with nothing from a conversation leaving the phone. The Android app does not set the equivalent yet.
+- **Analytics.** The toolkit's analytics are switched off (`MWDAT > Analytics > OptOut`), in keeping with nothing from a conversation leaving the phone. The Android app sets the same (`ANALYTICS_OPT_OUT` and `CRASH_REPORTING_OPT_OUT` in its manifest).
 - **Distribution.** Meta's docs say apps using the toolkit cannot go on the App Store yet, and the Inputs (d-pad) capability is experimental. Install it from Xcode.

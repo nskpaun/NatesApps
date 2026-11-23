@@ -25,6 +25,14 @@
         <meta-data
             android:name="com.meta.wearable.mwdat.CLIENT_TOKEN"
             android:value="${mwdat_client_token}" />
+        <!-- No toolkit analytics or crash reports: nothing from a conversation leaves the phone.
+             1.0.1 reads both flags; from 1.1 ANALYTICS_OPT_OUT alone covers both. -->
+        <meta-data
+            android:name="com.meta.wearable.mwdat.ANALYTICS_OPT_OUT"
+            android:value="true" />
+        <meta-data
+            android:name="com.meta.wearable.mwdat.CRASH_REPORTING_OPT_OUT"
+            android:value="true" />
 
         <activity
             android:name=".MainActivity"
