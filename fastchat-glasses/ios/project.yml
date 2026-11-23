@@ -57,7 +57,7 @@ targets:
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         NSMicrophoneUsageDescription: QuickTalk listens to the person you are talking with, on this phone only, to suggest replies.
         NSBluetoothAlwaysUsageDescription: QuickTalk connects to your Meta glasses to show replies on them.
-        UIBackgroundModes: [processing, bluetooth-central, bluetooth-peripheral]
+        UIBackgroundModes: [bluetooth-central, bluetooth-peripheral]
         LSApplicationQueriesSchemes: [fb-viewapp]
         NSLocalNetworkUsageDescription: QuickTalk uses the local network to connect to your glasses.
         NSBonjourServices: ["_bonjour._tcp"]
