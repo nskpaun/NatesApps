@@ -1,0 +1,60 @@
+# XcodeGen spec for the iPhone app: `brew install xcodegen && xcodegen` writes QuickTalk.xcodeproj.
+# Not yet generated or built: this was written on Linux. See README.md for status.
+name: QuickTalk
+options:
+  bundleIdPrefix: com.natesapps
+  deploymentTarget:
+    iOS: "17.2"   # the Meta Wearables Device Access Toolkit's minimum
+packages:
+  QuickTalkCore:
+    path: QuickTalkCore
+  MWDAT:
+    url: https://github.com/meta/meta-wearables-dat-ios
+    from: 1.1.0
+targets:
+  QuickTalk:
+    type: application
+    platform: iOS
+    sources: [QuickTalk]
+    dependencies:
+      - package: QuickTalkCore
+      - package: MWDAT
+        product: MWDATCore
+      - package: MWDAT
+        product: MWDATDisplay
+      - package: MWDAT
+        product: MWDATInputs
+      - package: MWDAT
+        product: MWDATMockDevice
+      # Built by scripts/build-llm.sh.
+      - framework: Frameworks/QuickTalkLLMC.xcframework
+      - sdk: Accelerate.framework
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.natesapps.quicktalk
+        SWIFT_VERSION: "6.0"
+        TARGETED_DEVICE_FAMILY: "1"
+        # The models need about 1.9 GB of memory.
+        CODE_SIGN_ENTITLEMENTS: QuickTalk/QuickTalk.entitlements
+        # Wearables Developer Center credentials; leave as 0 for Developer Mode.
+        META_APP_ID: "0"
+        CLIENT_TOKEN: "0"
+    info:
+      path: QuickTalk/Info.plist
+      properties:
+        CFBundleDisplayName: QuickTalk
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        NSMicrophoneUsageDescription: QuickTalk listens to the person you are talking with, on this phone only, to suggest replies.
+        NSBluetoothAlwaysUsageDescription: QuickTalk connects to your Meta glasses to show replies on them.
+        UIBackgroundModes: [bluetooth-central, audio]
+        # Developer Mode registration returns through this custom scheme.
+        CFBundleURLTypes:
+          - CFBundleURLSchemes: [quicktalk]
+        MWDAT:
+          AppLinkURLScheme: "quicktalk://"
+          MetaAppID: $(META_APP_ID)
+          ClientToken: $(CLIENT_TOKEN)
+          TeamID: $(DEVELOPMENT_TEAM)
+          Analytics:
+            OptOut: true

@@ -64,6 +64,8 @@ One thing to know:
 
 If the status chip says "No glasses in range", open **Settings → Glasses**: it lists each pair Meta AI has shared with the app and what is missing (not connected, not worn, needs an update).
 
+An iPhone port is in progress in [`ios/`](ios/); see its README for what is done.
+
 ## Install and set up
 
 1. Build and install (below), or install `app-debug.apk`.
