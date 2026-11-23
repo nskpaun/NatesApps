@@ -1,0 +1,8 @@
+.build/
+.swiftpm/
+*.xcodeproj/
+xcuserdata/
+DerivedData/
+third_party/
+Frameworks/
+QuickTalk/Info.plist

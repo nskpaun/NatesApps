@@ -58,3 +58,7 @@ endif()
 # NDK and pushed with adb) on the phone itself: see the README. Not part of the app build.
 add_executable(llm_cli EXCLUDE_FROM_ALL llm_cli.cpp)
 target_link_libraries(llm_cli PRIVATE llm_engine)
+
+# Plain C interface for the iPhone app (see ios/scripts/build-llm.sh). Not part of the Android build.
+add_library(quicktalk_llm STATIC EXCLUDE_FROM_ALL llm_c_api.cpp)
+target_link_libraries(quicktalk_llm PUBLIC llm_engine)

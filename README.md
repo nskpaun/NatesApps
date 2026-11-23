@@ -49,6 +49,7 @@ An AAC app for people who cannot speak, for **Meta Ray-Ban Display** glasses and
 - **Fully on-device:** speech recognition (Parakeet), replies (Liquid AI's LFM3-1.7B on llama.cpp) and the voice (Supertonic 3) all run on the phone. Nothing said in a conversation leaves it.
 - **Native Android app** (Kotlin + Jetpack Compose, C++ for the model) using Meta's Wearables Device Access Toolkit, with simulated glasses for trying it without a pair.
 - **Status:** working end to end on a Galaxy Z Fold with the simulated glasses; not yet tried on real ones. Build it from source: see its README.
+- **iPhone port:** in progress in [`fastchat-glasses/ios/`](fastchat-glasses/ios/). The conversation core and reply engine are ported and tested; the app is not built yet.
 
 ## Repository layout
 
