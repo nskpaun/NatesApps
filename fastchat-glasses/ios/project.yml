@@ -56,6 +56,8 @@ targets:
         UILaunchScreen: {}
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         NSMicrophoneUsageDescription: QuickTalk listens to the person you are talking with, on this phone only, to suggest replies.
+        NSCameraUsageDescription: The Meta glasses SDK supports camera access. QuickTalk conversations do not use the camera.
+        NSSpeechRecognitionUsageDescription: QuickTalk recognizes your conversation partner’s speech on this iPhone to suggest replies you can choose.
         NSBluetoothAlwaysUsageDescription: QuickTalk connects to your Meta glasses to show replies on them.
         UIBackgroundModes: [bluetooth-central, bluetooth-peripheral]
         LSApplicationQueriesSchemes: [fb-viewapp]
