@@ -92,7 +92,13 @@ final class GlassesLink: ObservableObject, GlassesOutput {
     }
 
     func handle(_ url: URL) async {
-        guard url.scheme == "quicktalk", let wearables else { return }
+        let settings = Bundle.main.object(forInfoDictionaryKey: "MWDAT") as? [String: Any]
+        let callback = (settings?["AppLinkURLScheme"] as? String).flatMap(URL.init(string:))
+        guard let callback, url.scheme == callback.scheme, let wearables else { return }
+        if callback.scheme == "https" {
+            guard url.host?.lowercased() == callback.host?.lowercased(),
+                  url.port == callback.port, url.path == callback.path else { return }
+        }
         do {
             _ = try await wearables.handleUrl(url)
         } catch { issue = error.localizedDescription }

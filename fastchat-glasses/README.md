@@ -207,3 +207,20 @@ Only while a conversation is running. Pressing **Start** opens it on the glasses
 ## Licences of what it downloads
 
 LFM3-1.7B: LFM Open License v1.0, which allows commercial use only below $10M annual revenue. Parakeet TDT 0.6b v2: CC-BY-4.0 (NVIDIA). Silero VAD: MIT. Supertonic 3: BigScience OpenRAIL-M, which has use-based restrictions worth reading before distributing the app. sherpa-onnx and llama.cpp: Apache-2.0 and MIT.
+
+## Private beta on Android
+
+Set up the Android integration in the Wearables Developer Center with the package `com.natesapps.fastchat` and the signing certificate of the installed app. For Play-installed builds, use the Play **app signing certificate** from Play Console. The upload key signs the bundle sent to Google Play.
+
+In `android/local.properties`, set `mwdat_application_id` and `mwdat_client_token` for the integration, and configure the upload keystore:
+
+```properties
+quicktalk_upload_store=/absolute/path/to/upload-keystore.p12
+quicktalk_upload_store_password=...
+quicktalk_upload_alias=...
+quicktalk_upload_key_password=...
+```
+
+Run `./gradlew :app:bundleRelease` from `android/` and upload `app/build/outputs/bundle/release/app-release.aab` to Play internal testing. When the upload settings are absent, the build produces an unsigned release bundle.
+
+Enable Display and Inputs for the Meta project, assign its version to an invite-only Beta channel, and have the tester accept the Meta invitation. Test a Play-installed build with Developer Mode off in Meta AI.
